@@ -5,18 +5,16 @@ Run:  uvicorn app.main:app --host 0.0.0.0 --port 8090
 import asyncio
 import json
 import os
-import re
-import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
-from typing import List, Optional
+from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, Form, Query, File, Request
+from fastapi import FastAPI, HTTPException, UploadFile, Form, Query, File, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import assess, auth, db, jobs, llm_client, whisper

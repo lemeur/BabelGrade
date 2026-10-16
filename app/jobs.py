@@ -25,7 +25,6 @@ import asyncio
 import json
 import threading
 import time
-import uuid
 from pathlib import Path
 
 from . import assess, auth, db, llm_client, whisper
@@ -632,7 +631,6 @@ async def _run_llm_stream(job_id: int, js: JobStream, messages: list) -> tuple[s
     surfaced in the usage dict.
     """
     result: dict = {"full": [], "usage": {"truncated": False}}
-    loop = asyncio.get_running_loop()
 
     def _worker():
         buf = []
@@ -897,7 +895,6 @@ async def _scheduler() -> None:
     inflight: set[asyncio.Task] = set()
     while not _SHUTDOWN.is_set():
         try:
-            running = db.job_counts().get("running", 0)
             cap = max_workers()
             # reap finished tasks so we count only live ones
             inflight = {t for t in inflight if not t.done()}

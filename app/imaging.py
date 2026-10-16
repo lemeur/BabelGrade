@@ -25,7 +25,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from PIL import Image, ImageFilter, ImageOps
+from PIL import Image, ImageFilter
 
 MIN_LINE_HEIGHT = 70   # (Slice 3) below this, upscale x2
 UPSCALE_FACTOR = 2
@@ -156,11 +156,11 @@ def preprocess_page(path: str | Path) -> tuple[Image.Image, dict]:
         gray = _gray(img)
         box = _ink_crop(gray)
         if box:
-            l, t, r, b = box
-            if (r - l) > 8 and (b - t) > 8:
+            left, top, right, bottom = box
+            if (right - left) > 8 and (bottom - top) > 8:
                 pad = 4
-                img = img.crop((max(0, l - pad), max(0, t - pad),
-                                min(img.width, r + pad), min(img.height, b + pad)))
+                img = img.crop((max(0, left - pad), max(0, top - pad),
+                                min(img.width, right + pad), min(img.height, bottom + pad)))
                 gray = _gray(img)
                 meta["steps"]["crop"] = list(box)
         try:

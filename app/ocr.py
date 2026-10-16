@@ -16,12 +16,11 @@ fails, the tesseract text is kept as-is.
 """
 from __future__ import annotations
 
-import json
-import os
-import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+from PIL import Image
 
 from . import llm_client
 
@@ -197,7 +196,7 @@ def ocr_page(image_path: str, language: str | None = None) -> dict:
                 break
         if not placed:
             lines_raw.append([y0, y1, [(x0, x1, txt)]])
-    for idx, (y0, y1, ws) in enumerate(sorted(lines_raw, key=lambda l: l[0])):
+    for idx, (y0, y1, ws) in enumerate(sorted(lines_raw, key=lambda row: row[0])):
         ws.sort(key=lambda t: t[0])
         x1 = min(w, int(max(x1 for _, x1, _ in ws)))
         lines.append({

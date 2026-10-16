@@ -1557,7 +1557,7 @@ def get_analysis(analysis_id: int) -> dict | None:
          "JOIN submissions sub ON sub.id=a.submission_id "
          "LEFT JOIN rubrics r ON r.id=a.rubric_id "
          "LEFT JOIN students st ON st.id=sub.student_id "
-         f"WHERE a.id=?")
+         "WHERE a.id=?")
     a: list = [analysis_id]
     if where:
         q += f" AND {where}"

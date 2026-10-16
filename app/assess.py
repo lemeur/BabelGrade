@@ -4,7 +4,6 @@ The core promise: map linguistic evidence to CEFR rubric descriptors with
 verbatim quotes / timestamps. No level is asserted without a concrete quote.
 """
 import json
-import re
 from typing import Optional
 
 # ---------------------------------------------------------------- system prompt
@@ -602,7 +601,7 @@ def build_class_insight_messages(*, assignment: dict, stats: dict,
     lines = []
     for e in stats.get("evaluations_detail", []):
         entry = (f"- {e['student']} ({e['classroom']}): "
-                 + " · ".join(f"{c} {l or '—'}" for c, l in e["criteria"].items())
+                 + " · ".join(f"{c} {lev or '—'}" for c, lev in e["criteria"].items())
                  + f" → overall {e['overall'] or '—'}")
         fb = e.get("feedback") or {}
         succ = (fb.get("key_success") or "").strip()
