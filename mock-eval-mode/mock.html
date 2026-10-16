@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ELT Assessor — Mode Évaluation (mock)</title>
+<style>
+:root{
+  --bg:#0f172a; --card:#1e293b; --card2:#243449; --line:#334155;
+  --txt:#e2e8f0; --muted:#94a3b8; --acc:#38bdf8; --acc-soft:#0c4a6e;
+  --ok:#22c55e; --warn:#eab308; --danger:#f87171; --soft:#f1f5f9;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--txt);overflow:hidden}
+button{font:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+/* ===== fake report behind (integration hint) ===== */
+#report{position:fixed;inset:0;padding:24px;overflow:auto}
+#report .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px;max-width:760px}
+#report h1{font-size:18px}
+#report .att-card{border-left:4px solid var(--acc)}
+#report .mock-note{font-size:12.5px;color:var(--muted)}
+#btn-eval{background:var(--acc);color:#04263a;font-weight:700;padding:10px 18px;border-radius:10px;font-size:14px}
+
+/* ===== evaluation mode overlay ===== */
+#eval{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;z-index:10}
+#eval[hidden]{display:none}
+.hdr{display:flex;align-items:center;gap:10px;padding:10px 12px;background:#0b1220;border-bottom:1px solid var(--line);flex:0 0 auto}
+.hdr .btn-x{width:44px;height:44px;font-size:20px;color:var(--muted);border-radius:10px}
+.hdr .btn-x:active{background:var(--card2)}
+.hdr .crit-name{font-size:14.5px;font-weight:700;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-block;padding:3px 10px;border-radius:999px;font-size:12.5px;font-weight:700;background:var(--card2);border:1px solid var(--line)}
+.pill.acc{background:var(--acc-soft);border-color:var(--acc);color:#bae6fd}
+.hdr .score{font-size:13px;color:var(--muted);white-space:nowrap}
+.hdr .score b{color:var(--txt);font-size:14px}
+.flash{animation:flashbg .9s ease}
+@keyframes flashbg{0%{background:rgba(56,189,248,.35)}100%{background:transparent}}
+
+/* ===== 3 columns ===== */
+.cols{flex:1;display:flex;min-height:0;gap:10px;padding:10px 12px;position:relative}
+.col{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;overflow-y:auto;min-width:0;position:relative;transition:transform .18s ease,opacity .18s ease}
+.col.side{width:34%;flex:0 0 auto}
+.col.center{flex:1;background:var(--card2);border:2px solid var(--acc);box-shadow:0 0 0 4px rgba(56,189,248,.12)}
+.col.side{opacity:.82}
+.col.side:active{opacity:1;background:var(--card2)}
+.col .top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.col .lv{font-size:22px;font-weight:800;letter-spacing:.5px}
+.col.center .lv{font-size:26px;color:#bae6fd}
+.col .pts{font-size:12.5px;color:var(--muted);white-space:nowrap}
+.col .pts b{color:var(--txt)}
+.col .delta{font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px}
+.delta.up{background:rgba(34,197,94,.18);color:#4ade80}
+.delta.down{background:rgba(248,113,113,.18);color:#fca5a5}
+.gap-chip{font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:999px;white-space:nowrap;max-width:170px;overflow:hidden;text-overflow:ellipsis}
+.gap-chip.gap-up{background:rgba(34,197,94,.14);color:#4ade80}
+.gap-chip.gap-down{background:rgba(248,113,113,.14);color:#fca5a5}
+.col .badge-set{font-size:11px;font-weight:700;color:#04263a;background:var(--acc);padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+.col .badge-ai{font-size:11px;font-weight:700;color:var(--warn);background:rgba(234,179,8,.12);border:1px solid rgba(234,179,8,.4);padding:2px 8px;border-radius:999px}
+.col .desc{font-size:13.5px;line-height:1.55;color:var(--txt)}
+.col.side .desc{color:#cbd5e1}
+.col.side .desc .more{color:var(--muted)}
+.col.empty{opacity:.4;display:flex;align-items:center;justify-content:center}
+.col.empty .fin{font-size:12.5px;color:var(--muted);text-align:center;padding:12px}
+.col .ai-diff{margin-top:10px;font-size:12.5px;color:var(--warn);background:rgba(234,179,8,.08);border:1px dashed rgba(234,179,8,.35);border-radius:8px;padding:6px 10px}
+
+/* swipe hint */
+.hint-swipe{flex:0 0 auto;text-align:center;font-size:11.5px;color:var(--muted);padding:0 12px 6px}
+
+/* ===== bottom bar ===== */
+.ftr{flex:0 0 auto;background:#0b1220;border-top:1px solid var(--line);padding:8px 12px calc(8px + env(safe-area-inset-bottom))}
+.chips{display:flex;gap:6px;margin-bottom:8px;overflow-x:auto}
+.chip{flex:1 1 0;min-width:110px;padding:7px 8px;border-radius:10px;font-size:12px;font-weight:600;background:var(--card);border:1px solid var(--line);color:var(--txt);display:flex;flex-direction:column;gap:2px;text-align:left;min-height:52px;justify-content:center}
+.chip .c-top{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted)}
+.chip .c-lvl{margin-left:auto;font-size:12.5px;font-weight:800;color:#bae6fd}
+.chip .c-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip.on{background:var(--acc-soft);border-color:var(--acc)}
+.chip.on .c-name{color:#bae6fd}
+.ftr .btns{display:flex;gap:8px}
+.ftr .btns button{padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:600;background:var(--card);border:1px solid var(--line)}
+.ftr .btns button:active{background:var(--card2)}
+.ftr .btns .save{background:var(--ok);color:#052e16;font-weight:700;flex:1}
+.ftr .btns .ai{color:var(--warn)}
+
+/* ===== AI report panel ===== */
+#ai-panel{position:fixed;left:0;right:0;bottom:0;max-height:52%;background:#101a2e;border-top:2px solid var(--warn);border-radius:16px 16px 0 0;padding:14px 16px;transform:translateY(105%);transition:transform .25s ease;z-index:20;overflow-y:auto}
+#ai-panel.open{transform:translateY(0)}
+#ai-panel h3{font-size:14px;color:var(--warn);margin-bottom:6px}
+#ai-panel .just{font-size:13.5px;line-height:1.5;margin-bottom:10px}
+#ai-panel .ev-title{font-size:12px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+#ai-panel ul{list-style:none}
+#ai-panel li{font-size:13px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 10px;margin-bottom:6px;font-style:italic}
+#ai-panel .close-ai{position:absolute;top:8px;right:10px;font-size:16px;color:var(--muted)}
+
+/* toast */
+#toast{position:fixed;top:64px;left:50%;transform:translateX(-50%) translateY(-12px);background:#0b1220;border:1px solid var(--acc);color:#bae6fd;padding:9px 16px;border-radius:12px;font-size:13.5px;font-weight:600;opacity:0;pointer-events:none;transition:.2s;z-index:50;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ===== rotate overlay (portrait phones) ===== */
+#rotate[hidden]{display:none}
+#rotate{position:fixed;inset:0;background:#0b1220;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center;padding:32px}
+#rotate .ico{font-size:52px;animation:rot 2.2s ease-in-out infinite}
+@keyframes rot{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(-90deg)}}
+#rotate p{font-size:16px;font-weight:700}
+#rotate span{font-size:13px;color:var(--muted);max-width:300px;line-height:1.5}
+#rotate{display:none}
+#rotate.show{display:flex}
+.kbd-hint{display:none;font-size:11.5px;color:var(--muted);text-align:center;padding:0 12px 6px}
+.hint-swipe{display:block}
+/* desktop = precise pointer + hover (works for laptop AND wide tablets,
+   phone landscape stays on the swipe hint) */
+@media (hover:hover) and (pointer:fine){
+  .col .desc{font-size:15px}
+  .col.side .desc{font-size:13px}
+  .hint-swipe{display:none}
+  .kbd-hint{display:block}
+}
+</style>
+</head>
+<body>
+
+<!-- Fake underlying report (integration hint) -->
+<div id="report">
+  <div class="card">
+    <h1>Rapport d'analyse — Letter to the editor (mock)</h1>
+    <p class="mock-note">Ceci est le rapport existant. Le bouton ci-dessous ouvre le Mode Évaluation : c'est là que s'agit l'intégration réelle (bouton dans la carte attestation, après le /120).</p>
+    <p style="margin:10px 0"><button id="btn-eval">📋 Évaluer critère par critère</button></p>
+  </div>
+  <div class="card att-card"><h1 style="font-size:15px">Attestation 35/120 — B1</h1>
+    <p class="mock-note">Qualité du contenu B1 (5) · Cohérence B2 (10) · Correction B2 (10) · Richesse B2 (10)</p>
+  </div>
+</div>
+
+<!-- Rotate overlay for portrait phones -->
+<div id="rotate">
+  <div class="ico">📱</div>
+  <p id="rot-title">Tournez votre téléphone</p>
+  <span id="rot-sub">Le mode évaluation utilise le mode paysage pour comparer les niveaux côte à côte.</span>
+</div>
+
+<!-- Evaluation mode -->
+<div id="eval" hidden>
+  <div class="hdr">
+    <button class="btn-x" id="btn-close" title="Quitter">✕</button>
+    <div class="crit-name" id="crit-name"></div>
+    <span class="pill acc" id="pill-lvl"></span>
+    <span class="score" id="score-hdr"></span>
+  </div>
+  <div class="cols" id="cols"></div>
+  <div class="hint-swipe" id="hint-swipe"></div>
+  <div class="kbd-hint" id="kbd-hint"></div>
+  <div class="ftr">
+    <div class="chips" id="chips"></div>
+    <div class="btns">
+      <button class="ai" id="btn-ai">📎 Rapport IA</button>
+      <button class="save" id="btn-save">💾 Sauvegarder</button>
+    </div>
+  </div>
+</div>
+
+<div id="ai-panel">
+  <button class="close-ai" id="close-ai">✕</button>
+  <h3 id="ai-title"></h3>
+  <p class="just" id="ai-just"></p>
+  <div class="ev-title">Preuves retenues</div>
+  <ul id="ai-ev"></ul>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const PTS={A1:1,A2:3,B1:5,B2:10,C1:20,C2:30};
+const LEVELS=['A1','A2','B1','B2','C1','C2'];
+
+/* Real data: att-exp-ecrite grid + analysis 17 (AI suggested B2 everywhere,
+   teacher validated: contenu B1, cohérence B2, correction B2, richesse B2 = 35/120) */
+const CRITERIA=[
+ {name:"Qualité du contenu",ai:"B2",teacher:"B1",
+  justif:"Clear position with nuance and a concrete proposal; fully answers the task.",
+  evidence:["the real obstacle is not the infrastructure but the fear","A well-run pilot... would prove far more convincing"],
+  levels:{A1:"amorce simplement une production écrite en lien avec le sujet",
+   A2:"traite le sujet, même si la production est courte",
+   B1:"écrit intelligible et relativement développé, référence à quelques éléments (inter)culturels",
+   B2:"produit un écrit clair, détaillé et globalement efficace, y compris en s'appuyant sur certains éléments (inter)culturels",
+   C1:"traite le sujet et produit un écrit fluide et convaincant, étayé par des éléments (inter)culturels pertinents",
+   C2:"rend de fines nuances de sens en rapport avec un sujet complexe"},
+  gaps:{A1:{up:"traite le sujet"},
+   A2:{up:"la développe",down:"n'amorce que"},
+   B1:{up:"détaillé, efficace",down:"court, ref minime"},
+   B2:{up:"fluide, convaincant",down:"moins détaillé"},
+   C1:{up:"fines nuances",down:"moins convaincant"},
+   C2:{down:"sans fines nuances"}}},
+ {name:"Cohérence dans la construction du discours",ai:"B2",teacher:"B2",
+  justif:"Sophisticated cohesion: 'While', 'Until', 'in my view', 'rather than'.",
+  evidence:["While I fully support...","Until cyclists are given..."],
+  levels:{A1:"énumère des informations sur soi-même ou les autres",
+   A2:"expose une expérience ou un point de vue en utilisant des connecteurs élémentaires",
+   B1:"rend compte d'expériences en décrivant ses sentiments et réactions ; expose et illustre un point de vue ; raconte une histoire de manière cohérente",
+   B2:"récit ou argumentation indiquant la relation entre les faits et les idées dans un texte bien structuré",
+   C1:"récit ou argumentation complexe avec un usage maîtrisé des moyens linguistiques de structuration et d'articulation",
+   C2:"produit un discours cohérent et construit sur un sujet complexe"},
+  gaps:{A1:{up:"articule les expériences"},
+   A2:{up:"décris tes sentiments",down:"n'énumère que"},
+   B1:{up:"bien structurée",down:"connecteurs élémentaires"},
+   B2:{up:"structure complexe",down:"moins structurée"},
+   C1:{up:"sujets complexes",down:"structure simple"},
+   C2:{down:"sujets moins complexes"}}},
+ {name:"Correction de la langue écrite",ai:"B2",teacher:"B2",
+  justif:"High accuracy; complex structures used correctly.",
+  evidence:["the real obstacle is not... but...","A well-run pilot... would... prove"],
+  levels:{A1:"utilise un nombre limité de structures simples apprises par cœur",
+   A2:"texte immédiatement compréhensible malgré des erreurs fréquentes",
+   B1:"bonne maîtrise des structures simples et courantes ; les erreurs sur les structures simples ne gênent pas la lecture",
+   B2:"bonne maîtrise des structures simples et courantes ; les erreurs sur les structures complexes ne donnent pas lieu à des malentendus",
+   C1:"haut degré de correction maintenu tout au long de la rédaction, y compris structures complexes",
+   C2:"très haut degré de correction grammaticale, y compris structures complexes sur un sujet complexe"},
+  gaps:{A1:{up:"compréhensible malgré erreurs"},
+   A2:{up:"structures simples maîtrisées",down:"structures par cœur"},
+   B1:{up:"pas de malentendu",down:"erreurs fréquentes"},
+   B2:{up:"correction soutenue",down:"erreurs tolérées"},
+   C1:{up:"très haut degré",down:"erreurs complexes subsistent"},
+   C2:{down:"degré moindre"}}},
+ {name:"Richesse de la langue",ai:"B2",teacher:"B2",
+  justif:"Good lexical range and register for a formal letter.",
+  evidence:["commuters","blanket rollout","visible safety network"],
+  levels:{A1:"vocabulaire limité au lexique le plus fréquent, apprise par cœur",
+   A2:"lexique suffisant pour la vie quotidienne, avec des lacunes possibles",
+   B1:"vocabulaire correct mais assez limité ; erreurs et répétitions fréquentes",
+   B2:"vocabulaire adéquat pour un registre soutenu ; nuances de sens appropriées",
+   C1:"vocabulaire riche et précis, usage idiomatique maîtrisé, registre adapté",
+   C2:"vocabulaire extrêmement riche, nuances fines, spontanéité complète"},
+  gaps:{A1:{up:"vocabulaire du quotidien"},
+   A2:{up:"une marge se crée",down:"lexique par cœur"},
+   B1:{up:"nuances, registre soutenu",down:"limité, répétitif"},
+   B2:{up:"riche, idiomatique",down:"correct mais limité"},
+   C1:{up:"maîtrise extrême",down:"moins de nuances"},
+   C2:{down:"moins de spontanéité"}}},
+];
+
+let cur=0; // current criterion index
+const chosen=CRITERIA.map(c=>c.teacher); // entered level per criterion
+let aiOpen=false;
+
+const $=id=>document.getElementById(id);
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function idxOf(L){return LEVELS.indexOf(L)}
+function totalPts(){return chosen.reduce((s,L)=>s+PTS[L],0)}
+function synth(txt,n=170){
+  if(txt.length<=n) return esc(txt);
+  const cut=txt.slice(0,n);
+  const sp=cut.lastIndexOf(' ');
+  return esc(cut.slice(0,sp>120?sp:cut.length-2))+'<span class="more">…</span>';
+}
+function toast(msg){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1400);
+}
+function levelPill(L){return '<span class="pill acc" style="background:#0c4a6e;border-color:#38bdf8;color:#bae6fd">'+L+'</span>'}
+
+function render(){
+  const c=CRITERIA[cur], L=chosen[cur], i=idxOf(L);
+  $('crit-name').textContent=c.name;
+  $('pill-lvl').textContent=L;
+  $('score-hdr').innerHTML='Total <b>'+totalPts()+'</b>/120';
+
+  // columns
+  const mk=(Lv,pos)=>{
+    if(Lv==null) return '<div class="col empty" data-pos="'+pos+'"><div class="fin">— fin d’échelle —</div></div>';
+    const pts=PTS[Lv];
+    const badgeSet = pos==='center' ? '<span class="badge-set">NIVEAU SAISI</span>' : '';
+    const badgeAI = (Lv===c.ai) ? '<span class="badge-ai">IA : '+Lv+'</span>' : '';
+    let gapChip='';
+    if(pos!=='center'){
+      // Short 2-3 word gap next to the level: keyed on the CENTRE level L —
+      // right (Lv = L+1): "+ what it adds above L" · left (Lv = L−1): "− what L adds above it"
+      const g=(c.gaps&&c.gaps[L])||{};
+      const word = pos==='right' ? g.up : g.down;
+      if(word) gapChip='<span class="gap-chip '+(pos==='right'?'gap-up':'gap-down')+'" title="'+esc(word)+'">'
+        +(pos==='right'?'+ ':'− ')+esc(word)+'</span>';
+    }
+    const desc = pos==='center' ? esc(c.levels[Lv]) : synth(c.levels[Lv]);
+    const aiDiff = (pos==='center' && c.ai!==L)
+      ? '<div class="ai-diff">L’IA a recommandé <b>'+c.ai+'</b> ('+(PTS[c.ai]-pts>=0?'+':'−')+Math.abs(PTS[c.ai]-pts)+' pts vs '+L+'). <a href="#" data-open-ai style="color:inherit">Voir le rapport IA ↓</a></div>' : '';
+    return '<div class="col '+(pos==='center'?'center':'side')+'" data-pos="'+pos+'" data-lv="'+Lv+'">'
+      +'<div class="top"><span class="lv">'+Lv+'</span>'
+      +'<span style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+badgeAI+badgeSet+gapChip
+      +'<span class="pts"><b>'+pts+'</b> pts</span></span></div>'
+      +'<div class="desc">'+desc+'</div>'+aiDiff+'</div>';
+  };
+  $('cols').innerHTML = mk(i>0?LEVELS[i-1]:null,'left') + mk(L,'center') + mk(i<5?LEVELS[i+1]:null,'right');
+
+  // chips
+  $('chips').innerHTML=CRITERIA.map((cc,j)=>
+    '<button class="chip'+(j===cur?' on':'')+'" data-crit="'+j+'" title="'+esc(cc.name)+'">'
+    +'<span class="c-top"><span>'+(j+1)+'/'+CRITERIA.length+'</span><span class="c-lvl">'+chosen[j]+'</span></span>'
+    +'<span class="c-name">'+esc(cc.name)+'</span></button>').join('');
+
+  // panel content (kept open state)
+  $('ai-title').textContent='Recommandation IA — '+c.name+' : '+c.ai;
+  $('ai-just').textContent=c.justif;
+  $('ai-ev').innerHTML=c.evidence.map(e=>'<li>“'+esc(e)+'”</li>').join('');
+  if(aiOpen)$('ai-panel').classList.add('open');
+
+  $('hint-swipe').textContent='← glissez pour choisir le niveau de gauche ou de droite →';
+  $('kbd-hint').textContent='← / → : choisir le niveau voisin · 1-4 : changer de critère · Échap : quitter';
+}
+
+function pick(Lv){
+  if(Lv===null||!Lv)return;
+  const old=chosen[cur];
+  if(old===Lv)return;
+  chosen[cur]=Lv;
+  const d=PTS[Lv]-PTS[old];
+  toast('Niveau saisi : '+Lv+' · '+(d>=0?'+':'−')+Math.abs(d)+' pts → total '+totalPts()+'/120');
+  const hdr=$('score-hdr');hdr.classList.remove('flash');void hdr.offsetWidth;hdr.classList.add('flash');
+  render();
+}
+function setCrit(j){
+  if(j<0||j>=CRITERIA.length)return;
+  cur=j; aiOpen=false; $('ai-panel').classList.remove('open');
+  render();
+}
+
+/* ---- interactions ---- */
+$('cols').addEventListener('click',e=>{
+  const col=e.target.closest('.col');
+  if(!col)return;
+  if(e.target.hasAttribute('data-open-ai')){e.preventDefault();toggleAI();return;}
+  if(col.dataset.pos==='side')pick(col.dataset.lv);
+});
+document.addEventListener('click',e=>{
+  const ch=e.target.closest('.chip'); if(ch){setCrit(+ch.dataset.crit);return;}
+  if(e.target.closest('#btn-ai')){toggleAI();return;}
+  if(e.target.closest('#close-ai')){toggleAI(false);return;}
+});
+function toggleAI(force){
+  aiOpen = force!==undefined ? force : !aiOpen;
+  $('ai-panel').classList.toggle('open',aiOpen);
+}
+document.addEventListener('keydown',e=>{
+  const c=CRITERIA[cur],i=idxOf(chosen[cur]);
+  if(e.key==='Escape'){closeEval();return;}
+  if(e.key==='ArrowLeft')pick(i>0?LEVELS[i-1]:null);
+  else if(e.key==='ArrowRight')pick(i<5?LEVELS[i+1]:null);
+  else if(e.key==='?'||e.key==='/')toggleAI();
+  else if(/^[1-9]$/.test(e.key))setCrit(+e.key-1);
+});
+let tx=null;
+$('cols').addEventListener('touchstart',e=>{tx=e.touches[0].clientX;},{passive:true});
+$('cols').addEventListener('touchend',e=>{
+  if(tx==null)return;
+  const dx=e.changedTouches[0].clientX-tx; tx=null;
+  if(Math.abs(dx)<48)return;
+  const i=idxOf(chosen[cur]);
+  if(dx<0)pick(i<5?LEVELS[i+1]:null); else pick(i>0?LEVELS[i-1]:null);
+},{passive:true});
+
+function needRotate(){
+  const coarse=window.matchMedia('(pointer:coarse)').matches;
+  const portrait=window.innerHeight>window.innerWidth;
+  return coarse&&portrait;
+}
+function refreshRotate(){
+  $('rotate').classList.toggle('show', needRotate() && !$('eval').hidden);
+}
+function openEval(){$('eval').hidden=false;render();refreshRotate();}
+function closeEval(){$('eval').hidden=true;aiOpen=false;$('ai-panel').classList.remove('open');refreshRotate();}
+window.addEventListener('resize',refreshRotate);
+window.addEventListener('orientationchange',()=>setTimeout(refreshRotate,300));
+refreshRotate();
+$('btn-eval').onclick=openEval;
+$('btn-close').onclick=closeEval;
+$('btn-save').onclick=()=>{
+  toast('💾 Contre-proposition sauvée (mock) — '+totalPts()+'/120');
+};
+</script>
+</body>
+</html>

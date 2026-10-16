@@ -1,0 +1,16 @@
+# Runtime data
+data/
+!data/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# OS / editor
+.DS_Store
+*.swp
+
+# Stray literal-tilde cache dir created 2026-09-19 (~ not expanded)
+/~

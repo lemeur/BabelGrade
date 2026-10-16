@@ -1,0 +1,956 @@
+"""Async job queue for the long processing steps (Whisper transcription,
+PDF/scan extraction, LLM analysis, run-ai).
+
+Design
+------
+* The request handlers in main.py stage (validate + save) all uploads fast,
+  create the submission + analysis rows, then enqueue a **job** and return a
+  job handle immediately. Nothing heavy happens in the request thread.
+* A small worker pool (size = the configurable ``max_workers`` setting,
+  default 1) claims jobs from the persisted ``jobs`` table and runs them in
+  the background. Because jobs are persisted, the queue survives a restart:
+  on boot any job left ``running`` is re-queued.
+* Each job's progress (phases + LLM tokens) is streamed to any live SSE
+  subscriber via an in-memory :class:`JobStream`. Late subscribers (or a
+  subscriber that connects after the job already finished) get the full log
+  replayed, and once the in-memory log has been GC'd the terminal state is
+  rebuilt from the DB.
+
+The heavy, blocking calls (whisper, pymupdf, the LLM HTTP call) are run in a
+thread pool via ``asyncio.to_thread`` so the event loop stays responsive.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import threading
+import time
+import uuid
+from pathlib import Path
+
+from . import assess, auth, db, llm_client, whisper
+from .rubrics import compute_attestation
+
+# main.py's private helpers (deferred import to avoid a circular import at
+# module load — main imports jobs at top level, jobs imports main lazily).
+def _main():
+    from . import main
+    return main
+
+
+# --------------------------------------------------------------------- settings
+DEFAULT_MAX_WORKERS = 1
+MAX_WORKERS_CAP = 4
+
+
+def max_workers() -> int:
+    try:
+        v = int(db.get_setting("max_workers", str(DEFAULT_MAX_WORKERS)) or DEFAULT_MAX_WORKERS)
+    except (TypeError, ValueError):
+        v = DEFAULT_MAX_WORKERS
+    return max(1, min(v, MAX_WORKERS_CAP))
+
+
+# --------------------------------------------------------------------- streams
+class JobStream:
+    """Thread-safe per-job event log + live subscriber fan-out.
+
+    ``push`` is called both from the event loop and from the worker thread
+    (the LLM stream iterator). Subscribers are ``asyncio.Queue``s; items are
+    delivered to them via ``loop.call_soon_threadsafe`` so it is safe to push
+    from the worker thread.
+    """
+
+    def __init__(self, loop: asyncio.AbstractEventLoop):
+        self.loop = loop
+        self.log: list[tuple[str, dict]] = []
+        self._subs: list[asyncio.Queue] = []
+        self._lock = threading.Lock()
+        self.finished = False
+        self._created = time.time()
+
+    def push(self, event: str, data: dict) -> None:
+        item = (event, data)
+        with self._lock:
+            self.log.append(item)
+            subs = list(self._subs)
+            fin = self.finished
+        for q in subs:
+            self._safe(q.put_nowait, item)
+        if fin:
+            for q in subs:
+                self._safe(q.put_nowait, None)
+
+    def finish(self) -> None:
+        with self._lock:
+            self.finished = True
+            subs = list(self._subs)
+        for q in subs:
+            self._safe(q.put_nowait, None)
+
+    def _safe(self, fn, *a, **k):
+        try:
+            self.loop.call_soon_threadsafe(fn, *a, **k)
+        except RuntimeError:  # loop closed / task cancelling
+            pass
+
+    def subscribe(self) -> asyncio.Queue:
+        q: asyncio.Queue = asyncio.Queue()
+        with self._lock:
+            self._subs.append(q)
+            replay = list(self.log)
+            fin = self.finished
+        for e, d in replay:
+            q.put_nowait((e, d))
+        if fin:
+            q.put_nowait(None)
+        return q
+
+    def unsubscribe(self, q: asyncio.Queue) -> None:
+        with self._lock:
+            if q in self._subs:
+                self._subs.remove(q)
+
+
+_STREAMS: dict[int, JobStream] = {}
+_STREAMS_LOCK = threading.Lock()
+_LOOP: asyncio.AbstractEventLoop | None = None
+STREAM_TTL_S = 15 * 60   # keep a finished job's log this long for late readers
+
+
+def set_loop(loop: asyncio.AbstractEventLoop) -> None:
+    global _LOOP
+    _LOOP = loop
+
+
+def _new_stream(job_id: int) -> JobStream:
+    loop = _LOOP or asyncio.get_running_loop()
+    js = JobStream(loop)
+    with _STREAMS_LOCK:
+        _STREAMS[job_id] = js
+    return js
+
+
+def get_stream(job_id: int) -> JobStream | None:
+    with _STREAMS_LOCK:
+        return _STREAMS.get(job_id)
+
+
+def drop_stream(job_id: int) -> None:
+    with _STREAMS_LOCK:
+        js = _STREAMS.pop(job_id, None)
+    if js:
+        js.finish()
+
+
+def _gc_streams() -> None:
+    """Drop finished in-memory streams older than STREAM_TTL_S."""
+    now = time.time()
+    with _STREAMS_LOCK:
+        stale = [jid for jid, js in _STREAMS.items()
+                 if js.finished and now - js._created > STREAM_TTL_S]
+    for jid in stale:
+        drop_stream(jid)
+
+
+# --------------------------------------------------------------------- phases
+PHASE_PREPARING = "preparing"
+PHASE_TRANSCRIBING = "transcribing"
+PHASE_OCRING = "ocring"
+PHASE_ANALYZING = "analyzing"
+PHASE_PERSISTING = "persisting"
+
+
+def _set_phase(job_id: int, phase: str, js: JobStream) -> None:
+    db.job_update(job_id, phase=phase)
+    js.push("phase", {"phase": phase})
+
+
+def _cancelled(job_id: int) -> bool:
+    j = db.job_get(job_id)
+    return bool(j and j.get("cancel_flag"))
+
+
+# --------------------------------------------------------------------- helpers
+def _data_urls_from_names(names: list) -> list:
+    m = _main()
+    return m._data_urls_from_names(names)
+
+
+def _extract_pdf_file(pdf_path: Path, label: str, page_prefix: str) -> tuple[str, list, list]:
+    """Extract text from a SAVED pdf; render scanned pages to JPEGs in uploads.
+
+    Returns (text, page_data_urls, page_names). Mirrors main._extract_pdf but
+    reads from a file on disk instead of an UploadFile.
+    """
+    m = _main()
+    data = pdf_path.read_bytes()
+    import pymupdf
+    doc = pymupdf.open(stream=data, filetype="pdf")
+    n_pages = doc.page_count
+    text = "\n".join(p.get_text("text") for p in doc).strip()
+    page_urls: list = []
+    page_names: list = []
+    if not text:  # scanned PDF without a text layer -> vision
+        for i in range(min(n_pages, m.MAX_DOC_PDF_PAGES)):
+            pix = doc[i].get_pixmap(dpi=150)
+            name = f"{page_prefix}-p{i + 1}.jpg"
+            (m.UPLOAD_DIR / name).write_bytes(pix.tobytes("jpeg"))
+            page_names.append(name)
+            page_urls.append(m._b64_from_bytes(pix.tobytes("jpeg"), "image/jpeg"))
+    doc.close()
+    return text, page_urls, page_names
+
+
+# --------------------------------------------------------------------- report
+def _report_payload(analysis_id: int, *, parsed: bool = True,
+                    raw: str = "", warnings: list | None = None,
+                    attestation: dict | None = None) -> dict:
+    """UI-ready report dict (the shape renderReport() expects, keyed `data`)."""
+    a = db.get_analysis(analysis_id) or {}
+    rubric = db.get_rubric(a.get("rubric_id") or "") if a.get("rubric_id") else None
+    matrix = a.get("matrix")
+    try:
+        matrix = json.loads(a["matrix_json"]) if a.get("matrix_json") else None
+    except Exception:
+        matrix = None
+    ai_matrix = None
+    try:
+        ai_matrix = json.loads(a["ai_matrix_json"]) if a.get("ai_matrix_json") else None
+    except Exception:
+        ai_matrix = None
+    fluency = None
+    try:
+        fluency = json.loads(a["fluency_json"]) if a.get("fluency_json") else None
+    except Exception:
+        fluency = None
+    transcript = None
+    try:
+        transcript = json.loads(a["transcript_json"]) if a.get("transcript_json") else None
+    except Exception:
+        transcript = None
+    note20 = None
+    try:
+        note20 = json.loads(a["note20_json"]) if a.get("note20_json") else None
+    except Exception:
+        note20 = None
+    transcript_correction = None
+    try:
+        transcript_correction = (json.loads(a["transcript_correction_json"])
+                                 if a.get("transcript_correction_json") else None)
+    except Exception:
+        transcript_correction = None
+    if attestation is None and rubric and rubric.get("attestation") and matrix:
+        attestation = compute_attestation(rubric, matrix.get("rubric_mapping", []))
+    return {
+        "id": analysis_id,
+        "submission_id": a.get("submission_id"),
+        "data": matrix,
+        "ai_data": ai_matrix,
+        "aiMode": a.get("ai_mode"),
+        "aiAt": a.get("ai_at"),
+        "parsed": parsed,
+        "raw": raw or (a.get("raw_markdown") or ""),
+        "warnings": warnings or [],
+        "fluency": fluency,
+        "transcript": transcript,
+        "transcript_correction": transcript_correction,
+        "transcript_mode": a.get("transcript_mode"),
+        "annotations": db.list_annotations(a.get("submission_id")) if a.get("submission_id") else [],
+        "attestation": attestation,
+        "validated": bool(a.get("validated_at")),
+        "note20": note20,
+        "rubric_id": a.get("rubric_id"),
+        "rubric_name": rubric.get("name") if rubric else None,
+    }
+
+
+# --------------------------------------------------------------------- analyze
+async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> None:
+    m = _main()
+    p = payload
+    kind = p.get("kind") or "written"
+    rubric = db.get_rubric(p.get("rubric_id") or "")
+    if not rubric:
+        raise ValueError("valid rubric_id required")
+    if not db.rubric_matches_mode(rubric, kind):
+        raise ValueError(f"rubric '{rubric['name']}' does not apply to a {kind} submission")
+
+    # assignment (linked) materials are resolved from stored rows; ad-hoc uses
+    # the staged files referenced in the payload.
+    assignment_id = p.get("assignment_id") or None
+    assignment = db.get_assignment(assignment_id) if assignment_id else None
+    if assignment_id and not assignment:
+        raise ValueError("assignment not found")
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+
+    # ---- context (instruction + source document) ----
+    if assignment:
+        assignment_context = m._assignment_context_from_assignment(assignment)
+        eval_notes = m._assignment_eval_notes_from_assignment(assignment)
+        inherited_target = assignment.get("target_level")
+    else:
+        assignment_context, eval_notes = await asyncio.to_thread(
+            _build_adhoc_context, p)
+        inherited_target = None
+
+    # ---- student work: written pages / oral audio ----
+    written_text = (p.get("written_text") or "").strip()
+    image_names = p.get("image_names") or []
+    audio_name = p.get("audio_name")
+    image_data_urls: list = []
+    transcript = None
+
+    if kind == "oral":
+        if not audio_name:
+            raise ValueError("oral analysis requires an audio upload")
+        _set_phase(job_id, PHASE_TRANSCRIBING, js)
+        if _cancelled(job_id):
+            return _mark_cancelled(job_id, js)
+        lang = p.get("language") or "en"
+        transcript = await asyncio.to_thread(
+            whisper.transcribe, str(m.UPLOAD_DIR / audio_name), lang)
+    else:
+        if not written_text and not image_names:
+            raise ValueError("provide written text or page photo(s)")
+        if image_names:
+            image_data_urls = _data_urls_from_names(image_names)
+
+    # ---- persistence: submission + analysis already created by the request
+    # handler (ids carried in the job row); fill them in now. ----
+    sub_id = db.job_get(job_id).get("submission_id")
+    analysis_id = db.job_get(job_id).get("analysis_id")
+    effective_target = (p.get("target_level") or inherited_target or None)
+
+    sub_payload, source_type = _payload_of(kind, written_text, image_data_urls,
+                                           transcript, image_names)
+    db.update_submission(sub_id, payload_path=sub_payload, source_type=source_type,
+                         language=(transcript["language"] if transcript else p.get("language") or ""),
+                         duration_s=(transcript["duration_s"] if transcript else None),
+                         target_level=effective_target,
+                         payload_meta=({**({"audio_name": audio_name} if kind == "oral" else {}),
+                                        **({"page_paths": image_names,
+                                            "page_count": len(image_names)}
+                                           if image_names else {})}) or None,
+                         context=m._strip_persist_context(assignment_context)
+                         if assignment else _strip_ctx(assignment_context),
+                         eval_notes=m._strip_persist_eval_notes(eval_notes)
+                         if assignment else _strip_en(eval_notes),
+                         accommodations=p.get("accommodations") or None)
+
+    fluency = assess.fluency_metrics(transcript) if transcript else None
+    transcript_blob = ({"text": transcript["text"], "segments": transcript["segments"],
+                        "duration_s": transcript["duration_s"],
+                        "language": transcript["language"]}
+                       if transcript else None)
+
+    ctx_lines = []
+    if p.get("student_id"):
+        ctx_lines.append(f"Student id: {p['student_id']}")
+    if assignment_id:
+        ctx_lines.append(f"Linked assignment: {assignment['name']}")
+
+    messages = assess.build_messages(
+        kind=kind, rubric=rubric, student_context="\n".join(ctx_lines),
+        written_text=(written_text or None) if kind == "written" else None,
+        image_data_urls=image_data_urls if kind == "written" else None,
+        oral_transcript=(assess.transcript_with_timestamps(transcript)
+                         if transcript else None),
+        oral_metadata=fluency,
+        target_level=effective_target,
+        assignment_context=assignment_context,
+        eval_notes=eval_notes,
+        accommodations=p.get("accommodations") or None,
+        ui_language=p.get("ui_language") or None,
+    )
+
+    _set_phase(job_id, PHASE_ANALYZING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+
+    full, usage = await _run_llm_stream(job_id, js, messages)
+
+    parsed = assess.parse_result(full)
+    data = parsed["data"]
+    warnings = assess.validate_matrix(data, rubric) if data else [parsed["error"]]
+    attestation = compute_attestation(rubric, (data or {}).get("rubric_mapping", []))
+    if attestation and attestation.get("unmapped"):
+        warnings.append("Certains critères n'ont pas pu être notés sur la "
+                        "échelle A1–C2 ; le score d'attestation est à valider.")
+    if not parsed["ok"] and usage.get("truncated"):
+        warnings.append("The model hit the token limit before finishing its "
+                        "reply; the analysis may be incomplete. Try again.")
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    db.update_analysis(
+        analysis_id,
+        raw_markdown=full,
+        overall_level=(data or {}).get("overall_level"),
+        matrix_json=json.dumps(data, ensure_ascii=False) if data else None,
+        feedback=json.dumps((data or {}).get("student_feedback"), ensure_ascii=False),
+        fluency_json=json.dumps(fluency, ensure_ascii=False) if fluency else None,
+        transcript_json=json.dumps(transcript_blob, ensure_ascii=False),
+        ai_matrix_json=json.dumps(data, ensure_ascii=False) if data else None,
+        ai_mode="blind",
+        ai_at=db.now_iso(),
+        status="done",
+    )
+    _finalize(job_id, js, "done", report=_report_payload(analysis_id,
+                parsed=parsed["ok"], raw=full, warnings=warnings,
+                attestation=attestation))
+
+
+# ------------------------------------------------------------------ evaluate
+async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> None:
+    """Teacher-first flow: stage + (if oral) transcribe, then create the empty
+    skeleton matrix. No LLM call — the AI is added later via run_ai."""
+    m = _main()
+    p = payload
+    kind = p.get("kind") or "written"
+    rubric = db.get_rubric(p.get("rubric_id") or "")
+    if not rubric:
+        raise ValueError("valid rubric_id required")
+    if not db.rubric_matches_mode(rubric, kind):
+        raise ValueError(f"rubric '{rubric['name']}' does not apply to a {kind} submission")
+
+    assignment_id = p.get("assignment_id") or None
+    assignment = db.get_assignment(assignment_id) if assignment_id else None
+    if assignment_id and not assignment:
+        raise ValueError("assignment not found")
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+    if assignment:
+        assignment_context = m._assignment_context_from_assignment(assignment)
+        eval_notes = m._assignment_eval_notes_from_assignment(assignment)
+        inherited_target = assignment.get("target_level")
+    else:
+        assignment_context, eval_notes = await asyncio.to_thread(
+            _build_adhoc_context, p)
+        inherited_target = None
+
+    written_text = (p.get("written_text") or "").strip()
+    image_names = p.get("image_names") or []
+    audio_name = p.get("audio_name")
+    image_data_urls: list = []
+    transcript = None
+
+    if kind == "oral":
+        if not audio_name:
+            raise ValueError("oral evaluation requires an audio upload")
+        _set_phase(job_id, PHASE_TRANSCRIBING, js)
+        if _cancelled(job_id):
+            return _mark_cancelled(job_id, js)
+        lang = p.get("language") or "en"
+        transcript = await asyncio.to_thread(
+            whisper.transcribe, str(m.UPLOAD_DIR / audio_name), lang)
+    else:
+        if not written_text and not image_names:
+            raise ValueError("provide written text or page photo(s)")
+        if image_names:
+            image_data_urls = _data_urls_from_names(image_names)
+
+    sub_id = db.job_get(job_id).get("submission_id")
+    analysis_id = db.job_get(job_id).get("analysis_id")
+    effective_target = (p.get("target_level") or inherited_target or None)
+    sub_payload, source_type = _payload_of(kind, written_text, image_data_urls,
+                                           transcript, image_names)
+    db.update_submission(sub_id, payload_path=sub_payload, source_type=source_type,
+                         language=(transcript["language"] if transcript else p.get("language") or ""),
+                         duration_s=(transcript["duration_s"] if transcript else None),
+                         target_level=effective_target,
+                         payload_meta=({**({"audio_name": audio_name} if kind == "oral" else {}),
+                                        **({"page_paths": image_names,
+                                            "page_count": len(image_names)}
+                                           if image_names else {})}) or None,
+                         context=m._strip_persist_context(assignment_context)
+                         if assignment else _strip_ctx(assignment_context),
+                         eval_notes=m._strip_persist_eval_notes(eval_notes)
+                         if assignment else _strip_en(eval_notes),
+                         accommodations=p.get("accommodations") or None)
+
+    fluency = assess.fluency_metrics(transcript) if transcript else None
+    transcript_blob = ({"text": transcript["text"], "segments": transcript["segments"],
+                        "duration_s": transcript["duration_s"],
+                        "language": transcript["language"]}
+                       if transcript else None)
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    db.update_analysis(
+        analysis_id,
+        matrix_json=json.dumps(m._skeleton_matrix(rubric), ensure_ascii=False),
+        fluency_json=json.dumps(fluency, ensure_ascii=False) if fluency else None,
+        transcript_json=json.dumps(transcript_blob, ensure_ascii=False),
+        status="teacher",
+    )
+    _finalize(job_id, js, "done",
+              report=_report_payload(analysis_id, parsed=True, raw=""))
+
+
+# --------------------------------------------------------------------- run-ai
+async def _stage_and_run_runai(job_id: int, js: JobStream, payload: dict) -> None:
+    m = _main()
+    p = payload
+    analysis_id = p["analysis_id"]
+    mode = p.get("mode") or "blind"
+    a = db.get_analysis(analysis_id)
+    if not a:
+        raise ValueError("analysis not found")
+    sub = db.get_submission(a.get("submission_id") or 0)
+    if not sub:
+        raise ValueError("submission not found")
+    rubric = db.get_rubric(a.get("rubric_id") or "")
+    if not rubric:
+        raise ValueError("rubric not found")
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+    mats = await m._submission_materials(sub, a)
+    kind = mats["kind"]
+    transcript = mats["transcript"]
+    fluency = assess.fluency_metrics(transcript) if transcript else None
+
+    teacher_levels = None
+    if mode == "aware":
+        try:
+            mm = json.loads(a["matrix_json"]) if a.get("matrix_json") else None
+        except Exception:
+            mm = None
+        if isinstance(mm, dict) and isinstance(mm.get("rubric_mapping"), list):
+            teacher_levels = {e.get("criterion"): e.get("suggested_level", "")
+                              for e in mm["rubric_mapping"] if e.get("criterion")}
+
+    ctx_lines = []
+    if sub.get("student_name"):
+        ctx_lines.append(f"Student: {sub['student_name']}")
+    if sub.get("assignment_name"):
+        ctx_lines.append(f"Linked assignment: {sub['assignment_name']}")
+    wt = (mats["written_text"] or "").strip()
+    if wt.startswith("(transcribed from"):
+        wt = ""
+
+    messages = assess.build_messages(
+        kind=kind, rubric=rubric, student_context="\n".join(ctx_lines),
+        written_text=(wt or None) if kind == "written" else None,
+        image_data_urls=mats["image_data_urls"] if kind == "written" else None,
+        oral_transcript=(assess.transcript_with_timestamps(transcript)
+                         if transcript else None),
+        oral_metadata=fluency,
+        target_level=mats["target"],
+        assignment_context=mats["assignment_context"],
+        eval_notes=mats["eval_notes"],
+        accommodations=mats["accommodations"],
+        teacher_levels=teacher_levels,
+        pre_annotations=mats.get("pre_annotations") or None,
+        transcript_corrected=bool(mats.get("transcript_corrected")),
+        ui_language=p.get("ui_language") or None,
+    )
+
+    _set_phase(job_id, PHASE_ANALYZING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    full, usage = await _run_llm_stream(job_id, js, messages)
+
+    parsed = assess.parse_result(full)
+    data = parsed["data"]
+    warnings = assess.validate_matrix(data, rubric) if data else [parsed["error"]]
+    attestation = compute_attestation(rubric, (data or {}).get("rubric_mapping", []))
+    if attestation and attestation.get("unmapped"):
+        warnings.append("Certains critères n'ont pas pu être notés sur la "
+                        "échelle A1–C2 ; le score d'attestation est à valider.")
+    if not parsed["ok"]:
+        warnings.append("The AI reply could not be parsed into the expected "
+                        "structure; the raw response is shown instead.")
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    # LAST AI OPINION WINS: overwrite the previous AI matrix; the teacher's
+    # matrix_json + overall_level are never touched.
+    db.update_analysis(
+        analysis_id,
+        raw_markdown=full,
+        ai_matrix_json=json.dumps(data, ensure_ascii=False) if data else None,
+        ai_mode=mode,
+        ai_at=db.now_iso(),
+        status="done",
+    )
+    _finalize(job_id, js, "done", report=_report_payload(analysis_id,
+                parsed=parsed["ok"], raw=full, warnings=warnings,
+                attestation=attestation))
+
+
+# ------------------------------------------------- stats-ai (class insight)
+async def _stage_and_run_statsai(job_id: int, js: JobStream, payload: dict) -> None:
+    """AI class insight for an assignment's Stats view: read the assignment
+    (instruction + document + repères), the per-student evaluations and the
+    per-class statistics, produce a JSON class analysis. The result is stored
+    on the JOB row (jobs.result_json) — there is no analysis to write to."""
+    p = payload
+    assignment_id = p.get("assignment_id")
+    assignment = db.get_assignment(assignment_id) if assignment_id else None
+    if not assignment:
+        raise ValueError("assignment not found")
+    # The stats snapshot was captured at enqueue time — the analysis reads the
+    # same data the teacher saw when clicking "Avis IA" (levels edited meanwhile
+    # would otherwise desync input from output).
+    stats = p.get("stats") or {}
+    if not (stats.get("evaluations") or 0):
+        raise ValueError("no evaluation with a filled level yet on this assignment")
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+    messages = assess.build_class_insight_messages(
+        assignment=assignment, stats=stats,
+        ui_language=p.get("ui_language") or None)
+
+    _set_phase(job_id, PHASE_ANALYZING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    full, usage = await _run_llm_stream(job_id, js, messages)
+
+    parsed = llm_client.extract_json(full)
+    warnings: list[str] = []
+    if not isinstance(parsed, dict) or not parsed.get("class_level"):
+        warnings.append("The AI reply could not be parsed into the expected "
+                        "structure; the raw response is shown instead.")
+    if usage.get("truncated"):
+        warnings.append("The model hit the token limit before finishing its "
+                        "reply; the analysis may be incomplete. Try again.")
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    data = parsed if isinstance(parsed, dict) else None
+    _finalize(job_id, js, "done", report={
+        "assignment_id": assignment_id,
+        "data": data,
+        "raw": full,
+        "warnings": warnings,
+    })
+
+
+# --------------------------------------------------------------------- LLM
+async def _run_llm_stream(job_id: int, js: JobStream, messages: list) -> tuple[str, dict]:
+    """Run the LLM in a thread, forwarding each token to the job stream.
+
+    Returns (full_text, usage_dict). The ``truncated`` flag (finish_reason) is
+    surfaced in the usage dict.
+    """
+    result: dict = {"full": [], "usage": {"truncated": False}}
+    loop = asyncio.get_running_loop()
+
+    def _worker():
+        buf = []
+        try:
+            for piece in llm_client.stream_chat(messages, temperature=0.1,
+                                                max_tokens=10000,
+                                                thinking_budget=4000,
+                                                truncated=result["usage"]):
+                if _cancelled(job_id):
+                    break
+                buf.append(piece)
+                js.push("token", {"t": piece})
+            result["full"] = buf
+        except Exception as e:  # surfaced to the caller
+            result["error"] = str(e)
+
+    await asyncio.to_thread(_worker)
+    full = "".join(result["full"])
+    if result.get("error"):
+        raise RuntimeError(result["error"])
+    return full, result["usage"]
+
+
+# --------------------------------------------------------------------- helpers
+def _payload_of(kind, written_text, image_data_urls, transcript, image_names):
+    if kind == "oral" and transcript:
+        return transcript["text"], "audio"
+    if image_data_urls:
+        return (written_text or
+                f"(transcribed from {len(image_data_urls)} page photo(s))"), "image"
+    return written_text, "text"
+
+
+def _build_adhoc_context(p: dict) -> tuple[dict | None, dict | None]:
+    """Rebuild the ad-hoc assignment context + eval notes from staged files.
+
+    Priority mirrors main._build_assignment_context:
+      instruction: text/PDF > photos
+      document:    text > audio > PDF > photos
+    Runs in a worker thread (whisper + pymupdf are blocking).
+    """
+    m = _main()
+    instruction = (p.get("instruction") or "").strip()
+    instr_pdf_name = p.get("instruction_pdf_name")
+    instr_photo_names = p.get("instruction_photo_names") or []
+    if instr_pdf_name:
+        pp = m.UPLOAD_DIR / instr_pdf_name
+        if pp.is_file():
+            text, _u, _n = _extract_pdf_file(pp, "instruction",
+                                             f"pdf-{instr_pdf_name[4:36]}")
+            if text:
+                instruction = (instruction + "\n\n" + text).strip()
+
+    instr_photo_urls = _data_urls_from_names(instr_photo_names) if instr_photo_names else []
+    if not instruction and instr_photo_urls:
+        instruction = None  # photos carry the instruction
+
+    doc_text = (p.get("doc_text") or "").strip()
+    doc_audio_name = p.get("doc_audio_name")
+    doc_pdf_name = p.get("doc_pdf_name")
+    doc_photo_names = p.get("doc_photo_names") or []
+    doc_pdf_urls: list = []
+    if doc_audio_name:
+        ap = m.UPLOAD_DIR / doc_audio_name
+        if ap.is_file():
+            t = whisper.transcribe(str(ap), "en")
+            doc_text = (t or {}).get("text", "") or ""
+    elif doc_pdf_name:
+        pp = m.UPLOAD_DIR / doc_pdf_name
+        if pp.is_file():
+            text, doc_pdf_urls, _n = _extract_pdf_file(pp, "source document",
+                                                       f"pdf-{doc_pdf_name[4:36]}")
+            doc_text = text
+    elif doc_photo_names:
+        doc_text = ""  # photos carry the document
+
+    doc_photo_urls = _data_urls_from_names(doc_photo_names) if doc_photo_names else []
+
+    if not (instruction or instr_photo_urls or doc_text or doc_pdf_urls
+            or doc_photo_urls):
+        ctx = None
+    else:
+        ctx = {
+            "instruction": instruction,
+            "document_text": doc_text,
+            "document_source": ("audio" if doc_audio_name
+                                else ("pdf" if (doc_pdf_name or doc_pdf_urls)
+                                      else ("photos" if doc_photo_urls
+                                            else ("text" if doc_text else None)))),
+            "document_audio_name": doc_audio_name or None,
+            "document_pdf_name": doc_pdf_name or None,
+            "instruction_pdf_name": instr_pdf_name or None,
+            "document_images": doc_pdf_urls,
+            "instruction_photo_urls": instr_photo_urls,
+            "document_photo_urls": doc_photo_urls,
+            "instruction_photo_names": instr_photo_names,
+            "document_photo_names": doc_photo_names,
+        }
+
+    # eval notes (text + optional PDF + photos of the instructions)
+    en_text = (p.get("eval_notes") or "").strip()
+    en_pdf_name = p.get("eval_notes_pdf_name")
+    en_pdf_pages: list = []
+    if en_pdf_name:
+        pp = m.UPLOAD_DIR / en_pdf_name
+        if pp.is_file():
+            t, en_pdf_pages, _n = _extract_pdf_file(pp, "evaluation instructions",
+                                                    f"pdf-{en_pdf_name[4:36]}")
+            if t:
+                en_text = (en_text + "\n\n" + t).strip()
+    en_photo_names = p.get("eval_notes_photo_names") or []
+    en_photo_urls = _data_urls_from_names(en_photo_names) if en_photo_names else []
+    if not en_text and not en_pdf_pages and not en_photo_urls:
+        en = None
+    else:
+        en = {"text": en_text or None, "pdf_name": en_pdf_name or None,
+              "pdf_pages": en_pdf_pages, "pdf_page_count": len(en_pdf_pages),
+              "photo_names": en_photo_names, "photo_urls": en_photo_urls}
+    return ctx, en
+
+
+def _strip_ctx(context: dict | None) -> dict | None:
+    if not context:
+        return None
+    return {k: v for k, v in context.items()
+            if k != "document_images" and not k.endswith("_urls")}
+
+
+def _strip_en(eval_notes: dict | None) -> dict | None:
+    if not eval_notes:
+        return None
+    return {k: v for k, v in eval_notes.items()
+            if k not in ("pdf_pages", "photo_urls")}
+
+
+def _mark_cancelled(job_id: int, js: JobStream) -> None:
+    j = db.job_get(job_id)
+    if j and j.get("analysis_id"):
+        _fail_analysis(j["analysis_id"], "cancelled")
+    _finalize(job_id, js, "cancelled")
+
+
+def _fail_analysis(analysis_id: int, err: str) -> None:
+    try:
+        db.update_analysis(analysis_id, status="error", error=err, raw_markdown="")
+    except Exception:
+        pass
+
+
+def _finalize(job_id: int, js: JobStream, status: str,
+              report: dict | None = None, error: str | None = None) -> None:
+    j = db.job_get(job_id) or {}
+    started = j.get("started_at")
+    elapsed = None
+    if started:
+        try:
+            from datetime import datetime
+            s = datetime.fromisoformat(started)
+            elapsed = round((datetime.now(s.tzinfo) - s).total_seconds(), 1)
+        except Exception:
+            elapsed = None
+    if status == "done":
+        db.job_update(job_id, status="done", elapsed_s=elapsed,
+                      result=report if isinstance(report, dict) else None,
+                      finished=True)
+        if report is not None:
+            js.push("result", report)
+        js.push("done", {"job_id": job_id, "status": "done", "elapsed_s": elapsed})
+    elif status == "cancelled":
+        db.job_update(job_id, status="cancelled", elapsed_s=elapsed, finished=True)
+        js.push("cancelled", {"job_id": job_id, "elapsed_s": elapsed})
+    else:  # error
+        db.job_update(job_id, status="error", error=error, elapsed_s=elapsed,
+                      finished=True)
+        js.push("error", {"error": error, "elapsed_s": elapsed})
+    if report is not None and status == "done":
+        pass  # result already pushed by the caller
+    js.finish()
+
+
+# --------------------------------------------------------------------- dispatch
+async def _run_ocr(job_id: int, js: JobStream, payload: dict) -> None:
+    """Hybrid OCR job for a written submission's page photos: tesseract line
+    boxes + LLM vision polish, persisted on submissions.ocr_json. No analysis
+    row involved (the job row carries only the submission)."""
+    m = _main()
+    from . import ocr
+    sub_id = db.job_get(job_id).get("submission_id")
+    sub = db.get_submission(sub_id)
+    if not sub:
+        raise ValueError("submission not found")
+    if sub.get("kind") != "written":
+        raise ValueError("OCR is only available for written submissions")
+    meta = sub.get("payload_meta") or {}
+    image_names = list(meta.get("page_paths") or [])
+    if not image_names:
+        raise ValueError("this submission has no page photos to OCR")
+    _set_phase(job_id, PHASE_OCRING, js)
+    result = await asyncio.to_thread(
+        ocr.ocr_submission, image_names, m.UPLOAD_DIR,
+        language=sub.get("language"),
+        progress=lambda ph: js.push("phase", {"phase": ph}),
+        check_cancel=lambda: _cancelled(job_id))
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    db.set_submission_ocr(sub_id, result)
+    _finalize(job_id, js, "done",
+              report={"submission_id": sub_id, "ocr": result})
+
+
+_RUNNERS = {
+    "analyze": _stage_and_run_analyze,
+    "evaluate": _stage_and_run_evaluate,
+    "run_ai": _stage_and_run_runai,
+    "ocr": _run_ocr,
+    "stats_ai": _stage_and_run_statsai,
+}
+
+
+async def run_job(job: dict) -> None:
+    job_id = job["id"]
+    # Multi-user (2026-10-13): run this job's db calls in the context of its
+    # OWN user. The worker scheduler has no owner (system context); if we
+    # didn't set owner_var here, db._scoped() would return no WHERE clause
+    # and a job could read/write ANOTHER teacher's rows (e.g. job_get in the
+    # cancel check, db.update_analysis in the finalize paths). run_job runs
+    # as a fresh asyncio task (its own contextvars copy), so this is
+    # task-local and needs no reset.
+    owner = job.get("owner_id")
+    if owner is not None:
+        auth.owner_var.set(owner)
+    js = _new_stream(job_id)
+    kind = job.get("kind")
+    payload = db.job_get(job_id).get("payload") or {}
+    js.push("meta", {"job_id": job_id, "kind": kind,
+                     "status": "running", "phase": None,
+                     "created_at": job.get("created_at"),
+                     "started_at": job.get("started_at"),
+                     "finished_at": None, "elapsed_s": None,
+                     "submission_id": job.get("submission_id"),
+                     "analysis_id": job.get("analysis_id")})
+    try:
+        runner = _RUNNERS.get(kind)
+        if not runner:
+            raise ValueError(f"unknown job kind {kind!r}")
+        await runner(job_id, js, payload)
+    except Exception as e:
+        j = db.job_get(job_id) or {}
+        if j.get("analysis_id") and not _cancelled(job_id):
+            _fail_analysis(j["analysis_id"], str(e))
+        _finalize(job_id, js, "error", error=str(e))
+
+
+# --------------------------------------------------------------------- workers
+_SCHED: asyncio.Task | None = None
+_SHUTDOWN: asyncio.Event | None = None
+
+
+async def _scheduler() -> None:
+    global _SHUTDOWN
+    _SHUTDOWN = asyncio.Event()
+    inflight: set[asyncio.Task] = set()
+    while not _SHUTDOWN.is_set():
+        try:
+            running = db.job_counts().get("running", 0)
+            cap = max_workers()
+            # reap finished tasks so we count only live ones
+            inflight = {t for t in inflight if not t.done()}
+            while len(inflight) < cap:
+                job = await asyncio.to_thread(db.job_claim_next)
+                if not job:
+                    break
+                t = asyncio.create_task(run_job(job))
+                inflight.add(t)
+            _gc_streams()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            pass
+        try:
+            await asyncio.wait_for(_SHUTDOWN.wait(), timeout=0.5)
+        except asyncio.TimeoutError:
+            pass
+    # on shutdown, cancel any in-flight tasks
+    for t in list(inflight):
+        t.cancel()
+    if inflight:
+        await asyncio.gather(*inflight, return_exceptions=True)
+
+
+def recover_orphans() -> int:
+    """Re-queue any job left 'running' by a previous (crashed) process."""
+    with db._LOCK:
+        c = db._conn()
+        cur = c.execute("UPDATE jobs SET status='queued', started_at=NULL "
+                        "WHERE status='running'")
+        c.commit()
+        return cur.rowcount
+
+
+def start_workers() -> None:
+    """Start the background scheduler (idempotent)."""
+    global _SCHED
+    loop = asyncio.get_running_loop()
+    set_loop(loop)
+    recover_orphans()
+    if _SCHED is None or _SCHED.done():
+        _SCHED = asyncio.create_task(_scheduler())
+        import logging
+        logging.getLogger("elt.jobs").info(
+            "job scheduler started (max_workers=%s)", max_workers())
+
+
+def stop_workers() -> None:
+    global _SCHED
+    ev = _SHUTDOWN
+    if ev and not ev.is_set():
+        ev.set()
+    if _SCHED:
+        _SCHED.cancel()
+        _SCHED = None
