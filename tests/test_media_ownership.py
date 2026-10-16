@@ -16,10 +16,13 @@ TMP = P(tempfile.mkdtemp(prefix="elt_sec_test_"))
 db.DB_PATH = TMP / "test.db"
 db._CONN = None
 
-# isolate uploads too: point UPLOAD_DIR at the temp dir via app.main patch
+# isolate uploads too: point UPLOAD_DIR at the temp dir via app.config patch
+# (post-split, UPLOAD_DIR lives in app/config.py; the consumers read it
+# attribute-wise so this patch reaches them all, workers included)
 import app.main as m
-m.UPLOAD_DIR = TMP / "uploads"
-m.UPLOAD_DIR.mkdir(parents=True)
+import app.config as cfg
+cfg.UPLOAD_DIR = TMP / "uploads"
+cfg.UPLOAD_DIR.mkdir(parents=True)
 
 from fastapi.testclient import TestClient
 from app import auth
@@ -41,17 +44,17 @@ c2 = TestClient(app, raise_server_exceptions=True)
 c2.post("/api/auth/login", json={"username": "marie", "password": "marie-pw-1"})
 
 def put(name, b=b"fakebytes"):
-    (m.UPLOAD_DIR / name).write_bytes(b)
+    (cfg.UPLOAD_DIR / name).write_bytes(b)
 
 # --- tibo's data ------------------------------------------------------------
 # 1) written submission with a page photo -> payload_meta page_paths
 put("pg-aaa111-1.png")
-before = {f.name for f in m.UPLOAD_DIR.iterdir() if f.name.startswith("pg-")}
+before = {f.name for f in cfg.UPLOAD_DIR.iterdir() if f.name.startswith("pg-")}
 r = c1.post("/api/analyze", files={"image": ("pg.png", b"\x89PNG fake", "image/png")},
             data={"kind": "written", "written_text": "bonjour", "rubric_id": "att-exp-ecrite"})
 check("analyze written accepted", r.status_code == 200, r.text[:200])
 sub1 = r.json()["submission_id"]
-after = {f.name for f in m.UPLOAD_DIR.iterdir() if f.name.startswith("pg-")}
+after = {f.name for f in cfg.UPLOAD_DIR.iterdir() if f.name.startswith("pg-")}
 new = after - before
 check("exactly one new photo for tibo", len(new) == 1, str(new))
 tibo_photo = next(iter(new))
@@ -72,7 +75,7 @@ _wav_bytes_sil = _wav_io.getvalue()
 r = c1.post("/api/analyze", files={"audio": ("a.wav", _wav_bytes_sil, "audio/wav")},
             data={"kind": "oral", "rubric_id": "att-exp-orale"})
 check("analyze oral accepted", r.status_code == 200, r.text[:200])
-audios = [f.name for f in m.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")]
+audios = [f.name for f in cfg.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")]
 check("tibo audio created", len(audios) >= 1, str(audios))
 tibo_audio = audios[-1]
 
@@ -141,12 +144,12 @@ r = c2.get("/api/files/..%2F..%2Fetc%2Fpasswd")
 check("path traversal blocked", r.status_code in (404, 405), str(r.status_code))
 
 # --- marie's own files stay reachable by marie -----------------------------
-before = {f.name for f in m.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")}
+before = {f.name for f in cfg.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")}
 r = c2.post("/api/analyze", files={"audio": ("b.wav", _wav_bytes_sil, "audio/wav")},
             data={"kind": "oral", "rubric_id": "att-exp-orale"})
 check("marie analyze accepted", r.status_code == 200, r.text[:200])
 if r.status_code == 200:
-    after = {f.name for f in m.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")}
+    after = {f.name for f in cfg.UPLOAD_DIR.iterdir() if f.name.startswith("aud-")}
     new = after - before
     check("exactly one new audio for marie", len(new) == 1, str(new))
     marie_audio = next(iter(new))

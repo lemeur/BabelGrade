@@ -27,14 +27,15 @@ import threading
 import time
 from pathlib import Path
 
-from . import assess, auth, db, llm_client, whisper
+from . import assess, auth, config, db, llm_client, whisper
 from .rubrics import compute_attestation
 
-# main.py's private helpers (deferred import to avoid a circular import at
-# module load — main imports jobs at top level, jobs imports main lazily).
-def _main():
-    from . import main
-    return main
+# media.py's staging helpers (deferred import to avoid a circular import at
+# module load — media imports jobs at top level, so jobs imports media
+# lazily; the redirect used to target main.py before the 2026-10-16 split).
+def _media():
+    from . import media
+    return media
 
 
 # --------------------------------------------------------------------- settings
@@ -172,7 +173,7 @@ def _cancelled(job_id: int) -> bool:
 
 # --------------------------------------------------------------------- helpers
 def _data_urls_from_names(names: list) -> list:
-    m = _main()
+    m = _media()
     return m._data_urls_from_names(names)
 
 
@@ -182,7 +183,7 @@ def _extract_pdf_file(pdf_path: Path, label: str, page_prefix: str) -> tuple[str
     Returns (text, page_data_urls, page_names). Mirrors main._extract_pdf but
     reads from a file on disk instead of an UploadFile.
     """
-    m = _main()
+    m = _media()
     data = pdf_path.read_bytes()
     import pymupdf
     doc = pymupdf.open(stream=data, filetype="pdf")
@@ -191,10 +192,10 @@ def _extract_pdf_file(pdf_path: Path, label: str, page_prefix: str) -> tuple[str
     page_urls: list = []
     page_names: list = []
     if not text:  # scanned PDF without a text layer -> vision
-        for i in range(min(n_pages, m.MAX_DOC_PDF_PAGES)):
+        for i in range(min(n_pages, config.MAX_DOC_PDF_PAGES)):
             pix = doc[i].get_pixmap(dpi=150)
             name = f"{page_prefix}-p{i + 1}.jpg"
-            (m.UPLOAD_DIR / name).write_bytes(pix.tobytes("jpeg"))
+            (config.UPLOAD_DIR / name).write_bytes(pix.tobytes("jpeg"))
             page_names.append(name)
             page_urls.append(m._b64_from_bytes(pix.tobytes("jpeg"), "image/jpeg"))
     doc.close()
@@ -266,7 +267,7 @@ def _report_payload(analysis_id: int, *, parsed: bool = True,
 
 # --------------------------------------------------------------------- analyze
 async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> None:
-    m = _main()
+    m = _media()
     p = payload
     kind = p.get("kind") or "written"
     rubric = db.get_rubric(p.get("rubric_id") or "")
@@ -309,7 +310,7 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
             return _mark_cancelled(job_id, js)
         lang = p.get("language") or "en"
         transcript = await asyncio.to_thread(
-            whisper.transcribe, str(m.UPLOAD_DIR / audio_name), lang)
+            whisper.transcribe, str(config.UPLOAD_DIR / audio_name), lang)
     else:
         if not written_text and not image_names:
             raise ValueError("provide written text or page photo(s)")
@@ -404,7 +405,7 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
 async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> None:
     """Teacher-first flow: stage + (if oral) transcribe, then create the empty
     skeleton matrix. No LLM call — the AI is added later via run_ai."""
-    m = _main()
+    m = _media()
     p = payload
     kind = p.get("kind") or "written"
     rubric = db.get_rubric(p.get("rubric_id") or "")
@@ -442,7 +443,7 @@ async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> 
             return _mark_cancelled(job_id, js)
         lang = p.get("language") or "en"
         transcript = await asyncio.to_thread(
-            whisper.transcribe, str(m.UPLOAD_DIR / audio_name), lang)
+            whisper.transcribe, str(config.UPLOAD_DIR / audio_name), lang)
     else:
         if not written_text and not image_names:
             raise ValueError("provide written text or page photo(s)")
@@ -488,7 +489,7 @@ async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> 
 
 # --------------------------------------------------------------------- run-ai
 async def _stage_and_run_runai(job_id: int, js: JobStream, payload: dict) -> None:
-    m = _main()
+    m = _media()
     p = payload
     analysis_id = p["analysis_id"]
     mode = p.get("mode") or "blind"
@@ -672,12 +673,11 @@ def _build_adhoc_context(p: dict) -> tuple[dict | None, dict | None]:
       document:    text > audio > PDF > photos
     Runs in a worker thread (whisper + pymupdf are blocking).
     """
-    m = _main()
     instruction = (p.get("instruction") or "").strip()
     instr_pdf_name = p.get("instruction_pdf_name")
     instr_photo_names = p.get("instruction_photo_names") or []
     if instr_pdf_name:
-        pp = m.UPLOAD_DIR / instr_pdf_name
+        pp = config.UPLOAD_DIR / instr_pdf_name
         if pp.is_file():
             text, _u, _n = _extract_pdf_file(pp, "instruction",
                                              f"pdf-{instr_pdf_name[4:36]}")
@@ -694,12 +694,12 @@ def _build_adhoc_context(p: dict) -> tuple[dict | None, dict | None]:
     doc_photo_names = p.get("doc_photo_names") or []
     doc_pdf_urls: list = []
     if doc_audio_name:
-        ap = m.UPLOAD_DIR / doc_audio_name
+        ap = config.UPLOAD_DIR / doc_audio_name
         if ap.is_file():
             t = whisper.transcribe(str(ap), "en")
             doc_text = (t or {}).get("text", "") or ""
     elif doc_pdf_name:
-        pp = m.UPLOAD_DIR / doc_pdf_name
+        pp = config.UPLOAD_DIR / doc_pdf_name
         if pp.is_file():
             text, doc_pdf_urls, _n = _extract_pdf_file(pp, "source document",
                                                        f"pdf-{doc_pdf_name[4:36]}")
@@ -735,7 +735,7 @@ def _build_adhoc_context(p: dict) -> tuple[dict | None, dict | None]:
     en_pdf_name = p.get("eval_notes_pdf_name")
     en_pdf_pages: list = []
     if en_pdf_name:
-        pp = m.UPLOAD_DIR / en_pdf_name
+        pp = config.UPLOAD_DIR / en_pdf_name
         if pp.is_file():
             t, en_pdf_pages, _n = _extract_pdf_file(pp, "evaluation instructions",
                                                     f"pdf-{en_pdf_name[4:36]}")
@@ -816,7 +816,6 @@ async def _run_ocr(job_id: int, js: JobStream, payload: dict) -> None:
     """Hybrid OCR job for a written submission's page photos: tesseract line
     boxes + LLM vision polish, persisted on submissions.ocr_json. No analysis
     row involved (the job row carries only the submission)."""
-    m = _main()
     from . import ocr
     sub_id = db.job_get(job_id).get("submission_id")
     sub = db.get_submission(sub_id)
@@ -830,7 +829,7 @@ async def _run_ocr(job_id: int, js: JobStream, payload: dict) -> None:
         raise ValueError("this submission has no page photos to OCR")
     _set_phase(job_id, PHASE_OCRING, js)
     result = await asyncio.to_thread(
-        ocr.ocr_submission, image_names, m.UPLOAD_DIR,
+        ocr.ocr_submission, image_names, config.UPLOAD_DIR,
         language=sub.get("language"),
         progress=lambda ph: js.push("phase", {"phase": ph}),
         check_cancel=lambda: _cancelled(job_id))

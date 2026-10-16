@@ -1567,6 +1567,61 @@ def get_analysis(analysis_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+def enrich_analysis(a: dict) -> dict:
+    """Hydrate JSON columns + recompute attestation from the stored matrix.
+
+    Applied to every analysis row before it leaves the API (both the list
+    and the detail endpoints, plus the job handles).
+    """
+    try:
+        a["matrix"] = json.loads(a["matrix_json"]) if a.get("matrix_json") else None
+    except Exception:
+        a["matrix"] = None
+    try:
+        a["fluency"] = json.loads(a["fluency_json"]) if a.get("fluency_json") else None
+    except Exception:
+        a["fluency"] = None
+    try:
+        a["transcript"] = json.loads(a["transcript_json"]) if a.get("transcript_json") else None
+    except Exception:
+        a["transcript"] = None
+    try:
+        a["transcript_correction"] = (json.loads(a["transcript_correction_json"])
+                                      if a.get("transcript_correction_json") else None)
+    except Exception:
+        a["transcript_correction"] = None
+    a["transcript_mode"] = a.get("transcript_mode") or ("original" if a.get("transcript") else None)
+    try:
+        a["note20"] = json.loads(a["note20_json"]) if a.get("note20_json") else None
+    except Exception:
+        a["note20"] = None
+    a["validated"] = bool(a.get("validated_at"))
+    # ai_has is a lightweight "ai_matrix_json IS NOT NULL" flag exposed by the
+    # LIST query (which does not load the full blob); detail rows load the
+    # blob itself. Use whichever is present so both paths backfill.
+    a["has_ai_snapshot"] = bool(a.get("ai_matrix_json") or a.get("ai_has"))
+    # Original AI recommendation, snapshotted on first validation. The UI's
+    # Mode Évaluation shows the AI badge from THIS (not the current matrix,
+    # which carries the teacher's levels once a counter-proposal is saved).
+    try:
+        a["ai_matrix"] = json.loads(a["ai_matrix_json"]) if a.get("ai_matrix_json") else None
+    except Exception:
+        a["ai_matrix"] = None
+    # AI opinion metadata (dual-mode): which mode the last run used, and
+    # when. Null until an AI run has happened (or it was stored directly
+    # by the legacy analyze endpoints, mode "blind").
+    a["ai_mode"] = a.get("ai_mode") or ("blind" if a["has_ai_snapshot"] else None)
+    a["ai_at"] = a.get("ai_at") or None
+    a["attestation"] = None
+    if a.get("matrix") and a.get("rubric_name"):
+        from .rubrics import compute_attestation
+        r = get_rubric(a.get("rubric_id") or "")
+        if r and r.get("attestation"):
+            a["attestation"] = compute_attestation(
+                r, a["matrix"].get("rubric_mapping", []))
+    return a
+
+
 def latest_analysis_for_submission(submission_id: int) -> dict | None:
     where, wargs = _scoped("analyses", "a")
     q = ("SELECT a.* FROM analyses a WHERE a.submission_id=?"
