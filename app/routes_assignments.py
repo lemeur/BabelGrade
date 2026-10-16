@@ -6,7 +6,7 @@ import json
 
 from fastapi import APIRouter, Form, HTTPException, UploadFile
 
-from . import assess, auth, db
+from . import assess, auth, db, stats
 from .media import _extract_pdf, _read_image_uploads, _transcribe_doc_audio
 from typing import List
 
@@ -43,10 +43,10 @@ def assignment_stats_endpoint(assignment_id: int):
     (gaussians) + mean / median / sigma on the /120 point scale. Only
     analyses with at least one filled level (overall or criterion)
     count as an evaluation."""
-    stats = db.stats_for_assignment(assignment_id)
-    if stats is None:
+    data = stats.stats_for_assignment(assignment_id)
+    if data is None:
         raise HTTPException(404, "Assignment not found")
-    return stats
+    return data
 
 @router.post("/api/assignments/{assignment_id}/stats-ai")
 async def assignment_stats_ai(assignment_id: int, body: dict | None = None):
@@ -59,8 +59,8 @@ async def assignment_stats_ai(assignment_id: int, body: dict | None = None):
     assignment = db.get_assignment(assignment_id)
     if not assignment:
         raise HTTPException(404, "Assignment not found")
-    stats = db.stats_for_assignment(assignment_id)
-    if not (stats.get("evaluations") or 0):
+    agg = stats.stats_for_assignment(assignment_id)
+    if not (agg.get("evaluations") or 0):
         raise HTTPException(422, "No evaluation with a filled level yet on "
                                  "this assignment")
     job_id = db.create_job(
@@ -68,9 +68,9 @@ async def assignment_stats_ai(assignment_id: int, body: dict | None = None):
         {"assignment_id": assignment_id,
          "ui_language": assess._ui_language(
              str((body or {}).get("ui_language") or "")),
-         "stats": {"evaluations": stats["evaluations"],
-                   "by_class": stats["by_class"],
-                   "evaluations_detail": stats["evaluations_detail"]}})
+         "stats": {"evaluations": agg["evaluations"],
+                   "by_class": agg["by_class"],
+                   "evaluations_detail": agg["evaluations_detail"]}})
     return {"job_id": job_id, "job_status": "queued",
             "job_kind": "stats_ai", "assignment_id": assignment_id,
             "enqueued": True, "follow_url": f"/api/jobs/{job_id}/events"}

@@ -4,7 +4,7 @@ Extracted from main.py (2026-10-16 split).
 """
 from fastapi import APIRouter, HTTPException, Query
 
-from . import db
+from . import db, stats
 from fastapi import File, UploadFile
 from fastapi.responses import Response
 import csv as _csv
@@ -45,10 +45,10 @@ def student_stats_endpoint(student_id: int):
     time chart, 2026-10-12): every evaluated submission as a point in
     time, global series + per evaluation type (comprehension/expression
     × written/oral). Only analyses with a usable level count."""
-    stats = db.stats_for_student(student_id)
-    if stats is None:
+    data = stats.stats_for_student(student_id)
+    if data is None:
         raise HTTPException(404, "Student not found")
-    return stats
+    return data
 
 @router.delete("/api/students/{student_id}")
 def delete_student(student_id: int,
