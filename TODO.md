@@ -7,8 +7,8 @@ classé par priorité. Détail technique : `references/git-and-hygiene.md` du sk
 
 **État 2026-10-16 (après la session « Reprenons le projet elt-assessor ») :**
 P0 terminé (3 commits : ruff.toml / zones mortes / auto-fix), P1.5 + P1.6
-terminés. Il ne reste que **P1.4 (remote git — décision tibo : où pousser)**
-et le P2 optionnel.
+terminés, P2.7 (stats.py) terminé. Il ne reste que **P1.4 (remote git —
+décision tibo : où pousser)** et le P2 optionnel restant (8/9/10).
 
 ## P0 — ✅ TERMINÉ (2026-10-16)
 
@@ -46,9 +46,15 @@ et le P2 optionnel.
 
 ## P2 — optionnel / long terme
 
-7. **`app/stats.py`** : `db.stats_for_assignment` (152 l) + `stats_for_student`
-   (106 l) méritent un module dédié SI les vues stats grossissent. Sinon
-   laisser dans db.py (facteur d'éclatement, pas de bug).
+7. **`app/stats.py`** ✅ (2026-10-16, commit `715e46c`) : `db.stats_for_assignment`
+   + `db.stats_for_student` extraits dans un module dédié `app/stats.py`
+   (sens unique `db ← stats ← routes`, **pas** de re-export depuis db.py —
+   un re-export créerait une importation circulaire `db↔stats`). Les 2 route
+   files appellent désormais `stats.stats_for_assignment/…student` (variable
+   locale renommée `data`/`agg` car `stats` = le module). `db.py` -264 l.
+   E2E live vérifié (stats assign 48 = 38 eval / 2 classes / 4 critères,
+   stats élève 128 = 4 points codes R/L/S/W, 404 inconnu, p6_ststats 9/9,
+   smoke 25/25).
 8. **Superviseur du serveur** : `run.sh` tourne en tâche d'agent (session
    terminal). Un service systemd (ou s6 sur cette VM) avec
    `Restart=always` + log file stable éviterait les restarts manuels et le
