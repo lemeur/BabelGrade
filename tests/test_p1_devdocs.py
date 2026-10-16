@@ -2,7 +2,7 @@
 """P1.4 E2E: docs view split into user guide (main) + Dev section (sub-tabs).
 - main tabs = [User guide, Developer]
 - user section: userguide loaded, no sub-tabs
-- dev section: sub-tabs [Async jobs (tech), README, UX audit], async-jobs loaded first
+- dev section: sub-tabs [Architecture, Async jobs (tech), README, UX audit]
 - sub-tab click loads that doc
 - switching back to user shows userguide again
 - i18n 4x for docs.tab.user / docs.tab.dev
@@ -61,8 +61,8 @@ with sync_playwright() as pw:
       return {subVisible, subBtns, on, devActive, h1};
     }""")
     check("FR: dev sub-tabs visible", tabs["subVisible"] is True, tabs)
-    check("FR: 3 dev sub-tabs", tabs["subBtns"]==["async-jobs","ux-audit","readme"], tabs["subBtns"])
-    check("FR: first dev doc loaded (async-jobs)", tabs["on"]==0, tabs)
+    check("FR: 4 dev sub-tabs", tabs["subBtns"]==["architecture","async-jobs","ux-audit","readme"], tabs["subBtns"])
+    check("FR: first dev doc loaded (architecture)", tabs["on"]==0, tabs)
     check("FR: main dev tab highlighted", tabs["devActive"]>=0, tabs)
 
     # click README sub-tab
@@ -73,7 +73,7 @@ with sync_playwright() as pw:
       const on=sub.findIndex(b=>b.style.background.includes('var(--ai)'));
       return {on, h1:(document.querySelector('#docs-content h1')||{}).textContent||''};
     }""")
-    check("FR: readme sub-tab highlighted + content swapped", st["on"]==2, st)
+    check("FR: readme sub-tab highlighted + content swapped", st["on"]==3, st)
 
     # back to user section
     pg.click('#docs-tabs button[data-docsec="user"]')
@@ -104,7 +104,7 @@ with sync_playwright() as pw:
       const sub=document.getElementById('docs-subtabs');
       return sub&&!sub.classList.contains('hide')?[...sub.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
     }""")
-    check("EN: dev sub-tabs translated", sub==["Async jobs (tech)","UX audit","README"], sub)
+    check("EN: dev sub-tabs translated", sub==["Architecture","Async jobs (tech)","UX audit","README"], sub)
     check("EN: no JS errors", not errs, errs[:2])
     ctx.close()
     b.close()

@@ -219,19 +219,27 @@ user guide, the async-jobs architecture) with Mermaid diagrams.
 ## Files
 
 ```
-app/main.py        FastAPI app factory + routes + upload handling
+app/main.py        FastAPI app factory + auth gate + include_router (no routes)
+app/routes_*.py    12 route modules (health, auth, rubrics, students,
+                   assignments, admin, analyze, jobs, analyses, annotate,
+                   files, docs)
 app/assess.py      prompts, fluency metrics, JSON parse/validate
 app/llm_client.py  SGLang/OpenAI client (stream + non-stream + JSON extract)
 app/whisper.py     offline faster-whisper wrapper (cached model)
 app/db.py          SQLite (rubrics, students, submissions, analyses, jobs,
                    annotations, media-ownership cache) + forward migration
+app/stats.py       stats aggregations (assignment view + student time chart)
 app/rubrics.py     rubric presets (LVA/LVB attestation, Bac, BTS, CEFR) +
                    note/20 conversion tables
 app/auth.py        multi-user auth (PBKDF2, owner scoping via contextvar)
 app/jobs.py        async job queue (scheduler, workers, SSE event streams)
+app/media.py       upload staging + PDF/scan/doc-audio extraction
 app/ocr.py         hybrid OCR (tesseract line boxes + LLM polish) for "Annoter"
 app/imaging.py     image enhancement for OCR of student copy photos
+app/config.py      paths + upload limits
+app/docs_catalog.py in-app Docs view catalog (slug -> file + category)
 static/index.html  single-page UI (FR/EN/ES/DE i18n, vanilla JS)
+docs/architecture.md module map + conventions (dev doc, in-app Docs view)
 docs/async-jobs.md async job queue — architecture, states, flows, screenshots
 docs/userguide.md  user guide (teacher-facing, FR)
 tests/             Playwright + API E2E suites (p0–p7, media, multiuser, i18n)

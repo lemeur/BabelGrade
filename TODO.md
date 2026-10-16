@@ -7,8 +7,9 @@ classé par priorité. Détail technique : `references/git-and-hygiene.md` du sk
 
 **État 2026-10-16 (après la session « Reprenons le projet elt-assessor ») :**
 P0 terminé (3 commits : ruff.toml / zones mortes / auto-fix), P1.5 + P1.6
-terminés, P2.7 (stats.py) terminé. Il ne reste que **P1.4 (remote git —
-décision tibo : où pousser)** et le P2 optionnel restant (8/9/10).
+terminés, P2.7 (stats.py) + P2.10 (docs/architecture.md) terminés. Il ne
+reste que **P1.4 (remote git — décision tibo : où pousser)** et P2.8/9
+(systemd/s6 supervisor, mocked-LLM E2E).
 
 ## P0 — ✅ TERMINÉ (2026-10-16)
 
@@ -64,11 +65,18 @@ décision tibo : où pousser)** et le P2 optionnel restant (8/9/10).
    manuellement (~100-130 s chacun avec le vrai qwen38). Un test qui pointe
    `ELT_LLM_BASE` vers un serveur mock OpenAI-compatible validerait la
    file de jobs de bout en bout sans LLM.
-10. **Doc "dev" de la nouvelle structure** : la vue Docs in-app (catégorie
-    "dev") pourrait gagner un `docs/dev.md` décrivant la découpe
-    main.py → routes_*.py/media.py/config.py (schéma mermaid des modules),
-    pour qu'un futur contributeur (ou le futur Zia) s'y reprenne sans
-    re-découvrir.
+10. **Doc "dev" de la nouvelle structure** ✅ (2026-10-16) : `docs/architecture.md`
+    (slug `architecture`, catégorie dev, 1er sous-onglet de la section Dev) —
+    module map (table + flowchart mermaid UI→routes→domain→I/O, direction
+    d'import unidirectionnelle), séquence des 3 endpoints longs, conventions
+    à préserver (owner scoping, proof-matrix, media ownership, last-AI-wins,
+    déléguation document-level, shadowing i18n/`stats`, forward migration),
+    recette "ajout endpoint" + "ajout doc in-app" + baseline de vérification.
+    Wiring : `DOCS_INDEX` (docs_catalog.py) + `docs.tab.architecture` ×4
+    langues + ternaire de labels sub-tabs (`paintDocsSubtabs`). README :
+    file map resynchronisée avec le split (routes_*/stats/media/config/
+    docs_catalog). `tests/test_p1_devdocs.py` mis à jour (15 checks, 4
+    sous-onglets dev).
 
 ## Vérifier avant de clôturer chaque item
 - `ruff check .` reste 100 % vert (app/ + tests/ + scripts/, ruff.toml en place)
