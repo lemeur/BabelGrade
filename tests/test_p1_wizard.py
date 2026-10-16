@@ -8,7 +8,7 @@
 - P0.5 regression: '*' markers still on Rubric + work title; empty rubric #run
   still flashes #settings-panel with the i18n toast (guards untouched)
 - no JS errors; wiz.* keys defined 4x"""
-import os, re, time
+import os, re
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 """Probe the local SGLang qwen38-27b endpoint: text-only + vision (image) + audio."""
-import base64, io, json, sys, time, urllib.request, os
+import base64
+import io
+import json
+import time
+import urllib.request
+import os
 
 BASE = os.environ.get("LLM_BASE", "http://127.0.0.1:8078/v1")
 MODEL = os.environ.get("LLM_MODEL", "qwen38-27b")
@@ -38,7 +43,8 @@ def make_test_png():
         im = Image.new("RGB", (400, 120), "white")
         d = ImageDraw.Draw(im)
         d.text((20, 40), "The cat sat on the mat.", fill="black")
-        buf = io.BytesIO(); im.save(buf, format="PNG")
+        buf = io.BytesIO()
+        im.save(buf, format="PNG")
         return "data:image/png;base64," + base64.b64encode(buf.getvalue()).decode()
     except Exception as e:
         # 1x1 red png fallback (PIL missing) - still tests the image code path

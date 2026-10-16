@@ -2,7 +2,6 @@
 """P0.1 E2E: address-bar deep links (#history/<id>, #ststats/<id>, #evaluator, #view).
 Scenarios: client-side typed hash from another view, fresh boot deep link,
 back-button semantics, unknown-id fallback, in-app nav regression."""
-import os
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []

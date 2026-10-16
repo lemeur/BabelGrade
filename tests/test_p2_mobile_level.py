@@ -9,7 +9,7 @@
 - no JS errors; i18n key lvl.clear defined 4x
 Seeding: teacher-first attestation via POST /api/evaluate (no LLM), same
 recipe as tests/test_p1_dedup.py."""
-import json, os, time
+import os, time
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))

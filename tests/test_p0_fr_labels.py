@@ -2,7 +2,7 @@
 """P0.4 verify: written/oral labels localized (FR: écrit/oral) in
 history table, mobile hcard meta, rubrics list pill, and #r-mode select options.
 Also: language switch EN->FR re-renders without raw 'written'."""
-import os, re
+import os
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))

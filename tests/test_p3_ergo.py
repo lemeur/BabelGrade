@@ -18,7 +18,7 @@ Seeding: two assignments via FormData POST /api/assignments
 (app/main.py create_assignment — POST is Form/FormData, NOT JSON) +
 teacher-first attestation via POST /api/evaluate (P2 recipe) for the sheet.
 Teardown: DELETE both assignments + the analysis at the end."""
-import json, os, time
+import os, time
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))
@@ -120,7 +120,7 @@ with sync_playwright() as pw:
     }""")
     check("desktop: res subject row has badges", st and st["nRows"] >= 2 and len(st["resLabels"]) == 2, st)
     check("desktop: FR labels localized (Consigne + Consignes d’évaluation)",
-          st and "Consigne" in st["resLabels"] and any(l.startswith("Consignes d’évaluation") for l in st["resLabels"]), st["resLabels"])
+          st and "Consigne" in st["resLabels"] and any(lb.startswith("Consignes d’évaluation") for lb in st["resLabels"]), st["resLabels"])
     check("desktop: no raw EN abbreviations", st and len(st["rawEnTexts"]) == 0, st["rawEnTexts"])
     check("desktop: badge title == label (tooltip)", st and all(tl == lb for tl, lb in zip(st["resTitles"], st["resLabels"])), st)
     check("desktop: bare row shows td.noMedia", st and st["bareMuted"] == "texte uniquement / rien", st["bareMuted"])

@@ -6,7 +6,7 @@
   band AND the detail header shows a labelled "Résultat B1" pill next to
   the "Cible : B2" pill (no bare unlabeled level pill)
 - no JS errors; i18n keys rep.levelLbl + ai.noOpHint defined 4x"""
-import json, re, time
+import re, time
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = __file__.replace('\\','/')

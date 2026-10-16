@@ -6,7 +6,6 @@ to their owner; foreign, unknown and untracked files all 404 identically.
 In-process TestClient against a throwaway DB.
 """
 import sys, tempfile
-from pathlib import Path
 
 sys.path.insert(0, "/home/tibo/elt-assessor")
 from pathlib import Path as P

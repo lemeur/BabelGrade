@@ -201,7 +201,7 @@ def main():
             for _ in crit_names:
                 lvl = lvl_from_points(base + rng.gauss(0, 2.5))
                 levels.append(lvl)
-            score = sum(LEVEL_POINTS[l] for l in levels)
+            score = sum(LEVEL_POINTS[lv] for lv in levels)
             overall = attestation_from_score(score, modalite)
             mapping = {"rubric_mapping": [
                 {"criterion": c, "suggested_level": lvl}

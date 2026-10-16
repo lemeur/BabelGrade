@@ -16,7 +16,6 @@ Checks (1280px + 390px unless noted):
 
 Seeding: one assignment named 'P4 toggle check' via FormData POST
 /api/assignments (the real Form contract). Teardown: DELETE it at the end."""
-import os
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []

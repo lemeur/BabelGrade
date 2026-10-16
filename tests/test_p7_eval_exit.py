@@ -33,7 +33,6 @@ DESK 1280:
   D2 dirty + Esc → exit bar (unchanged)
   D3 no JS errors
 """
-import os
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []

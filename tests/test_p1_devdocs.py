@@ -8,7 +8,7 @@
 - i18n 4x for docs.tab.user / docs.tab.dev
 - no JS errors
 """
-import os, re
+import re
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []

@@ -4,7 +4,7 @@ Runs the real FastAPI app via TestClient against a throwaway sqlite file and
 verifies: 401 gate, register-first-only, login/logout, me, set-password,
 owner scoping of students/assignments, and cross-user isolation.
 """
-import json, os, sys, tempfile
+import json, sys, tempfile
 
 sys.path.insert(0, "/home/tibo/elt-assessor")
 
