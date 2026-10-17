@@ -32,6 +32,7 @@ import base64
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 from PIL import Image
 
 from . import llm_client
@@ -148,6 +149,12 @@ def transcribe_page(image_path: str, language: str | None = None) -> dict:
         else:
             text, box = str(ln).strip(), None
         out_lines.append({"i": i, "text": text, "box": box})
+    # The model's box y-coordinates are frequently interpolated, not
+    # measured (verified on real copies 2026-10-17: every line's box
+    # sat in the blank margin above its ink). Re-snap them onto the
+    # page's actual ink bands — only when the band count matches the
+    # line count 1:1 (see resnap_boxes).
+    resnap_boxes(out_lines, np.array(img.convert("L")))
     notes = ""
     if isinstance(parsed, dict):
         notes = str(parsed.get("notes") or "")[:500]
@@ -172,6 +179,74 @@ def _sanitize_box(box) -> list[int] | None:
     if x1 - x0 < 2 or y1 - y0 < 2:
         return None
     return [x0, y0, x1, y1]
+
+
+def _ink_bands(gray: np.ndarray) -> list[tuple[int, int]]:
+    """Detect horizontal ink bands (text lines) in a grayscale page.
+
+    Returns pixel [y0, y1] pairs, top to bottom. Bands closer together
+    than a small gap are merged (descenders / dotted underlines split a
+    visual line); bands thinner than a minimum height (specks, stray
+    marks) are dropped.
+    """
+    h = int(gray.shape[0])
+    dark_frac = (gray < 120).mean(axis=1)
+    thresh = 0.004
+    min_h = max(4, int(h * 0.006))
+    raw: list[list[int]] = []
+    start: int | None = None
+    for y, d in enumerate(dark_frac):
+        if d > thresh and start is None:
+            start = y
+        elif d <= thresh and start is not None:
+            if y - start >= min_h:
+                raw.append([start, y - 1])
+            start = None
+    if start is not None and h - start >= min_h:
+        raw.append([start, h - 1])
+    merged: list[list[int]] = []
+    gap = int(h * 0.015)
+    for b in raw:
+        if merged and b[0] - merged[-1][1] - 1 <= gap:
+            merged[-1][1] = b[1]
+        else:
+            merged.append(b)
+    return [(b[0], b[1]) for b in merged]
+
+
+def resnap_boxes(lines: list[dict], gray: np.ndarray) -> int:
+    """Re-snap the LLM's per-line boxes onto the page's ACTUAL ink bands.
+
+    The vision model transcribes faithfully but its box coordinates are
+    frequently INTERPOLATED instead of measured: on real handwritten
+    photos (2026-10-17, verified on 3 live submissions) line N's box
+    lands in the blank margin above line N-1's ink, so the Annoter
+    highlights the wrong band when a transcript line is selected.
+
+    When the detector finds exactly as many ink bands as there are
+    lines, each line's box y-extent is replaced by its band's pixel
+    range (converted back to 0..1000). The x-extents are kept as-is
+    (they were plausible). Lines without a box get a full-width band.
+    When the counts do not match (teacher's grading ink adds a band,
+    blank lines, partial pages, …) the LLM's boxes are kept untouched —
+    never resnap a misaligned 1:1. Returns the number of boxes changed.
+    """
+    h = int(gray.shape[0])
+    bands = _ink_bands(gray)
+    n = len(lines)
+    if not bands or len(bands) != n:
+        return 0
+    changed = 0
+    for ln, (by0, by1) in zip(lines, bands):
+        y0 = by0 * 1000 // h
+        y1 = max(y0 + 2, by1 * 1000 // h)
+        box = ln.get("box")
+        if isinstance(box, list) and len(box) == 4:
+            ln["box"] = [box[0], y0, box[2], y1]
+        else:
+            ln["box"] = [0, y0, 1000, y1]
+        changed += 1
+    return changed
 
 
 def ocr_submission(image_names: list[str], upload_dir: Path,
