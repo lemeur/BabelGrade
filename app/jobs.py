@@ -813,9 +813,10 @@ def _finalize(job_id: int, js: JobStream, status: str,
 
 # --------------------------------------------------------------------- dispatch
 async def _run_ocr(job_id: int, js: JobStream, payload: dict) -> None:
-    """Hybrid OCR job for a written submission's page photos: tesseract line
-    boxes + LLM vision polish, persisted on submissions.ocr_json. No analysis
-    row involved (the job row carries only the submission)."""
+    """LLM-direct OCR job for a written submission's page photos (the LLM
+    vision engine transcribes each page directly, with per-line bounding
+    boxes), persisted on submissions.ocr_json. No analysis row involved
+    (the job row carries only the submission)."""
     from . import ocr
     sub_id = db.job_get(job_id).get("submission_id")
     sub = db.get_submission(sub_id)

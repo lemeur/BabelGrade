@@ -12,10 +12,11 @@ router = APIRouter()
 
 @router.post("/api/submissions/{sub_id}/ocr")
 def start_ocr(sub_id: int):
-    """Enqueue the hybrid OCR job (tesseract line boxes + LLM vision
-    polish) for a written submission's page photos. Returns the job
-    handle; follow it at `follow_url` (SSE). The result is persisted on
-    submissions.ocr_json and served by GET /api/submissions/{id}.ocr."""
+    """Enqueue the LLM-direct OCR job (the vision engine transcribes each
+    page photo directly, with per-line bounding boxes) for a written
+    submission's page photos. Returns the job handle; follow it at
+    `follow_url` (SSE). The result is persisted on submissions.ocr_json and
+    served by GET /api/submissions/{id}.ocr."""
     sub = db.get_submission(sub_id)
     if not sub:
         raise HTTPException(404, "submission not found")

@@ -1088,9 +1088,10 @@ def delete_submission(sub_id: int) -> None:
 
 
 def set_submission_ocr(sub_id: int, ocr: dict) -> None:
-    """Persist the hybrid OCR result (per-page line boxes + text) of a written
-    submission's copy photos. ocr_json = {generated_at, engine, language,
-    pages: [{name, w, h, lines: [{i, y0, y1, x0, x1, text}]}]}."""
+    """Persist the OCR result (per-page LLM-transcribed lines + text) of a
+    written submission's copy photos. ocr_json = {generated_at, engine,
+    language, pages: [{name, w, h, lines: [{i, text, box:[x0,y0,x1,y1] in
+    0..1000 normalized}], notes}]}."""
     where, wargs = _scoped("submissions")
     q = "UPDATE submissions SET ocr_json=? WHERE id=?"
     a2: list = [json.dumps(ocr, ensure_ascii=False), sub_id]

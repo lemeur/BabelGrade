@@ -70,9 +70,15 @@ def create_app() -> FastAPI:
     app.include_router(routes_assignments.router)
     app.include_router(routes_admin.router)
     app.include_router(routes_analyze.router)
+    # NOTE (2026-10-17): routes_annotate MUST be mounted before
+    # routes_analyses — FastAPI matches in registration order, so
+    # GET /api/submissions/{sub_id}.ocr has to be tried BEFORE
+    # GET /api/submissions/{sub_id} can swallow the ".ocr" suffix and
+    # 422 on the int parse (the Annoter view loads its OCR through that
+    # dotted route).
+    app.include_router(routes_annotate.router)
     app.include_router(routes_jobs.router)
     app.include_router(routes_analyses.router)
-    app.include_router(routes_annotate.router)
     app.include_router(routes_files.router)
     app.include_router(routes_docs.router)
 
