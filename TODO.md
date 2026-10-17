@@ -5,11 +5,10 @@ Contexte : revue code + split de `create_app()` terminés (commits `98810d2` →
 classé par priorité. Détail technique : `references/git-and-hygiene.md` du skill
 `elt-assessor-app` (Hermes).
 
-**État 2026-10-16 (après la session « Reprenons le projet elt-assessor ») :**
-P0 terminé (3 commits : ruff.toml / zones mortes / auto-fix), P1.5 + P1.6
-terminés, P2.7 (stats.py) + P2.10 (docs/architecture.md) terminés. Il ne
-reste que **P1.4 (remote git — décision tibo : où pousser)** et P2.8/9
-(systemd/s6 supervisor, mocked-LLM E2E).
+**État 2026-10-17 (après P2.9) :** P0, P1.5 + P1.6, P2.7 (stats.py), P2.9
+(mock-LLM E2E) + P2.10 (docs/architecture.md) terminés. Il ne reste que
+**P1.4 (remote git — décision tibo : où pousser)** et P2.8
+(systemd/s6 supervisor).
 
 ## P0 — ✅ TERMINÉ (2026-10-16)
 
@@ -60,11 +59,23 @@ reste que **P1.4 (remote git — décision tibo : où pousser)** et P2.8/9
    terminal). Un service systemd (ou s6 sur cette VM) avec
    `Restart=always` + log file stable éviterait les restarts manuels et le
    piège "log uvicorn stale" documenté dans le skill.
-9. **Test E2E LLM mocké** : les 3 endpoints longs (`/api/analyze`,
-   `/api/evaluate`, `/api/analyses/{id}/run-ai`) ne sont couverts que
-   manuellement (~100-130 s chacun avec le vrai qwen38). Un test qui pointe
-   `ELT_LLM_BASE` vers un serveur mock OpenAI-compatible validerait la
-   file de jobs de bout en bout sans LLM.
+9. **Test E2E LLM mocké** ✅ (2026-10-17, commit `P2.9`) : les 3 endpoints longs
+   (`/api/analyze`, `/api/evaluate`, `/api/analyses/{id}/run-ai`) couverts de bout
+   en bout SANS vrai LLM. `tests/mock_llm_server.py` = serveur OpenAI-compatible
+   stdlib (127.0.0.1) : `POST /v1/chat/completions` (SSE stream + non-stream) et
+   `GET /v1/models` ; il **construit** une réponse conforme au schéma exact de
+   l'app en repérant les critères dans le prompt (« Criteria:\n- <c> : … »), avec
+   verbatim quote + un marqueur (FRESH-B1 vs CONFIRMED-B1) pour distinguer blind
+   vs aware. `tests/test_p2_mock_llm_e2e.py` (in-process, temp DB, `ELT_LLM_BASE`
+   pointé vers le mock AVANT import de l'app, lifespan via `TestClient` context
+   manager) : 37 checks — enqueue→claim→run→finalize→done, matrice persistée
+   (1 entry/critère, ordre exact, evidence partout), attestation déterministe
+   (A2+A2+B1+B2=21→B1), raw_markdown, evaluate→skeleton vide (pas de LLM),
+   run-ai aware (matrice prof non touchée, ai_matrix remplie, last-AI-wins,
+   ai_mode, marqueur CONFIRMED-B1), SSE `/api/analyze/stream` (meta→phase*→token*
+   →result→done, ordre vérifié), jobs counts/get/cancel(409)/404. `STREAM_PRE_DELAY`
+   sur le mock fait que le subscriber attache au live stream (comme en prod où le
+   vrai LLM tient ~100 s) plutôt qu'au chemin late-subscriber DB-rebuild.
 10. **Doc "dev" de la nouvelle structure** ✅ (2026-10-16) : `docs/architecture.md`
     (slug `architecture`, catégorie dev, 1er sous-onglet de la section Dev) —
     module map (table + flowchart mermaid UI→routes→domain→I/O, direction
@@ -87,5 +98,6 @@ reste que **P1.4 (remote git — décision tibo : où pousser)** et P2.8/9
   `tests/test_p4_filters.py`, `tests/test_p5_filters.py`,
   `tests/test_p7_eval_exit.py`
 - suites in-process (venv hermes, temp DB) : `tests/test_multiuser_smoke.py`,
-  `tests/test_media_ownership.py`
+  `tests/test_media_ownership.py`, `tests/test_p2_mock_llm_e2e.py` (mock LLM,
+  37 checks, ~2 s)
 - commit par item, message explicite (convention du projet).
