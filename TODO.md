@@ -5,10 +5,24 @@ Contexte : revue code + split de `create_app()` terminés (commits `98810d2` →
 classé par priorité. Détail technique : `references/git-and-hygiene.md` du skill
 `elt-assessor-app` (Hermes).
 
-**État 2026-10-17 (après P2.9) :** P0, P1.5 + P1.6, P2.7 (stats.py), P2.9
-(mock-LLM E2E) + P2.10 (docs/architecture.md) terminés. Il ne reste que
-**P1.4 (remote git — décision tibo : où pousser)** et P2.8
-(systemd/s6 supervisor).
+**État 2026-10-18 (après Annoter word-selection) :** P0, P1.5 + P1.6, P2.7,
+P2.9 + P2.10 terminés ; **OCR LLM-direct (2026-10-17) livré et commité**
+(`7f72844` + screenshots `29f3c4e`) : pipeline tesseract+polish remplacé par
+transcription directe par le LLM vision (boxes de lignes 0..1000, markers
+`[X:word]`/`[TAPE]`/`[FR]`/`[?]`), Annoter v4 vue double (photo +
+transcript). **Annoter v5 : sélection par mots (2026-10-18)** — backend :
+`words` Whisper persistées dans `transcript_json` (jobs.py, commit `193e1b2`)
++ spans `{page,start_word,end_word}` avec derivation `start_line/end_line`
+(`app/routes_annotate.py` `_page_words` = tokenisation `split(" ")` qui doit
+rester BYTE-IDENTIQUE au frontend `anPageWords()`) ; UI : mots cliquables
+(`.an-w`, 1er+dernier mot, drag hover), crop photo sur bbox des lignes
+couvertes (4 masques `.an-crop`, le `<img>` est re-parenté avant destruction
+de l'ancien wrapper `.an-croph` — bug corrigé 2026-10-18), quote serveur
+écrit/oral (mots avec fallback segments pour les legacy), i18n `annot.cropSel`
++ hint ×4 langues. Tests : `tests/test_word_selection.py` 12/12 (écrit +
+oral fallback + 390px, teardown annotation). Suites live + in-process toutes
+vertes (2026-10-18 : 25 suites, cf. baseline). Le reste : **P1.4 (remote
+git — décision tibo : où pousser)** et P2.8 (systemd/s6 supervisor).
 
 ## P0 — ✅ TERMINÉ (2026-10-16)
 

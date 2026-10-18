@@ -61,12 +61,20 @@ def _page_words(lines: list) -> tuple[list, list]:
     A "word" is one element of `line.text.split(" ")` (markers like
     `[X:word]`/`[TAPE]`/`[FR]`/`[?]` stay their own token, so a rature is
     selectable as a word). Must stay BYTE-IDENTICAL to the UI tokenization
-    (frontend `anPageWords()`), else word indices desync.
+    (frontend `anOcrWordsHtml()` / `anPageWords()`), else word indices
+    desync — including the line order: the UI renders lines sorted by
+    (box.y0 or y0, i), so iterate in the same order (stable sort, ties
+    keep the stored order, exactly like Array.prototype.sort in the UI).
     """
+    def key(idx: int, ln: dict):
+        box = ln.get("box")
+        ya = (box[1] if isinstance(box, (list, tuple)) and len(box) >= 2
+              and box[1] is not None else (ln.get("y0") or 0))
+        return (ya, ln.get("i") or 0)
     words: list[str] = []
     line_of_word: list[int] = []
-    for li, ln in enumerate(lines):
-        text = ln.get("text") or ""
+    for li in sorted(range(len(lines)), key=lambda i: key(i, lines[i])):
+        text = lines[li].get("text") or ""
         for tok in text.split(" "):
             words.append(tok)
             line_of_word.append(li)

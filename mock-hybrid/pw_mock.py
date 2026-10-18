@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Playwright verification of the hybrid-annoter mock (written + oral)."""
 import http.server
-import os
 import threading
 from pathlib import Path
 
