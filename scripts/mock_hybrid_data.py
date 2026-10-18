@@ -35,5 +35,5 @@ json.dump(written, open(out / "written.json", "w"), ensure_ascii=False, indent=1
 lines = written["page"]["lines"]
 print(f"written: {written['page']['w']}x{written['page']['h']}, "
       f"{len(lines)} lines, "
-      f"{sum(len(l['text'].split()) for l in lines)} words")
+      f"{sum(len(ln['text'].split()) for ln in lines)} words")
 print("data ->", out)

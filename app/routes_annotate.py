@@ -55,10 +55,34 @@ def get_ocr(sub_id: int):
             "job_id": job["id"] if job else None}
 
 # ------------------------------------------------------------- annotations
+def _page_words(lines: list) -> tuple[list, list]:
+    """Global word list of a page + each word's owning line index.
+
+    A "word" is one element of `line.text.split(" ")` (markers like
+    `[X:word]`/`[TAPE]`/`[FR]`/`[?]` stay their own token, so a rature is
+    selectable as a word). Must stay BYTE-IDENTICAL to the UI tokenization
+    (frontend `anPageWords()`), else word indices desync.
+    """
+    words: list[str] = []
+    line_of_word: list[int] = []
+    for li, ln in enumerate(lines):
+        text = ln.get("text") or ""
+        for tok in text.split(" "):
+            words.append(tok)
+            line_of_word.append(li)
+    return words, line_of_word
+
+
 def _validate_annotation_span(body: dict, sub: dict, span: dict):
     """Validate/clamp an annotation span against the submission's content.
 
-    Returns (clean_span, page_idx, quote). Raises ValueError on bad input."""
+    Returns (clean_span, page_idx, quote). Raises ValueError on bad input.
+
+    Two written formats are accepted (2026-10-18 word-selection feature):
+      - word-based:  {page, start_word, end_word}   (global page word idx)
+      - legacy:      {page, start_line, start_char, end_line, end_char}
+    Oral is unchanged: {start_s, end_s}.
+    """
     kind = sub["kind"]
     if kind == "written":
         ocr_data = sub.get("ocr") or {}
@@ -69,6 +93,24 @@ def _validate_annotation_span(body: dict, sub: dict, span: dict):
         if not (0 <= page < len(pages)):
             raise ValueError("page out of range")
         lines = pages[page].get("lines") or []
+
+        # WORD-based span (2026-10-18). start_word/end_word are global
+        # indices into the page's word list; the covered-line range is
+        # derived so the existing UI `.an-hl` (which reads start_line/
+        # end_line) keeps working unchanged.
+        if "start_word" in span or "end_word" in span:
+            sw = int(span.get("start_word", 0))
+            ew = int(span.get("end_word", sw))
+            if ew < sw:
+                raise ValueError("annotation range is inverted or empty")
+            words, line_of_word = _page_words(lines)
+            if sw < 0 or ew >= len(words):
+                raise ValueError("word index out of range")
+            sl_line, el_line = line_of_word[sw], line_of_word[ew]
+            quote = " ".join(words[sw:ew + 1]).strip()
+            clean = {"page": page, "start_word": sw, "end_word": ew,
+                     "start_line": sl_line, "end_line": el_line}
+            return clean, page, quote
 
         def clamp(li: int, ch: int) -> int:
             if not (0 <= li < len(lines)):
@@ -122,15 +164,23 @@ def _validate_annotation_span(body: dict, sub: dict, span: dict):
         s, e = max(0.0, s), min(e, dur)
     if e - s < 0.2:
         raise ValueError("time range too short (min 0.2 s)")
-    # quoted text = the transcript words/segments overlapping the range
+    # quoted text = the transcript WORDS overlapping the range (word-level,
+    # 2026-10-18); falls back to the coarser segment texts for legacy
+    # analyses whose transcript_json predates the persisted words blob.
     quote = ""
     if tr:
-        segs = []
-        for seg in tr.get("segments") or []:
-            if seg.get("end", 0) <= s or seg.get("start", 0) >= e:
-                continue
-            segs.append(seg.get("text", "").strip())
-        quote = " ".join(t for t in segs if t)
+        words = tr.get("words") or []
+        if words:
+            quote = " ".join(w.get("w", "").strip() for w in words
+                             if w.get("end", 0) > s and w.get("start", 0) < e
+                             and (w.get("w") or "").strip())
+        if not quote:
+            segs = []
+            for seg in tr.get("segments") or []:
+                if seg.get("end", 0) <= s or seg.get("start", 0) >= e:
+                    continue
+                segs.append(seg.get("text", "").strip())
+            quote = " ".join(t for t in segs if t)
     return {"start_s": round(s, 2), "end_s": round(e, 2)}, None, quote
 
 @router.get("/api/submissions/{sub_id}/annotations")

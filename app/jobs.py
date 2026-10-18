@@ -342,7 +342,8 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
     fluency = assess.fluency_metrics(transcript) if transcript else None
     transcript_blob = ({"text": transcript["text"], "segments": transcript["segments"],
                         "duration_s": transcript["duration_s"],
-                        "language": transcript["language"]}
+                        "language": transcript["language"],
+                        "words": transcript.get("words") or []}
                        if transcript else None)
 
     ctx_lines = []
@@ -472,7 +473,8 @@ async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> 
     fluency = assess.fluency_metrics(transcript) if transcript else None
     transcript_blob = ({"text": transcript["text"], "segments": transcript["segments"],
                         "duration_s": transcript["duration_s"],
-                        "language": transcript["language"]}
+                        "language": transcript["language"],
+                        "words": transcript.get("words") or []}
                        if transcript else None)
 
     _set_phase(job_id, PHASE_PERSISTING, js)

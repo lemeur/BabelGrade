@@ -132,11 +132,11 @@ def main():
             if pb[0] < pa[2] - 4:
                 x_violations += 1
 
-    print(f"\nQUALITY REPORT")
+    print("\nQUALITY REPORT")
     print(f"  words total:          {len(words)}")
     print(f"  words w/o usable box: {sum(1 for r in bad_y if r.get('reason')=='no-box')}")
     print(f"  words outside any band: {sum(1 for r in bad_y if r.get('reason')!='no-box')}")
-    print(f"  visual lines grouped: {sum(1 for l in lines if l['band'] is not None)}")
+    print(f"  visual lines grouped: {sum(1 for vl in lines if vl['band'] is not None)}")
     print(f"  x-order violations:   {x_violations}")
     # per-line summary: word count + y-center consistency
     for i, ln in enumerate(lines[:8]):
@@ -153,9 +153,9 @@ def main():
         "words": words,
         "bad_y": bad_y,
         "x_violations": x_violations,
-        "lines": [{ "band": l["band"],
-                    "words": [r["t"] for r in l["words"]],
-                    "boxes": [r["box_px"] for r in l["words"]]} for l in lines],
+        "lines": [{ "band": vl["band"],
+                    "words": [r["t"] for r in vl["words"]],
+                    "boxes": [r["box_px"] for r in vl["words"]]} for vl in lines],
         "bands": bands,
     }
     out = ROOT / "data/ocr_test/wordboxes_probe.json"
