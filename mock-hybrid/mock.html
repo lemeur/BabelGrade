@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mock — Annoter hybride (mots)</title>
+<style>
+:root{--bg:#0f172a;--card:#fff;--ink:#1e293b;--mut:#64748b;--acc:#2563eb;
+--hl:rgba(250,204,21,.55);--sel:rgba(37,99,235,.25);--line:#e2e8f0}
+*{box-sizing:border-box}
+body{margin:0;font:15px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:#f1f5f9;color:var(--ink)}
+header{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg);color:#fff}
+header h1{font-size:15px;margin:0;flex:1}
+.tabs button{background:#1e293b;color:#cbd5e1;border:0;padding:8px 14px;border-radius:8px;cursor:pointer;font-size:14px}
+.tabs button.on{background:var(--acc);color:#fff}
+.wrap{max-width:1100px;margin:14px auto;padding:0 12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+.hint{font-size:13px;color:var(--mut);margin:0 0 10px}
+.dual{display:flex;gap:14px}
+.phcol{flex:0 0 46%;min-width:0;position:relative}
+.transcol{flex:1;min-width:0;max-height:560px;overflow:auto}
+.phfull{position:relative;display:inline-block}
+.phfull img{width:100%;display:block;border-radius:6px}
+.phbox{position:absolute;border:2px solid transparent;border-radius:3px;transition:all .15s}
+.phbox.hl{background:var(--hl);border-color:#eab308}
+.phcrop{position:relative;border-radius:6px;overflow:hidden;background:#eee}
+.phcrop>img{position:absolute}
+.crop-tag{position:absolute;top:6px;left:6px;z-index:2;background:rgba(15,23,42,.75);color:#fff;font-size:11px;padding:3px 8px;border-radius:6px}
+.ln{padding:7px 4px;border-bottom:1px solid #f1f5f9}
+.ln.hl{background:#fef9c3}
+.w{display:inline-block;padding:2px 2px;border-radius:4px;cursor:pointer;user-select:none;transition:background .1s}
+.w:hover{background:var(--sel)}
+.w.sel{background:#bfdbfe;font-weight:600}
+.w.mk-x{text-decoration:line-through;color:#94a3b8}
+.w.mk-q{color:#94a3b8;font-style:italic}
+.panel{border-top:2px solid var(--line);margin-top:10px;padding-top:10px}
+#quote,#quote-o{font-size:15px;min-height:24px;margin:6px 0}
+.qmuted{color:var(--mut)}
+#hint,#hint-o{font-size:13px;color:var(--mut);margin:2px 0 8px}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+.stk{font-size:20px;background:#fff;border:1px solid var(--line);border-radius:8px;width:42px;height:42px;cursor:pointer}
+.stk.on{border-color:var(--acc);background:#eff6ff}
+select,input{font:14px system-ui;padding:7px 9px;border:1px solid var(--line);border-radius:8px}
+button.btn{background:var(--acc);color:#fff;border:0;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:14px}
+button.btn:disabled{background:#94a3b8}
+.spanjson{font:12px ui-monospace,monospace;background:#f8fafc;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;white-space:pre;overflow:auto}
+.an-player{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.an-player audio{flex:1;min-width:0}
+.an-player .tl{font:13px ui-monospace,monospace;color:var(--mut);white-space:nowrap}
+.trans-or{max-height:420px;overflow:auto}
+.orln{padding:6px 4px;border-bottom:1px solid #f1f5f9}
+.orln.hl{background:#fef9c3}
+.ts{font:11px ui-monospace,monospace;color:var(--mut);margin-right:4px}
+@media (max-width:760px){
+ .dual{flex-direction:column}
+ .phcol{flex:none;width:100%}
+ .transcol{max-height:340px}
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>✏️ Mock — Annoter hybride (sélection mot → surlignage ligne)</h1>
+  <div class="tabs">
+    <button id="tab-w" class="on">Écrit</button>
+    <button id="tab-o">Oral</button>
+  </div>
+</header>
+<div class="wrap">
+  <section id="view-w">
+    <div class="card">
+      <p class="hint">📄 <b>Écrit</b> — cliquez un <b>1er mot</b> puis un <b>dernier mot</b> du transcript (mots = découpage du texte OCR, aucun LLM supplémentaire).
+      Le surlignage photo reste <b>ligne à ligne</b> ; la photo est recadrée sur les lignes de la sélection (+ marge au-dessus/dessous).</p>
+      <div class="dual">
+        <div class="phcol">
+          <div class="phfull" id="phfull">
+            <img id="phimg" src="page1.jpg" alt="">
+          </div>
+          <div class="phcrop" id="phcrop" style="display:none">
+            <img id="phimg2" src="page1.jpg" alt="">
+            <div class="crop-tag">zoom sur la sélection</div>
+            <div id="crop-boxes" style="position:absolute;inset:0"></div>
+          </div>
+        </div>
+        <div class="transcol" id="trans-w"></div>
+      </div>
+      <div class="panel">
+        <div id="hint"></div>
+        <div id="quote"></div>
+        <div class="row" id="stickers"></div>
+        <div class="row">
+          <select id="level">
+            <option value="">Niveau (optionnel)</option>
+            <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
+          </select>
+          <input id="note" style="flex:1;min-width:140px" placeholder="Note (optionnel)">
+          <button class="btn" id="save" disabled>💾 Annoter</button>
+          <button class="btn" id="clear" style="background:#64748b" hidden>⌫ Effacer</button>
+        </div>
+        <div class="spanjson" id="spanjson">// pas de sélection</div>
+      </div>
+    </div>
+  </section>
+  <section id="view-o" hidden>
+    <div class="card">
+      <p class="hint">🎧 <b>Oral</b> — timings mot-à-mot (Whisper, déjà dispo, rien de nouveau). Cliquez un <b>1er mot</b> puis un <b>dernier mot</b> ;
+      le player se place au début de la sélection et s'arrête à sa fin.</p>
+      <div class="an-player">
+        <audio id="au" controls preload="metadata" src="test_oral.ogg"></audio>
+        <span class="tl" id="tl">00:00</span>
+      </div>
+      <div class="trans-or" id="trans-o"></div>
+      <div class="panel">
+        <div id="hint-o"></div>
+        <div id="quote-o"></div>
+        <div class="row" id="stickers-o"></div>
+        <div class="row">
+          <select id="level-o">
+            <option value="">Niveau (optionnel)</option>
+            <option>A1</option><option>A2</option><option>B1</option><option>B2</option><option>C1</option><option>C2</option>
+          </select>
+          <input id="note-o" style="flex:1;min-width:140px" placeholder="Note (optionnel)">
+          <button class="btn" id="save-o" disabled>💾 Annoter</button>
+          <button class="btn" id="clear-o" style="background:#64748b" hidden>⌫ Effacer</button>
+        </div>
+        <div class="spanjson" id="spanjson-o">// pas de sélection</div>
+      </div>
+    </div>
+  </section>
+</div>
+<script>
+"use strict";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+const STICKERS=["👍","😠","📌","❓"];
+let WPAGE=null,LINES=[],WORDS=[],WORD_LINE=[],ORAL=null,ORAL_WORDS=[];
+let selW=null,selO=null,sticker=null,stickerO=null;
+
+const fmtTs=s=>{s=Math.max(0,s);const m=Math.floor(s/60),ss=Math.floor(s%60);
+  return String(m).padStart(2,"0")+":"+String(ss).padStart(2,"0");};
+
+function buildWords(){
+  WORDS=[];WORD_LINE=[];
+  LINES.forEach((ln,li)=>ln.text.split(" ").forEach(tk=>{WORDS.push(tk);WORD_LINE.push(li);}));
+}
+const coveredLines=()=>selW?[WORD_LINE[selW.i0],WORD_LINE[selW.i1]]:[-1,-1];
+
+/* ---------------- written ---------------- */
+function renderTransW(){
+  const [lmin,lmax]=coveredLines();
+  $("#trans-w").innerHTML=LINES.map((ln,li)=>{
+    const toks=ln.text.split(" ");
+    const startIdx=WORD_LINE.indexOf(li);
+    const wspan=toks.map((tk,k)=>{
+      const gi=startIdx+k;
+      const cls="w"+((selW&&gi>=selW.i0&&gi<=selW.i1)?" sel":"")
+        +((tk.indexOf("[X:")===0)?" mk-x":"")+((tk==="[?]")?" mk-q":"");
+      return `<span class="${cls}" data-w="${gi}">${esc(tk)}</span>`;
+    }).join("");
+    return `<div class="ln${li>=lmin&&li<=lmax?" hl":""}" data-ln="${li}">${wspan}</div>`;
+  }).join("");
+}
+function paintPhoto(){
+  const pf=$("#phfull"),pc=$("#phcrop");
+  const img=$("#phimg");
+  pf.querySelectorAll(".phbox").forEach(e=>e.remove());
+  if(!selW){
+    pf.style.display="";pc.style.display="none";
+    const dispW=img.clientWidth||300,scale=dispW/WPAGE.w;
+    LINES.forEach((ln,li)=>{
+      if(!ln.box)return;
+      const [lmin,lmax]=coveredLines();
+      const d=document.createElement("div");
+      d.className="phbox";
+      d.style.left=(ln.box[0]*WPAGE.w/1000*scale)+"px";
+      d.style.top=(ln.box[1]*WPAGE.h/1000*scale)+"px";
+      d.style.width=((ln.box[2]-ln.box[0])*WPAGE.w/1000*scale)+"px";
+      d.style.height=((ln.box[3]-ln.box[1])*WPAGE.h/1000*scale)+"px";
+      pf.appendChild(d);
+    });
+    return;
+  }
+  const [lmin,lmax]=coveredLines();
+  const boxes=[];
+  for(let li=lmin;li<=lmax;li++){const b=LINES[li].box;if(b)boxes.push([b,li]);}
+  if(!boxes.length)return;
+  const W=WPAGE.w,H=WPAGE.h;
+  let x0=Math.min(...boxes.map(b=>b[0][0])),x1=Math.max(...boxes.map(b=>b[0][2]));
+  let y0=Math.min(...boxes.map(b=>b[0][1])),y1=Math.max(...boxes.map(b=>b[0][3]));
+  const MX=16,MY=40; /* marge px */
+  x0=Math.max(0,x0*W/1000-MX);x1=Math.min(W,x1*W/1000+MX);
+  y0=Math.max(0,y0*H/1000-MY);y1=Math.min(H,y1*H/1000+MY);
+  const dispW=Math.min(pf.clientWidth||360,420);
+  const scale=dispW/(x1-x0);
+  const dispH=(y1-y0)*scale;
+  pc.style.width=dispW+"px";pc.style.height=dispH+"px";
+  const img2=$("#phimg2");
+  img2.style.width=W*scale+"px";
+  img2.style.height=H*scale+"px";
+  img2.style.left=(-x0*scale)+"px";
+  img2.style.top=(-y0*scale)+"px";
+  pf.style.display="none";pc.style.display="";
+  const cd=$("#crop-boxes");cd.innerHTML="";
+  boxes.forEach(([b,li])=>{
+    const d=document.createElement("div");
+    d.className="phbox hl";
+    d.style.left=((b[0]*W/1000-x0)*scale)+"px";
+    d.style.top=((b[1]*H/1000-y0)*scale)+"px";
+    d.style.width=((b[2]-b[0])*W/1000*scale)+"px";
+    d.style.height=((b[3]-b[1])*H/1000*scale)+"px";
+    cd.appendChild(d);
+  });
+}
+function selWText(){
+  if(!selW)return"";
+  const out=[];for(let i=selW.i0;i<=selW.i1;i++)out.push(WORDS[i]);
+  return out.join(" ");
+}
+function panelW(){
+  $("#clear").hidden=!selW;
+  $("#save").disabled=!selW;
+  const [lmin,lmax]=coveredLines();
+  $("#quote").innerHTML=selW?`« ${esc(selWText())} »`:`<span class="qmuted">Aucune sélection</span>`;
+  $("#hint").textContent=selW?`mots ${selW.i0+1}→${selW.i1+1} · surlignage lignes ${lmin+1}–${lmax+1}`:"";
+  const span=selW?{page:0,start_word:selW.i0,end_word:selW.i1,quote:selWText(),
+    sticker,level:$("#level").value||null,note:$("#note").value.trim()||null}:null;
+  $("#spanjson").textContent=span
+    ?"POST /api/submissions/{id}/annotations\n"+JSON.stringify(span,null,2)
+    :"// pas de sélection";
+}
+function selectW(gi){
+  if(!selW)selW={i0:gi,i1:gi};
+  else if(selW.i0===gi&&selW.i1===gi)selW=null;
+  else selW={i0:Math.min(selW.i0,gi),i1:Math.max(selW.i0,gi)};
+  renderTransW();paintPhoto();panelW();
+}
+
+/* ---------------- oral ---------------- */
+function renderTransO(){
+  const host=$("#trans-o");host.innerHTML="";
+  ORAL.segments.forEach(s=>{
+    const ws=ORAL_WORDS.filter(w=>w.start>=s.start-0.05&&w.start<s.end);
+    const a=selO?ORAL_WORDS[selO.i0]:null,b=selO?ORAL_WORDS[selO.i1]:null;
+    const s0=a?Math.min(a.start,b.start):0,s1=a?Math.max(a.end,b.end):0;
+    const hl=selO&&s.start<s1&&s.end>s0;
+    host.insertAdjacentHTML("beforeend",
+      `<div class="orln${hl?" hl":""}"><span class="ts">[${fmtTs(s.start)}]</span>${
+        ws.map(w=>{
+          const gi=ORAL_WORDS.indexOf(w);
+          const cls="w"+((selO&&gi>=selO.i0&&gi<=selO.i1)?" sel":"");
+          return `<span class="${cls}" data-w="${gi}">${esc(w.w)}</span>`;
+        }).join("")}</div>`);
+  });
+}
+function panelO(){
+  $("#clear-o").hidden=!selO;
+  $("#save-o").disabled=!selO;
+  if(!selO){
+    $("#quote-o").innerHTML=`<span class="qmuted">Aucune sélection</span>`;
+    $("#hint-o").textContent="";
+    $("#spanjson-o").textContent="// pas de sélection";
+    return;
+  }
+  const a=ORAL_WORDS[selO.i0],b=ORAL_WORDS[selO.i1];
+  const s0=Math.min(a.start,b.start),s1=Math.max(a.end,b.end);
+  const words=[];for(let i=selO.i0;i<=selO.i1;i++)words.push(ORAL_WORDS[i].w);
+  const q=words.join(" ");
+  $("#quote-o").innerHTML=`« ${esc(q)} »`;
+  $("#hint-o").textContent=`mots ${selO.i0+1}→${selO.i1+1} · [${fmtTs(s0)} → ${fmtTs(s1)}]`;
+  $("#spanjson-o").textContent="POST /api/submissions/{id}/annotations\n"+JSON.stringify(
+    {start_s:+s0.toFixed(2),end_s:+s1.toFixed(2),quote:q,
+     sticker:stickerO,level:$("#level-o").value||null,note:$("#note-o").value.trim()||null},null,2);
+  const au=$("#au");au.currentTime=s0;au.dataset.stopAt=+s1.toFixed(2);
+}
+function selectO(gi){
+  if(!selO)selO={i0:gi,i1:gi};
+  else if(selO.i0===gi&&selO.i1===gi)selO=null;
+  else selO={i0:Math.min(selO.i0,gi),i1:Math.max(selO.i0,gi)};
+  renderTransO();panelO();
+}
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  const [wres,oress]=await Promise.all([fetch("written.json"),fetch("oral.json")]);
+  WPAGE=(await wres.json()).page;LINES=WPAGE.lines;
+  ORAL=await oress.json();ORAL_WORDS=ORAL.words;
+  buildWords();
+  $("#stickers").innerHTML=STICKERS.map(s=>`<button class="stk" data-stk="${s}" data-kind="w">${s}</button>`).join("");
+  $("#stickers-o").innerHTML=STICKERS.map(s=>`<button class="stk" data-stk="${s}" data-kind="o">${s}</button>`).join("");
+  document.addEventListener("click",e=>{
+    const w=e.target.closest(".w");
+    if(w){e.target.closest("#trans-o")?selectO(+w.dataset.w):selectW(+w.dataset.w);return;}
+    const st=e.target.closest(".stk");
+    if(st){
+      if(st.dataset.kind==="w"){sticker=st.dataset.stk;$("#stickers .stk").forEach(x=>x.classList.toggle("on",x===st));}
+      else{stickerO=st.dataset.stk;$("#stickers-o .stk").forEach(x=>x.classList.toggle("on",x===st));}
+      panelW();panelO();return;
+    }
+  });
+  $("#clear").onclick=()=>{selW=null;renderTransW();paintPhoto();panelW();};
+  $("#clear-o").onclick=()=>{selO=null;renderTransO();panelO();};
+  $("#save").onclick=()=>toast("✔ annotation écrite enregistrée (mock)");
+  $("#save-o").onclick=()=>toast("✔ annotation orale enregistrée (mock)");
+  $("#tab-w").onclick=()=>switchView("w");
+  $("#tab-o").onclick=()=>switchView("o");
+  $("#au").addEventListener("timeupdate",()=>{
+    const au=$("#au");
+    $("#tl").textContent=fmtTs(au.currentTime);
+    if(au.dataset.stopAt&&au.currentTime>=+au.dataset.stopAt){au.pause();delete au.dataset.stopAt;}
+  });
+  window.addEventListener("resize",()=>paintPhoto());
+  renderTransW();paintPhoto();panelW();
+  renderTransO();panelO();
+}
+function switchView(v){
+  $("#tab-w").classList.toggle("on",v==="w");
+  $("#tab-o").classList.toggle("on",v==="o");
+  $("#view-w").hidden=v!=="w";
+  $("#view-o").hidden=v!=="o";
+  if(v==="w")requestAnimationFrame(paintPhoto);
+}
+function toast(m){
+  const d=document.createElement("div");d.textContent=m;
+  d.style.cssText="position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;z-index:99";
+  document.body.appendChild(d);setTimeout(()=>d.remove(),1600);
+}
+boot();
+</script>
+</body>
+</html>

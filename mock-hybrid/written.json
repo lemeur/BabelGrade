@@ -1,0 +1,241 @@
+{
+ "page": {
+  "w": 960,
+  "h": 1280,
+  "lines": [
+   {
+    "i": 0,
+    "text": "This document is an extract of a book called Scary",
+    "box": [
+     95,
+     42,
+     965,
+     78
+    ]
+   },
+   {
+    "i": 1,
+    "text": "Stories 3. The author name is Alvin Schwartz. It was published",
+    "box": [
+     30,
+     70,
+     985,
+     108
+    ]
+   },
+   {
+    "i": 2,
+    "text": "in 1991. The title of the short story is \"The bus stop\".",
+    "box": [
+     45,
+     100,
+     965,
+     138
+    ]
+   },
+   {
+    "i": 3,
+    "text": "It's the story of Ed Cox who's driving home under bad",
+    "box": [
+     55,
+     130,
+     915,
+     168
+    ]
+   },
+   {
+    "i": 4,
+    "text": "weather. He suddenly meet Joanna Vinney that needs a ride",
+    "box": [
+     70,
+     158,
+     965,
+     195
+    ]
+   },
+   {
+    "i": 5,
+    "text": "home. After a couple of date, she didn't come so Ed tried to",
+    "box": [
+     45,
+     188,
+     945,
+     222
+    ]
+   },
+   {
+    "i": 6,
+    "text": "find out where she [X:was] and why she didn't come. At the end, we learnt",
+    "box": [
+     30,
+     215,
+     965,
+     250
+    ]
+   },
+   {
+    "i": 7,
+    "text": "she died twenty years ago.",
+    "box": [
+     55,
+     245,
+     510,
+     278
+    ]
+   },
+   {
+    "i": 8,
+    "text": "The beginning of the story set a casual experience, that",
+    "box": [
+     145,
+     290,
+     945,
+     328
+    ]
+   },
+   {
+    "i": 9,
+    "text": "almost everyone can relate to: the main character is going home",
+    "box": [
+     70,
+     320,
+     945,
+     358
+    ]
+   },
+   {
+    "i": 10,
+    "text": "while a rainstorm is happening. There fact that this story",
+    "box": [
+     70,
+     350,
+     945,
+     388
+    ]
+   },
+   {
+    "i": 11,
+    "text": "is in a realist context create emotions for the reader like safety.",
+    "box": [
+     70,
+     380,
+     965,
+     415
+    ]
+   },
+   {
+    "i": 12,
+    "text": "In fact, from line 1 to 14, the story is calm because Ed is",
+    "box": [
+     45,
+     410,
+     945,
+     448
+    ]
+   },
+   {
+    "i": 13,
+    "text": "meeting someone and its going well. The sentences \"He saw a",
+    "box": [
+     70,
+     440,
+     965,
+     478
+    ]
+   },
+   {
+    "i": 14,
+    "text": "young woman standing alone at a bus stop. She had no umbrella",
+    "box": [
+     45,
+     470,
+     945,
+     508
+    ]
+   },
+   {
+    "i": 15,
+    "text": "and was soaking wet\" (line 2) create pity for Joanna which can",
+    "box": [
+     70,
+     500,
+     965,
+     538
+    ]
+   },
+   {
+    "i": 16,
+    "text": "make her loved by the readers for being helpful at the moment. Line 12 to",
+    "box": [
+     45,
+     530,
+     965,
+     568
+    ]
+   },
+   {
+    "i": 17,
+    "text": "13 says \"They had such a good time, they went out many times\"",
+    "box": [
+     45,
+     560,
+     945,
+     598
+    ]
+   },
+   {
+    "i": 18,
+    "text": "show that the two main protagonist start to get close and it set",
+    "box": [
+     70,
+     590,
+     945,
+     628
+    ]
+   },
+   {
+    "i": 19,
+    "text": "an atmosphere that can make the reader thinks nothing is going to",
+    "box": [
+     45,
+     620,
+     965,
+     658
+    ]
+   },
+   {
+    "i": 20,
+    "text": "happened after those dates. The readers, reading this, can",
+    "box": [
+     70,
+     650,
+     945,
+     688
+    ]
+   },
+   {
+    "i": 21,
+    "text": "expect a love story between Ed and Joanna because of",
+    "box": [
+     70,
+     680,
+     945,
+     718
+    ]
+   },
+   {
+    "i": 22,
+    "text": "the emotions that are [X:created] created.",
+    "box": [
+     45,
+     710,
+     700,
+     748
+    ]
+   }
+  ],
+  "notes": "Two student ratures: 'was' (line 7) and 'created' (line 23, with 'created' rewritten after); no tape; no French words detected.",
+  "engine": "llm-direct",
+  "name": "page1.jpg"
+ }
+}
