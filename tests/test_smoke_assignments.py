@@ -58,11 +58,16 @@ with sync_playwright() as p:
     base_rows = pg.evaluate(ROWS)
     check(f"baseline: assignments rows >0 ({base_rows})", base_rows > 0)
 
-    # --- boot state ---
-    check("boot: assignments view active",
-          pg.evaluate("!document.querySelector('#view-assignments').classList.contains('hide')"))
+    # --- boot state (2026-10-27: boot default = simplified home view) ---
+    check("boot: home (simplified) view active",
+          not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
+    check("boot: hash is #home", pg.evaluate("location.hash") == "#home")
+    check("boot: assignments view hidden until asked",
+          pg.evaluate("document.querySelector('#view-assignments').classList.contains('hide')"))
     check("boot: evaluator hidden until asked",
           pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')"))
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(400)
 
     # --- create via the editor modal ---
     pg.click("#asg-new")

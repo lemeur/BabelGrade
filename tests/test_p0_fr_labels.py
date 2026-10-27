@@ -20,6 +20,10 @@ def login(pg, lang="fr"):
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1500)
+    # 2026-10-27: boot default = home view, where the tab bar is HIDDEN —
+    # these tests click nav buttons right after login, so open assignments.
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(400)
 
 def history_kind_texts(pg):
     return pg.evaluate("""() => {

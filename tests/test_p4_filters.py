@@ -73,6 +73,8 @@ with sync_playwright() as pw:
     asg_id = str(seeded.get("id"))
 
     # refresh the cached ASSIGNMENTS (boot cache predates the seeded row)
+    pg.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home
+    pg.wait_for_timeout(300)
     pg.evaluate("(async () => { await loadAssignments(); })()")
 
     A = {"row": "#asg-filters", "btn": "#asg-filter-tgl", "n": "#asg-ftl-n"}
@@ -162,6 +164,7 @@ with sync_playwright() as pw:
     ensure_app(m)
     m.wait_for_load_state("networkidle")
     m.wait_for_timeout(400)
+    m.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home
     s = state(m, **A)
     check("390: asg row hidden at boot", s["rowHidden"], s)
     m.click("#asg-filter-tgl")

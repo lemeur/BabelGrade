@@ -58,6 +58,8 @@ with sync_playwright() as pw:
     pg.goto(BASE, wait_until="networkidle")
     ensure_app(pg)
     pg.wait_for_timeout(800)
+    pg.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home, nav hidden
+    pg.wait_for_timeout(300)
     pg.click('#nav button[data-view="students"]')
     pg.wait_for_selector("#students tbody tr:not(:has(td[colspan]))")
     sid = pg.evaluate("document.querySelector('button[data-ststats]').dataset.ststats")
@@ -128,6 +130,8 @@ with sync_playwright() as pw:
     m.goto(BASE, wait_until="networkidle")
     ensure_app(m)
     m.wait_for_timeout(800)
+    m.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home, nav hidden
+    m.wait_for_timeout(300)
     m.click('#nav button[data-view="students"]')
     m.wait_for_selector("#students tbody tr:not(:has(td[colspan]))")
     msid = m.evaluate("document.querySelector('button[data-ststats]').dataset.ststats")

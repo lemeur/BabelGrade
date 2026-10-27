@@ -29,6 +29,10 @@ with sync_playwright() as pw:
     pg.on("pageerror", lambda e: errs.append(str(e)))
     login(pg)
     H = 844
+    # 2026-10-27: boot default is the home view, where the tab bar is hidden —
+    # open assignments first (the loop skips the first view's click).
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(800)
     for view in ["assignments","history","rubrics","students","jobs","docs"]:
         if view!="assignments":
             pg.click(f'#nav button[data-view="{view}"]'); pg.wait_for_timeout(1200)

@@ -101,6 +101,7 @@ with sync_playwright() as pw:
     s = seed_assignments(pg)
     check("seed: two assignments created", s["s1"] == 200 and s["s2"] == 200, s)
     pg.reload(wait_until="networkidle")
+    pg.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home
     pg.wait_for_selector("#assignments tbody tr", timeout=20000)
     pg.wait_for_timeout(500)
     st = pg.evaluate("""() => {

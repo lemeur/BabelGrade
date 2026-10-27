@@ -25,6 +25,11 @@ def login(pg, lang="fr"):
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1200)
+    # 2026-10-27: boot default = home view, where the tab bar is HIDDEN —
+    # the test clicks the Docs nav button right after login, so open
+    # assignments first (navGo restores the bar).
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(400)
 
 with sync_playwright() as pw:
     b = pw.chromium.launch(args=["--no-sandbox"])

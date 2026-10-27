@@ -29,6 +29,10 @@ with sync_playwright() as pw:
     pg.on("pageerror", lambda e: errs.append(str(e)))
     login(pg)
     H = 844
+    # 2026-10-27: boot default is the home view, where the tab bar is HIDDEN
+    # (display:none → zero rect + Playwright click refuses) — navGo() it first.
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(500)
 
     nb = pg.evaluate("() => { const n=document.getElementById('nav'); const r=n.getBoundingClientRect(); return {top:r.top,bottom:r.bottom,height:r.height,pos:getComputedStyle(n).position}; }")
     check("nav fixed bottom", nb["pos"] == "fixed" and abs(nb["bottom"] - H) < 3, nb)

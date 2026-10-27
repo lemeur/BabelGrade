@@ -54,7 +54,11 @@ with sync_playwright() as pw:
     pg.wait_for_timeout(1500)
     s = snap(pg)
     check("S1 back -> no detail / back state", (not s["att"]) or ("view-history" in s["visible"] and not s["detailOpen"]), s)
-    # in-app regression: open a row, back, forward
+    # back button -> list (the typed entry replaced the top; back goes to the
+    # pre-typed state). 2026-10-27: boot default = #home where the tab bar is
+    # HIDDEN — the in-app regression clicks the nav, so open it first.
+    pg.evaluate("navGo('assignments')")
+    pg.wait_for_timeout(300)
     pg.click('#nav button[data-view="history"]')
     pg.wait_for_timeout(2500)
     row = pg.query_selector("#hist [data-aid='553']") or pg.query_selector("#hist [data-aid]")

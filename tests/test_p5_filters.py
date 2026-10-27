@@ -88,6 +88,7 @@ with sync_playwright() as p:
       return await r.json();
     }""")
     seeded_id = str(seeded.get("id"))
+    pg.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home
     pg.evaluate("(async () => { await loadAssignments(); })()")
     pg.wait_for_timeout(300)
 
@@ -242,6 +243,7 @@ with sync_playwright() as p:
         m.click("#auth-login-btn")
         m.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     m.wait_for_timeout(500)
+    m.evaluate("navGo('assignments')")   # 2026-10-27: boot default = home
     m.click("#asg-filter-tgl")
     ov = m.evaluate("document.documentElement.scrollWidth - document.documentElement.clientWidth")
     check("390: asg row open, no overflow", ov <= 0, ov)
