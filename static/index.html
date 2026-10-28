@@ -2781,7 +2781,15 @@ function rLabelMetrics(text,arcLen,T,level){
   }
   const est=()=>Math.max(...lines.map(l=>l.length))*0.58*fs;
   while(est()>maxW&&fs>8)fs-=0.5;
-  return {lines,fs,emojiOnly:lines.length>2||est()>maxW*1.15};
+  /* A 2-line label (e.g. "Classe / élèves") would otherwise push its second
+     line against/past the sector's outer arc on phones (band height T is small):
+     shrink the font a hair AND shift the first line up by half a line-height so
+     the 2-line block is centred within the band rather than bottom-hugging.
+     lineOff (offset of the 1st baseline from the label centre y) = T*0.24 for a
+     single line (unchanged), pulled up by (fs+3)/2 for two lines. */
+  if(lines.length>1)fs=Math.max(9,fs*0.92);
+  const lineOff=lines.length>1?T*0.24-(fs+3)*0.5:T*0.24;
+  return {lines,fs,lineOff,emojiOnly:lines.length>2||est()>maxW*1.15};
 }
 function rBuildLevel(L,active){
   const {C,T}=RST;
@@ -2815,7 +2823,7 @@ function rBuildLevel(L,active){
       tx.style.fontSize=lm.fs+'px';
       lm.lines.slice(0,2).forEach((ln,k)=>{
         const ts=document.createElementNS(RNS,'tspan');
-        ts.setAttribute('x',x);ts.setAttribute('y',y+T*0.24+k*(lm.fs+3));
+        ts.setAttribute('x',x);ts.setAttribute('y',y+lm.lineOff+k*(lm.fs+3));
         ts.textContent=ln;tx.appendChild(ts);
       });
       grp.appendChild(tx);
