@@ -1129,7 +1129,7 @@ table.conv-tab thead td.conv-bd{font-weight:700}
    confined to its parent's angular sector (innermost = the 3 verbs).
    Wheel/arrows cycle the outermost level, Enter/click executes, Esc/centre
    closes. A small "advanced" back-door keeps the full interface one tap away. */
-#view-home .home-hero{text-align:center;margin:30px 0 10px}
+#view-home .home-hero{text-align:center;margin:30px 0 10px;position:relative;z-index:71}
 #view-home .home-hero h1{font-size:26px;margin:0 0 6px}
 #view-home .home-hero p{color:var(--muted);margin:0}
 /* the space the radial menu occupies (anchor = its centre) */
@@ -1143,7 +1143,7 @@ table.conv-tab thead td.conv-bd{font-weight:700}
   cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
 .home-reopen:hover{border-color:var(--acc);border-style:solid;color:var(--acc)}
 .home-reopen.hide{display:none}
-.home-adv-wrap{text-align:center;margin-bottom:34px}
+.home-adv-wrap{text-align:center;margin-bottom:34px;position:relative;z-index:71}
 @media(max-width:480px){
   #view-home .home-hero{margin:18px 0 6px}
   #view-home .home-hero h1{font-size:21px}
@@ -1328,7 +1328,6 @@ g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .
   <section id="view-home" class="hide">
     <div class="home-hero">
       <h1 data-i18n="home.title">What would you like to do?</h1>
-      <p data-i18n="home.sub">Pick an action — the full interface lives in advanced mode.</p>
     </div>
     <div class="home-center" id="home-center">
       <div id="home-anchor"></div>
@@ -2105,7 +2104,7 @@ function wireAuth(){
 const I18N={
  en:{
   'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.jobs':'Jobs',
-  'home.title':'What would you like to do?','home.sub':'Pick an action — the full interface lives in advanced mode.','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.advMenu':'Advanced mode','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History',
+  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
   'an.assignment':'Assignment (instruction + source document)','an.adhoc':'— ad-hoc (define the context below) —',
@@ -2192,7 +2191,7 @@ const I18N={
  },
  fr:{
   'nav.analyze':'Analyser','nav.history':'Évaluations','nav.assignments':'Sujets','nav.rubrics':'Grilles','hdr.evaluate':'✍️ Évaluer','nav.students':'Élèves','nav.data':'Données',
-  'home.title':'Que souhaitez-vous faire ?','home.sub':'Choisissez une action — l’interface complète se trouve en mode avancé.','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.advMenu':'Mode avancé','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique',
+  'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique',
   'menu.export':'Exporter les élèves (CSV)','menu.import':'Importer les élèves (CSV)','menu.reset':'Réinitialiser la base','menu.wipe':'Réinit. + effacer les fichiers','menu.confirmWipe':'RÉINITIALISER la base ET supprimer tous les fichiers stockés (photos, audio, PDFs) dans data/uploads/ ?\n\nTous les élèves, productions et analyses seront effacés. Irréversible.','menu.confirmReset':'RÉINITIALISER la base ?\n\nTous les élèves, productions et analyses seront effacés (fichiers stockés conservés sur disque). Irréversible.',
   'an.1':'Qu’est-ce qu’on évalue ?','an.2':'Élève & niveau cible','an.3':'Le travail de l’élève','an.4':'Paramètres d’évaluation','an.otherFormats':'Autres formats d’entrée (photos / PDF / audio)','an.rubricNote':'La grille définit les critères notés par l’IA (et le rapport que vous relirez).',
   'an.assignment':'Sujet (la consigne + le document source)','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
@@ -2279,7 +2278,7 @@ const I18N={
  },
  es:{
   'nav.analyze':'Analizar','nav.history':'Evaluaciones','nav.assignments':'Tareas','nav.rubrics':'Rúbricas','hdr.evaluate':'✍️ Evaluar','nav.students':'Estudiantes','nav.data':'Datos',
-  'home.title':'¿Qué te gustaría hacer?','home.sub':'Elige una acción — la interfaz completa está en el modo avanzado.','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.advMenu':'Modo avanzado','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial',
+  'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial',
   'menu.export':'Exportar estudiantes (CSV)','menu.import':'Importar estudiantes (CSV)','menu.reset':'Reiniciar la base de datos','menu.wipe':'Reiniciar + borrar archivos','menu.confirmWipe':'¿REINICIAR la base de datos Y borrar todos los archivos guardados (fotos, audio, PDFs) en data/uploads/?\n\nSe borrarán todos los estudiantes, producciones y análisis. No se puede deshacer.','menu.confirmReset':'¿REINICIAR la base de datos?\n\nSe borrarán todos los estudiantes, producciones y análisis (los archivos guardados se conservan en disco). No se puede deshacer.',
   'an.1':'¿Qué estamos evaluando?','an.2':'Estudiante y nivel objetivo','an.3':'El trabajo del estudiante','an.4':'Ajustes de evaluación','an.otherFormats':'Otros formatos de entrada (fotos / PDF / audio)','an.rubricNote':'La rúbrica define los criterios que la IA puntuará (y el informe que revisarás).',
   'an.assignment':'Tarea (consigna + documento fuente)','an.adhoc':'— ad hoc (definir el contexto abajo) —',
@@ -2366,7 +2365,7 @@ const I18N={
  },
  de:{
   'nav.analyze':'Analysieren','nav.history':'Bewertungen','nav.assignments':'Aufgaben','nav.rubrics':'Rubriken','hdr.evaluate':'✍️ Bewerten','nav.students':'Schüler','nav.data':'Daten',
-  'home.title':'Was möchtest du tun?','home.sub':'Wähle eine Aktion — die vollständige Oberfläche findest du im erweiterten Modus.','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.advMenu':'Erweiterter Modus','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf',
+  'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf',
   'menu.export':'Schüler:innen CSV exportieren','menu.import':'Schüler:innen CSV importieren','menu.reset':'Datenbank zurücksetzen','menu.wipe':'Zurücksetzen + Dateien löschen','menu.confirmWipe':'DATENBANK ZURÜCKSETZEN und alle gespeicherten Dateien (Fotos, Audio, PDFs) in data/uploads/ löschen?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht. Das kann nicht rückgängig gemacht werden.','menu.confirmReset':'DATENBANK ZURÜCKSETZEN?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht (gespeicherte Dateien bleiben auf der Platte). Das kann nicht rückgängig gemacht werden.',
   'an.1':'Was bewerten wir?','an.2':'Schüler:in & Zielstufe','an.3':'Die Arbeit der Schüler:in','an.4':'Bewertungseinstellungen','an.otherFormats':'Weitere Eingabeformate (Fotos / PDF / Audio)','an.rubricNote':'Die Rubrik bestimmt die Kriterien, die die KI bewertet (und den Bericht, den Sie prüfen werden).',
   'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
@@ -2665,9 +2664,9 @@ const RADIAL_MENU=[
     {id:'assignment',ico:'📊',i18n:'home.anAssignment',go:()=>navGo('assignments',null,{scroll:true})},
     {id:'history',ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
   ]},
-  /* the full interface stays one sector away (the old rectangular back-door
-     lived here as a ghost button; it remains below the menu as a fallback). */
-  {id:'advanced',ico:'🛠️',i18n:'home.advMenu',go:()=>navGo('assignments',null,{scroll:true})},
+  /* "Mode avancé" n'est PAS un secteur (tibo, 2026-10-27) : le bouton
+     rectangulaire #home-advanced reste en dessous du menu, ACTIF même menu
+     ouvert (z-71 > backdrop z-70). */
 ];
 const RNS='http://www.w3.org/2000/svg',RDEG=Math.PI/180,RMAXL=3,RGAP=3; /* GAP = ° between sectors of a level */
 const RST={open:false,cx:0,cy:0,sel:[0],svg:null,C:0,T:0,D:0};

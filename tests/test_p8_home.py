@@ -2,22 +2,25 @@
 """Home (simplified mode) suite — radial menu v3 (2026-10-27).
 
 Boot default is the simplified start screen (#view-home, hash #home).
-The 3 rectangular verb buttons are GONE: the RADIAL menu (concentric SVG
-crowns, innermost = the 4 verbs incl. "Advanced mode") OPENS BY DEFAULT,
+the 3 rectangular verb buttons are GONE: the RADIAL menu (concentric SVG
+crowns, innermost = the 3 verbs) OPENS BY DEFAULT; the rectangular
+"Mode avancé" back-door button stays below the menu, ACTIVE even while the
+menu is open (z-71 > backdrop z-70), and the hero title is NOT dimmed.
 centred on #home-anchor. Each submenu level = an outer crown confined to
 the selected parent's angular sector. Wheel/arrows cycle the outermost
 level, Enter executes, Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
-- boot: #home hash, home view visible, menu OPEN with L0 (4 verbs FR) +
-  L1 (Préparer's 2 items), no JS errors, no rectangular .home-btn left
+- boot: #home hash, home view visible, menu OPEN with L0 (3 verbs FR) +
+  L1 (Préparer's 2 items), hero title not dimmed, no JS errors, no
+  rectangular .home-btn left
 - crowns geometry: L1 angles inside the selected L0 sector (Préparer ≈
   [-150°,-30°] → L1 inside it), all sectors in the viewport
 - navigation: wheel cycles L1 (Classe/Sujet), Enter executes → view + hash,
   menu closed; click Analyse inner sector → its 3-item crown; click
   Historique → history; re-open via #home-reopen pill
-- Advanced sector → assignments view; "◂ Simplified" header → back to home
-  (menu re-opens)
+- "Mode avancé" rectangular button (ACTIVE while menu open) → assignments
+  view; "◂ Simplified" header → back to home (menu re-opens)
 - Evaluate leaf → evaluator form
 - back button: home → assignments (push) → back lands on home + menu open
 - typed #home from another view
@@ -76,25 +79,34 @@ JS_CROWNS = """() => {
 }"""
 
 def angles(pg):
-    """Sample each sector path's outline (getPointAtLength) and return the
-    min/max angle (deg, 0°=right, CW positive in screen coords) relative to
-    the anchor centre — independent of the path string format."""
+    """Sample each sector path's outline (getPointAtLength, in path order)
+    and return [min, max] of the UNWRAPPED angles (deg, 0°=right, CW
+    positive in screen coords) relative to the anchor centre. Unwrapping
+    (±360° continuity) makes sectors crossing the ±180° line report their
+    true [a0, a0+sweep] span (e.g. Analyse L0 = [90°, 210°]) instead of a
+    meaningless min/max across the discontinuity."""
     return pg.evaluate("""() => {
       const out = {};
-      const cx = document.querySelector('#home-anchor').getBoundingClientRect();
-      const acx = cx.left + cx.width / 2, acy = cx.top + cx.height / 2;
       for (const g of document.querySelectorAll('#pie-stage g[id^="rg-"]:not(.g-exit)')) {
         out[g.id] = [...g.querySelectorAll('.sector')].map(s => {
           const p = s.querySelector('path');
           const L = p.getTotalLength();
-          let mn = Infinity, mx = -Infinity;
+          const raw = [];
           for (let i = 0; i <= 40; i++) {
+            /* SVG local coords: the viewBox origin (0,0) sits on the anchor */
             const pt = p.getPointAtLength(L * i / 40);
-            /* SVG local coords: the viewBox origin (0,0) sits exactly on the
-               anchor centre, so no offset is needed */
-            const a = Math.atan2(pt.y, pt.x) * 180 / Math.PI;
-            mn = Math.min(mn, a); mx = Math.max(mx, a);
+            raw.push(Math.atan2(pt.y, pt.x) * 180 / Math.PI);
           }
+          /* unwrap: each sample within ±180° of the previous one */
+          const un = [raw[0]];
+          for (let i = 1; i < raw.length; i++) {
+            let a = raw[i];
+            while (a - un[i - 1] < -180) a += 360;
+            while (a - un[i - 1] > 180) a -= 360;
+            un.push(a);
+          }
+          let mn = Infinity, mx = -Infinity;
+          for (const a of un) { mn = Math.min(mn, a); mx = Math.max(mx, a); }
           return [mn, mx];
         });
       }
@@ -128,13 +140,15 @@ with sync_playwright() as p:
     check("boot: no rectangular .home-btn left", s["rectBtns"] == 0, s["rectBtns"])
     check("boot: radial menu OPEN by default", s["open"], s["open"])
     check("boot: re-open pill hidden while open", s["reopenHidden"], s)
-    check("boot: L0 = 4 verbs (FR) + L1 = 2 items (Préparer)",
+    check("boot: L0 = 3 verbs (FR) + L1 = 2 items (Préparer)",
           [i["t"] for i in s["sectors"][0]["items"]] ==
-          ["Préparer", "Évaluer", "Analyser", "Mode avancé"]
+          ["Préparer", "Évaluer", "Analyser"]
           and [i["t"] for i in s["sectors"][1]["items"]] ==
           ["Classe / élèves", "Sujet"], s["sectors"])
     check("boot: all sectors in viewport, svg in viewport",
           all(i["inVp"] for c in s["sectors"] for i in c["items"]) and s["svgIn"], s)
+    check("boot: hero title not dimmed (z-71, above the menu backdrop)",
+          pg.evaluate("getComputedStyle(document.querySelector('#view-home .home-hero')).zIndex") == "71")
     check("boot: centre shows the selected verb emoji (📚)", s["center"] == "📚", s["center"])
     check("boot: path pill = 📚 Préparer › 🏫 Classe / élèves",
           "Préparer" in s["path"] and "Classe / élèves" in s["path"], s["path"])
@@ -144,8 +158,8 @@ with sync_playwright() as p:
     ang = angles(pg)
     l0p = ang.get("rg-0", [None])[0]
     l1 = ang.get("rg-1", [])
-    check("geometry: L0 Préparer ≈ [-148.5°,-61.5°] (360°/4 sectors)",
-          l0p and l0p[0] <= -148 and l0p[1] >= -62 and l0p[1] <= -60, l0p)
+    check("geometry: L0 Préparer ≈ [-150°,-30°] (360°/3 sectors)",
+          l0p and l0p[0] <= -148 and l0p[1] >= -32 and l0p[1] <= -28, l0p)
     check("geometry: L1 inside the selected L0 sector (±GAP)",
           all(a[0] >= l0p[0] - 4 and a[1] <= l0p[1] + 4 for a in l1),
           {"l0": l0p, "l1": l1})
@@ -181,12 +195,13 @@ with sync_playwright() as p:
           s["sectors"][1]["items"])
     check("centre shows 📊 when Analyse selected", s["center"] == "📊", s["center"])
     pg.screenshot(path="tests/home_radial_analyze.png")
-    # geometry: Analyse's L1 must sit inside its L0 sector (≈ [28.5°,118.5°])
+    # geometry: Analyse's L1 must sit inside its L0 sector (≈ [90°,210°] with
+    # 3 sectors of 120°)
     ang = angles(pg)
     l0a = ang.get("rg-0", [None])[2]
     l1a = ang.get("rg-1", [])
-    check("geometry: L0 Analyse ≈ [28.5°,118.5°]",
-          l0a and l0a[0] >= 27 and l0a[1] <= 120, l0a)
+    check("geometry: L0 Analyse ≈ [90°,210°] (360°/3 sectors)",
+          l0a and l0a[0] >= 88 and l0a[1] <= 212, l0a)
     check("geometry: Analyse L1 inside its L0 sector (±GAP)",
           l0a and all(a[0] >= l0a[0] - 4 and a[1] <= l0a[1] + 4 for a in l1a),
           {"l0": l0a, "l1": l1a})
@@ -228,17 +243,18 @@ with sync_playwright() as p:
           l1_before == [True, False] and l1_after == [False, True],
           {"before": l1_before, "after": l1_after})
 
-    # --- Advanced sector → full interface; header back → home ---
-    pg.mouse.move(640, 450)
-    for _ in range(2):
-        pg.mouse.wheel(0, 120); pg.wait_for_timeout(150)   # L1: back to Classe
-    pg.keyboard.press("Escape"); pg.wait_for_timeout(250)
-    pg.click("#home-reopen"); pg.wait_for_timeout(250)
-    click_sector(pg, "#rg-0 .sector[data-idx='3']")          # Mode avancé
+    # --- "Mode avancé" rectangular button: ACTIVE even while the menu is
+    #     open (z-71 above the backdrop) → full interface; header back → home
+    #     (the menu is already open from the wheel-L0 check above)
+    s = pg.evaluate(JS_CROWNS)
+    check("'Mode avancé' button present while menu open", s["open"]
+          and pg.evaluate("!!document.querySelector('#home-advanced')"), s["open"])
+    pg.click("#home-advanced")
     pg.wait_for_timeout(400)
-    check("Advanced sector: assignments view + tab bar",
+    check("'Mode avancé': assignments view + tab bar + menu closed",
           pg.evaluate("location.hash") == "#assignments"
-          and not pg.evaluate("document.querySelector('#nav').classList.contains('hide')"))
+          and not pg.evaluate("document.querySelector('#nav').classList.contains('hide')")
+          and not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
     pg.click("#hdr-home")
     pg.wait_for_timeout(400)
     s = pg.evaluate(JS_CROWNS)
@@ -288,8 +304,8 @@ with sync_playwright() as p:
     login(m)
     m.wait_for_timeout(600)
     s = m.evaluate(JS_CROWNS)
-    check("390: menu open at boot, L0 4 + L1 2",
-          s["open"] and len(s["sectors"][0]["items"]) == 4 and len(s["sectors"][1]["items"]) == 2,
+    check("390: menu open at boot, L0 3 + L1 2",
+          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"][1]["items"]) == 2,
           {k: s[k] for k in ("open", "sectors")})
     check("390: no page-level overflow",
           m.evaluate("document.documentElement.scrollWidth") <= 391,
