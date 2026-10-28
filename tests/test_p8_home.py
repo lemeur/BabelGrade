@@ -11,11 +11,13 @@ the selected parent's angular sector. Wheel/arrows cycle the outermost
 level, Enter executes, Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
-- boot: #home hash, home view visible, menu OPEN with L0 (3 verbs FR) +
-  L1 (Préparer's 2 items), hero title not dimmed, no JS errors, no
-  rectangular .home-btn left
-- crowns geometry: L1 angles inside the selected L0 sector (Préparer ≈
-  [-150°,-30°] → L1 inside it), all sectors in the viewport
+- boot: #home hash, home view visible, menu OPEN with L0 (3 verbs FR:
+  Évaluer top / Analyser right / Préparer left, Évaluer selected → no L1),
+  hero title not dimmed, no JS errors, no rectangular .home-btn left, no
+  #pie-path description pill (removed 2026-10-28: redundant, covered the
+  "Mode avancé" button)
+- crowns geometry: L0 Évaluer ≈ [-150°,-30°] (top sector); Analyse L1 inside
+  its L0 sector
 - navigation: wheel cycles L1 (Classe/Sujet), Enter executes → view + hash,
   menu closed; click Analyse inner sector → its 3-item crown; click
   Historique → history; re-open via #home-reopen pill
@@ -59,7 +61,7 @@ JS_CROWNS = """() => {
     return r.left >= -1 && r.right <= window.innerWidth + 1
         && r.top >= 0 && r.bottom <= window.innerHeight + 1;
   })();
-  out.path = document.querySelector('#pie-path').textContent.trim().replace(/\\s+/g,' ');
+  out.hasPathPill = !!document.querySelector('#pie-path');
   out.sectors = [...document.querySelectorAll('#pie-stage g[id^="rg-"]')]
     .filter(g => !g.classList.contains('g-exit'))
     .map(g => ({
@@ -140,37 +142,51 @@ with sync_playwright() as p:
     check("boot: no rectangular .home-btn left", s["rectBtns"] == 0, s["rectBtns"])
     check("boot: radial menu OPEN by default", s["open"], s["open"])
     check("boot: re-open pill hidden while open", s["reopenHidden"], s)
-    check("boot: L0 = 3 verbs (FR) + L1 = 2 items (Préparer)",
+    check("boot: L0 = 3 verbs FR: Évaluer top / Analyser right / Préparer left",
           [i["t"] for i in s["sectors"][0]["items"]] ==
-          ["Préparer", "Évaluer", "Analyser"]
-          and [i["t"] for i in s["sectors"][1]["items"]] ==
-          ["Classe / élèves", "Sujet"], s["sectors"])
+          ["Évaluer", "Analyser", "Préparer"], s["sectors"])
+    check("boot: Évaluer (leaf) selected → no sub-crown",
+          len(s["sectors"]) == 1, len(s["sectors"]))
     check("boot: all sectors in viewport, svg in viewport",
           all(i["inVp"] for c in s["sectors"] for i in c["items"]) and s["svgIn"], s)
     check("boot: hero title not dimmed (z-71, above the menu backdrop)",
           pg.evaluate("getComputedStyle(document.querySelector('#view-home .home-hero')).zIndex") == "71")
-    check("boot: centre shows the selected verb emoji (📚)", s["center"] == "📚", s["center"])
-    check("boot: path pill = 📚 Préparer › 🏫 Classe / élèves",
-          "Préparer" in s["path"] and "Classe / élèves" in s["path"], s["path"])
+    check("boot: centre shows the selected verb emoji (✍️)", s["center"] == "✍️", s["center"])
+    check("boot: no #pie-path description pill (removed 2026-10-28)",
+          not s["hasPathPill"], s["hasPathPill"])
     pg.screenshot(path="tests/home_radial_boot.png")
 
-    # --- geometry: L1 confined to the selected L0 sector ---
+    # --- geometry: L0 sector placement (span [-150°,210°]: idx0 top, idx1
+    #     bottom-right, idx2 bottom-left) ---
     ang = angles(pg)
-    l0p = ang.get("rg-0", [None])[0]
+    l0e = ang.get("rg-0", [None])[0]
+    check("geometry: L0 Évaluer ≈ [-150°,-30°] (top sector)",
+          l0e and l0e[0] <= -148 and l0e[1] >= -32 and l0e[1] <= -28, l0e)
+
+    # --- click Préparer → its L1 crown (Classe/Sujet) ---
+    click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Préparer (bottom-left)
+    pg.wait_for_timeout(300)
+    s = pg.evaluate(JS_CROWNS)
+    check("Préparer selected: L1 = 2 items (Classe / Sujet)",
+          [i["t"] for i in s["sectors"][1]["items"]] ==
+          ["Classe / élèves", "Sujet"], s["sectors"])
+    check("centre shows 📚 when Préparer selected", s["center"] == "📚", s["center"])
+    ang = angles(pg)
+    l0p = ang.get("rg-0", [None])[2]
     l1 = ang.get("rg-1", [])
-    check("geometry: L0 Préparer ≈ [-150°,-30°] (360°/3 sectors)",
-          l0p and l0p[0] <= -148 and l0p[1] >= -32 and l0p[1] <= -28, l0p)
+    check("geometry: L0 Préparer ≈ [90°,210°] (bottom-left sector)",
+          l0p and l0p[0] >= 88 and l0p[1] <= 212, l0p)
     check("geometry: L1 inside the selected L0 sector (±GAP)",
           all(a[0] >= l0p[0] - 4 and a[1] <= l0p[1] + 4 for a in l1),
           {"l0": l0p, "l1": l1})
 
-    # --- wheel cycles the outer crown; Enter executes ---
+    # --- wheel cycles the open outer crown (L1); Enter executes ---
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
     check("wheel: L1 selection moves to 'Sujet'",
-          s["sectors"][1]["items"][1]["sel"] and "Sujet" in s["path"], s["path"])
+          s["sectors"][1]["items"][1]["sel"], s["sectors"])
     pg.keyboard.press("Enter")
     pg.wait_for_timeout(500)
     check("Enter on 'Sujet': assignments view + hash",
@@ -186,7 +202,7 @@ with sync_playwright() as p:
     pg.wait_for_timeout(400)
     s = pg.evaluate(JS_CROWNS)
     check("return home: menu re-opened by default", s["open"], s)
-    click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Analyser
+    click_sector(pg, "#rg-0 .sector[data-idx='1']")   # Analyser (bottom-right)
     pg.wait_for_timeout(300)
     s = pg.evaluate(JS_CROWNS)
     check("Analyse selected: L1 = 3 items (progression/results/history)",
@@ -195,13 +211,13 @@ with sync_playwright() as p:
           s["sectors"][1]["items"])
     check("centre shows 📊 when Analyse selected", s["center"] == "📊", s["center"])
     pg.screenshot(path="tests/home_radial_analyze.png")
-    # geometry: Analyse's L1 must sit inside its L0 sector (≈ [90°,210°] with
+    # geometry: Analyse's L1 must sit inside its L0 sector (≈ [-30°,90°] with
     # 3 sectors of 120°)
     ang = angles(pg)
-    l0a = ang.get("rg-0", [None])[2]
+    l0a = ang.get("rg-0", [None])[1]
     l1a = ang.get("rg-1", [])
-    check("geometry: L0 Analyse ≈ [90°,210°] (360°/3 sectors)",
-          l0a and l0a[0] >= 88 and l0a[1] <= 212, l0a)
+    check("geometry: L0 Analyse ≈ [-30°,90°] (bottom-right sector)",
+          l0a and l0a[0] >= -32 and l0a[1] <= 92, l0a)
     check("geometry: Analyse L1 inside its L0 sector (±GAP)",
           l0a and all(a[0] >= l0a[0] - 4 and a[1] <= l0a[1] + 4 for a in l1a),
           {"l0": l0a, "l1": l1a})
@@ -228,24 +244,30 @@ with sync_playwright() as p:
     s = pg.evaluate(JS_CROWNS)
     check("Esc closes the menu", not s["open"], s["open"])
 
-    # --- wheel cycles the OPEN outer crown even from L0 verbs (design: the
-    #     wheel always drives the deepest open crown; L0 verbs are reached
-    #     by clicking) ---
+    # --- wheel cycles the OPEN outer crown; from L0 with a leaf selected,
+    #     the wheel cycles L0 verbs — landing on a non-leaf verb auto-opens
+    #     its crown (rChain normalisation); Enter executes the leaf ---
     pg.click("#home-reopen"); pg.wait_for_timeout(250)
-    s = pg.evaluate(JS_CROWNS)
-    l1_before = [i["sel"] for i in s["sectors"][1]["items"]]
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
-    l1_after = [i["sel"] for i in s["sectors"][1]["items"]]
-    check("wheel from L0 verbs cycles the open L1 crown (Préparer → Sujet)",
-          l1_before == [True, False] and l1_after == [False, True],
-          {"before": l1_before, "after": l1_after})
+    check("wheel from L0 (leaf selected): Évaluer → Analyser + L1 auto-open",
+          s["sectors"][0]["items"][1]["sel"] and s["center"] == "📊"
+          and len(s["sectors"]) == 2 and s["sectors"][1]["items"][0]["sel"],
+          s["center"])
+    pg.keyboard.press("Enter")
+    pg.wait_for_timeout(500)
+    check("Enter: executes the auto-drilled leaf 'Progression d’un élève' → students",
+          pg.evaluate("location.hash") == "#students"
+          and not pg.evaluate("document.querySelector('#view-students').classList.contains('hide')"))
+    check("menu closed after Enter",
+          not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
 
     # --- "Mode avancé" rectangular button: ACTIVE even while the menu is
     #     open (z-71 above the backdrop) → full interface; header back → home
-    #     (the menu is already open from the wheel-L0 check above)
+    #     (menu re-opens on home) ---
+    pg.evaluate("navGo('home')"); pg.wait_for_timeout(400)
     s = pg.evaluate(JS_CROWNS)
     check("'Mode avancé' button present while menu open", s["open"]
           and pg.evaluate("!!document.querySelector('#home-advanced')"), s["open"])
@@ -263,7 +285,7 @@ with sync_playwright() as p:
 
     # --- Evaluate leaf → evaluator form ---
     pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)
-    click_sector(pg, "#rg-0 .sector[data-idx='1']")          # Évaluer (leaf)
+    click_sector(pg, "#rg-0 .sector[data-idx='0']")          # Évaluer (top, leaf)
     pg.wait_for_timeout(400)
     check("Evaluate: evaluator form visible + hash",
           pg.evaluate("location.hash") == "#evaluator"
@@ -304,8 +326,8 @@ with sync_playwright() as p:
     login(m)
     m.wait_for_timeout(600)
     s = m.evaluate(JS_CROWNS)
-    check("390: menu open at boot, L0 3 + L1 2",
-          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"][1]["items"]) == 2,
+    check("390: menu open at boot, L0 = 3 verbs (Évaluer selected, no L1)",
+          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 1,
           {k: s[k] for k in ("open", "sectors")})
     check("390: no page-level overflow",
           m.evaluate("document.documentElement.scrollWidth") <= 391,
@@ -313,7 +335,7 @@ with sync_playwright() as p:
     check("390: svg + sectors in viewport",
           s["svgIn"] and all(i["inVp"] for c in s["sectors"] for i in c["items"]), s)
     m.screenshot(path="tests/home_390.png")
-    click_sector(m, "#rg-0 .sector[data-idx='2']")   # Analyser
+    click_sector(m, "#rg-0 .sector[data-idx='1']")   # Analyser
     m.wait_for_timeout(300)
     s = m.evaluate(JS_CROWNS)
     check("390: Analyse crown 3 items in viewport",

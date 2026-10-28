@@ -1176,13 +1176,6 @@ table.conv-tab thead td.conv-bd{font-weight:700}
 .rsvg .center:hover circle{fill:var(--acc-soft)}
 .rsvg .center:focus{outline:none}
 .rsvg .center text{pointer-events:none}
-/* current path pill under the menu (📚 Préparer › 🏫 Classe / élèves) */
-#pie-path.hide{display:none}
-#pie-path{position:absolute;transform:translateX(-50%);
-  background:var(--panel);border:1px solid var(--line);border-radius:999px;
-  box-shadow:var(--shadow);padding:6px 14px;font-size:13px;font-weight:600;color:var(--muted);
-  white-space:nowrap;max-width:min(92vw,560px);overflow:hidden;text-overflow:ellipsis}
-#pie-path .leaf{color:var(--ink)}
 g.g-enter{animation:gIn .3s ease-out both}
 @keyframes gIn{from{opacity:0;transform:scale(.88)}}
 g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .2s ease;
@@ -1227,7 +1220,6 @@ g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .
 <div id="pie-wrap" aria-hidden="true">
   <div id="pie-backdrop"></div>
   <div id="pie-stage"></div>
-  <div id="pie-path" class="hide"></div>
 </div>
 
 
@@ -2644,25 +2636,24 @@ function goEvaluate(){
 $('#hdr-evaluate').addEventListener('click',goEvaluate);
 /* ---- home radial menu (v3, 2026-10-27) ----
    Concentric SVG crowns, OPEN BY DEFAULT on home: innermost crown = the 3
-   verbs (Prepare / Evaluate / Analyze); each submenu level = an OUTER crown
+   verbs (Evaluate on top / Prepare left / Analyze right); each submenu level = an OUTER crown
    confined to the selected parent's angular sector (level 1 spans 120°,
    level 2 ~40° …). Crowns are drawn in SVG <g id="rg-N"> groups, one per
    level, rebuilt when the selection changes (soft exit/enter animation).
    Interaction (ported from the axln/radial-menu-vue model, vanilla JS/SVG,
    zero deps): wheel / ←→ cycle the OUTERMOST level, Enter or click =
-   execute, Esc or centre-click = close. The path pill under the menu shows
-   the current path (📚 Préparer › 🏫 Classe / élèves). The tree is open:
+   execute, Esc or centre-click = close. The tree is open:
    add {sub:[…]} on any leaf to nest another level — geometry is automatic. */
 const RADIAL_MENU=[
-  {id:'prepare',ico:'📚',i18n:'home.prepare',sub:[
-    {id:'class',ico:'🏫',i18n:'home.prepClass',go:()=>navGo('students',null,{scroll:true})},
-    {id:'subject',ico:'📚',i18n:'home.prepSubject',go:()=>navGo('assignments',null,{scroll:true})},
-  ]},
   {id:'evaluate',ico:'✍️',i18n:'home.evaluate',go:()=>goEvaluate()},
   {id:'analyze',ico:'📊',i18n:'home.analyze',sub:[
     {id:'student',ico:'📈',i18n:'home.anStudent',go:()=>navGo('students',null,{scroll:true})},
     {id:'assignment',ico:'📊',i18n:'home.anAssignment',go:()=>navGo('assignments',null,{scroll:true})},
     {id:'history',ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
+  ]},
+  {id:'prepare',ico:'📚',i18n:'home.prepare',sub:[
+    {id:'class',ico:'🏫',i18n:'home.prepClass',go:()=>navGo('students',null,{scroll:true})},
+    {id:'subject',ico:'📚',i18n:'home.prepSubject',go:()=>navGo('assignments',null,{scroll:true})},
   ]},
   /* "Mode avancé" n'est PAS un secteur (tibo, 2026-10-27) : le bouton
      rectangulaire #home-advanced reste en dessous du menu, ACTIF même menu
@@ -2684,9 +2675,10 @@ function rSplitSpan(a0,a1,n){
 }
 function rChain(){
   /* one entry per active level: {level, items, sel, span:[a0,a1]}; stops at
-     the first selected leaf. Level 0 always spans 360° (selected verb
-     centred on top); each deeper level is confined to the span of its
-     selected parent. */
+     the first selected leaf. Level 0 always spans 360° (span [-150°,210°]:
+     item 0 TOP, item 1 bottom-right, item 2 bottom-left — order in
+     RADIAL_MENU: Évaluer / Analyser / Préparer, tibo 2026-10-28); each
+     deeper level is confined to the span of its selected parent. */
   const out=[{level:0,items:RADIAL_MENU,sel:Math.min(RST.sel[0]??0,RADIAL_MENU.length-1),span:[-150,210]}];
   let cur=RADIAL_MENU[out[0].sel];
   while(cur&&cur.sub){
@@ -2809,21 +2801,6 @@ function rUpdateCenter(L0){
   tx.textContent=L0.items[L0.sel].ico;
   c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
 }
-function rUpdatePath(levels){
-  const p=$('#pie-path');if(!p)return;
-  p.innerHTML=levels.map((L,k)=>{
-    const it=L.items[L.sel];
-    return k===levels.length-1?`<span class="leaf">${esc(it.ico)} ${esc(t(it.i18n))}</span>`
-      :`${esc(it.ico)} ${esc(t(it.i18n))}`;
-  }).join(' <span style="color:#cbd5e1">›</span> ');
-  p.classList.remove('hide');
-  /* under the menu (above it when no room), clamped in the viewport;
-     translateX(-50%) re-centres on RST.cx */
-  const below=RST.cy+RST.D/2+12;
-  const top=below>window.innerHeight-52?RST.cy-RST.D/2-44:below;
-  p.style.left=RST.cx+'px';
-  p.style.top=top+'px';
-}
 function rKey(L){return L.items.map(i=>i.id).join('|')+':'+L.sel+':'+L.span.map(n=>n.toFixed(1)).join(',');}
 function rRender(){
   const levels=rChain();
@@ -2854,7 +2831,6 @@ function rRender(){
     }
   });
   rUpdateCenter(levels[0]);
-  rUpdatePath(levels);
   svg.querySelector(`#rg-${active} .sector.selected`)?.focus({preventScroll:true});
 }
 function openMenu(){
@@ -2879,7 +2855,6 @@ function pieClose(){
   RST.svg=null;RST.sel=[0];
   const w=$('#pie-wrap');
   w.classList.remove('open');w.setAttribute('aria-hidden','true');
-  const p=$('#pie-path');if(p)p.classList.add('hide');
   $('#home-reopen').classList.remove('hide');
 }
 function rCycle(d){
