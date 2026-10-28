@@ -2826,13 +2826,14 @@ function rBuildLevel(L,active){
     const [a0,a1]=spans[i];
     const grp=document.createElementNS(RNS,'g');
     grp.style.setProperty('--i',i);
-    /* Fan (deck de cartes): closed pose = ce secteur tourné pour se SUPERPOSER
-       au 1er segment (pile sous lui, qui est la carte du devant). CSS rotate
-       (+θ) ajoute θ à l'angle d'écran (y ↓) → il faut θ = angle(1er) −
-       angle(secteur) pour ramener ce secteur sur le mid-angle du 1er. Le 1er
-       a --fan:0 et reste immobile ; les suivants partent empilés dessus et se
-       déploient un à un. */
-    grp.style.setProperty('--fan',(((spans[0][0]+spans[0][1])/2)-((a0+a1)/2))+'deg');
+    /* Fan-out (deck de cartes, 2026-10-28) : sous-niveaux (level>=1) la pile
+       démarre au bord amont (a0) du secteur L1 parent ; le 1er sous-item sort
+       de dessous l'item de niveau 1, les suivants se déplacent en sens horaire
+       et apparaissent un sous l'autre (stagger --i, le 1er = carte devant).
+       Level 0 : ancrage au 1er verbe. --fan = ancrage - mid(secteur), rotation
+       autour du CENTRE de la roue (transform-origin centre du viewBox). */
+    const anchorMid = L.level===0 ? (spans[0][0]+spans[0][1])/2 : L.span[0];
+    grp.style.setProperty('--fan',(anchorMid-((a0+a1)/2))+'deg');
     grp.setAttribute('class','sector'+(i===L.sel?(active?' selected':' sel-inner'):''));
     grp.setAttribute('role','menuitem');
     grp.setAttribute('aria-label',t(it.i18n));
