@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ELT Assessor — maquette menu radial v3 (secteurs limités)</title>
+<!-- ============================================================
+     MAQUETTE v3 — menu radial imbriqué, SANS TOUR DE CERCLE
+     Port du composant axln/radial-menu-vue en vanilla JS/SVG
+     (zéro dépendance). Règle demandée par tibo :
+
+       Chaque niveau de sous-menu est LIMITÉ au secteur angulaire
+       du parent SÉLECTIONNÉ : les enfants se partagent l'angle de
+       leur parent (360°/3 = 120° → 60° → 30° …). Le menu pousse
+       vers l'extérieur sans jamais "tourner" autour du centre.
+
+     Niveaux (niveaux = couronnes) :
+       L0 : 3 verbes, cercle complet (120° chacun)
+       L1 : enfants du verbe sélectionné, DANS son secteur de 120°
+       L2 : enfants du L1 sélectionné, DANS son secteur de 60° …
+
+     Navigation :
+       - molette / ← → (ou ↑ ↓) : cycle la sélection du niveau le
+         plus PROFOND (celui dont dépend tout le reste)
+       - Entrée / clic secteur : exécute (feuille) ou sélectionne
+         (interne → les niveaux plus profonds se reconstructissent
+         dans le nouveau secteur angulaire)
+       - Échap / clic centre / backdrop : ferme
+       - bandeau sous le menu : chemin courant ("Préparer › Classe
+         / élèves"), pour repérer où l'on est
+     Niveaux 3+ : "Cours/Devoirs (dém.)" sous Classe/élèves sert de
+     3ᵉ niveau de démonstration — à retirer à l'intégration.
+     ============================================================ -->
+<style>
+:root{
+  --bg:#f4f6f9; --panel:#ffffff; --ink:#1c2430; --muted:#64748b; --line:#e2e8f0;
+  --acc:#2563eb; --acc-soft:#eff6ff; --ok:#16a34a; --warn:#d97706; --err:#dc2626;
+  --radius:12px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  background:var(--bg);color:var(--ink)}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10;
+  display:flex;align-items:center;gap:12px;padding:10px 18px}
+header .brand{font-weight:800;font-size:17px}
+header .brand span{color:var(--acc)}
+header .mock-note{font-size:12px;color:var(--muted)}
+.lang-tgl{margin-left:auto;display:flex;gap:4px}
+.lang-tgl button{border:1px solid var(--line);background:none;border-radius:999px;
+  padding:3px 10px;font:inherit;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer}
+.lang-tgl button.on{background:var(--acc-soft);color:var(--acc)}
+.wrap{max-width:980px;margin:0 auto;padding:18px 16px 120px}
+
+/* ---- home (copié de l'app) ---- */
+.home-hero{text-align:center;margin:38px 0 28px}
+.home-hero h1{font-size:26px;margin:0 0 6px}
+.home-hero p{color:var(--muted);margin:0}
+.home-row{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:0 auto;max-width:780px}
+.home-btn{--hb:var(--acc);flex:1 1 190px;max-width:260px;min-height:150px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
+  background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
+  cursor:pointer;font-size:17px;font-weight:600;color:var(--ink);
+  transition:transform .15s,box-shadow .15s,border-color .15s,background .15s}
+.home-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(15,23,42,.12);border-color:var(--hb)}
+.home-btn.pie-open{border-color:var(--hb);background:var(--acc-soft)}
+.home-ico{font-size:38px;line-height:1}
+#home-prepare{--hb:#0d9488}
+#home-evaluate{--hb:#2563eb}
+#home-analyze{--hb:#7c3aed}
+.home-adv-wrap{text-align:center;margin-top:28px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 16px;
+  font:inherit;font-size:14px;color:var(--ink);cursor:pointer;box-shadow:var(--shadow)}
+.btn.ghost{background:none;box-shadow:none;color:var(--muted)}
+
+/* ---- radial menu (v3 : sous-niveaux limités au secteur du parent) ---- */
+#pie-wrap{position:fixed;inset:0;z-index:70;display:none}
+#pie-wrap.open{display:block}
+#pie-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.28);
+  opacity:0;transition:opacity .18s ease}
+#pie-wrap.open #pie-backdrop{opacity:1}
+#pie-stage{position:absolute;inset:0}
+.menu{position:absolute;overflow:visible;user-select:none;-webkit-user-select:none;
+  transition:opacity .18s ease}
+.menu.closing{opacity:0}
+.menu .sector path{fill:rgba(255,255,255,.94);stroke:var(--line);stroke-width:1;
+  transition:fill .12s ease;cursor:pointer}
+.menu .sector:hover path{fill:#dbeafe}
+.menu .sector.sel-inner path{fill:var(--acc-soft);stroke:var(--acc)}
+.menu .sector.selected path{fill:var(--acc);stroke:var(--acc)}
+.menu .sector:focus{outline:none}
+.menu .sector text{pointer-events:none}
+.menu .sector .lbl{fill:var(--ink);font-weight:600}
+.menu .sector.selected .lbl{fill:#fff}
+.menu .center circle{fill:var(--panel);stroke:var(--line);
+  filter:drop-shadow(0 3px 10px rgba(15,23,42,.25));transition:fill .12s ease;cursor:pointer}
+.menu .center:hover circle{fill:var(--acc-soft)}
+.menu .center:focus{outline:none}
+.menu .center text{pointer-events:none}
+/* chemin courant sous le menu */
+#pie-path.hide{display:none}
+#pie-path{position:absolute;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  box-shadow:var(--shadow);padding:6px 14px;font-size:13px;font-weight:600;color:var(--muted);
+  white-space:nowrap;max-width:min(92vw,560px);overflow:hidden;text-overflow:ellipsis}
+#pie-path .leaf{color:var(--ink)}
+g.g-enter{animation:gIn .3s ease-out both}
+@keyframes gIn{from{opacity:0;transform:scale(.88)}}
+g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .2s ease;
+  pointer-events:none}
+#pie-stage g{transform-box:view-box;transform-origin:50% 50%}
+
+/* ---- log (maquette only) ---- */
+#log{position:fixed;left:12px;bottom:12px;z-index:99;max-width:360px;
+  background:rgba(15,23,42,.88);color:#e2e8f0;font-size:12px;font-family:ui-monospace,monospace;
+  border-radius:10px;padding:10px 12px;line-height:1.5}
+#log .ln .t{color:#93c5fd}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">ELT <span>Assessor</span></div>
+  <div class="mock-note">maquette menu radial v3 · sous-niveaux limités au secteur du parent</div>
+  <div class="lang-tgl">
+    <button id="lang-fr" class="on">FR</button>
+    <button id="lang-en">EN</button>
+  </div>
+</header>
+<main class="wrap">
+  <section id="view-home">
+    <div class="home-hero">
+      <h1 data-i18n="home.title">Que souhaitez-vous faire ?</h1>
+      <p data-i18n="home.sub">Choisissez une action — l’interface complète se trouve en mode avancé.</p>
+    </div>
+    <div class="home-row">
+      <button class="home-btn" id="home-prepare" data-verb="prepare">
+        <span class="home-ico">📚</span><span data-i18n="home.prepare">Préparer</span>
+      </button>
+      <button class="home-btn" id="home-evaluate" data-verb="evaluate">
+        <span class="home-ico">✍️</span><span data-i18n="home.evaluate">Évaluer</span>
+      </button>
+      <button class="home-btn" id="home-analyze" data-verb="analyze">
+        <span class="home-ico">📊</span><span data-i18n="home.analyze">Analyser</span>
+      </button>
+    </div>
+    <div class="home-adv-wrap">
+      <button class="btn ghost" id="home-advanced" data-i18n="home.advanced">Mode avancé ▸</button>
+    </div>
+  </section>
+</main>
+
+<!-- overlay du menu radial -->
+<div id="pie-wrap" aria-hidden="true">
+  <div id="pie-backdrop"></div>
+  <div id="pie-stage"></div>
+  <div id="pie-path" class="hide"></div>
+</div>
+
+<div id="log"><b>Journal (maquette)</b> ·
+<span class="t">molette / ←→</span> = cycle le niveau le plus profond ·
+<span class="t">⏎ / clic</span> = exécuter · <span class="t">Échap / centre</span> = fermer<br>
+<div id="log-lines"></div>
+</div>
+
+<script>
+"use strict";
+/* ================= i18n (mêmes clés que l'app) ================= */
+const I18N={
+fr:{'home.title':'Que souhaitez-vous faire ?','home.sub':'Choisissez une action — l’interface complète se trouve en mode avancé.',
+'home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸',
+'home.prepClass':'Classe / élèves','home.prepSubject':'Sujet',
+'home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique',
+'demo.courses':'Cours (dém.)','demo.homework':'Devoirs (dém.)'},
+en:{'home.title':'What would you like to do?','home.sub':'Pick an action — the full interface lives in advanced mode.',
+'home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸',
+'home.prepClass':'Class / students','home.prepSubject':'Subject',
+'home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History',
+'demo.courses':'Courses (demo)','demo.homework':'Homework (demo)'}
+};
+let LANG='fr';
+const t=k=>I18N[LANG][k]||k;
+
+/* ================= arbre du menu =================
+   nœud : {id, ico, i18n, go?, sub?}. go() = action feuille ;
+   sub[] = niveau suivant (dessiné DANS le secteur angulaire du
+   parent). ⚠️ 3ᵉ niveau = DÉMO — retirer à l'intégration. */
+const MENU=[
+  {id:'prepare', ico:'📚', i18n:'home.prepare', sub:[
+    {id:'class', ico:'🏫', i18n:'home.prepClass', go:()=>act('navGo("students")'), sub:[
+      {id:'courses',  ico:'📅', i18n:'demo.courses',  go:()=>act('navGo("students/courses") [démo]')},
+      {id:'homework', ico:'✏️', i18n:'demo.homework', go:()=>act('navGo("students/homework") [démo]')},
+    ]},
+    {id:'subject', ico:'📚', i18n:'home.prepSubject', go:()=>act('navGo("assignments")')},
+  ]},
+  {id:'evaluate', ico:'✍️', i18n:'home.evaluate', go:()=>act('goEvaluate()')},
+  {id:'analyze', ico:'📊', i18n:'home.analyze', sub:[
+    {id:'student',   ico:'📈', i18n:'home.anStudent',    go:()=>act('navGo("students")')},
+    {id:'assignment',ico:'📊', i18n:'home.anAssignment', go:()=>act('navGo("assignments")')},
+    {id:'history',   ico:'🗂️', i18n:'home.anHistory',    go:()=>act('navGo("history")')},
+  ]},
+];
+
+function act(s){log('→ '+s);}
+const logLines=$('#log-lines');
+function log(s){
+  const d=document.createElement('div');d.className='ln';
+  d.innerHTML=`<span class="t">${new Date().toLocaleTimeString('fr-FR',{hour12:false})}</span> ${s}`;
+  logLines.prepend(d);
+  while(logLines.children.length>5)logLines.lastChild.remove();
+}
+
+/* ================= géométrie =================
+   Angles en degrés, 0° = DROITE, sens trigonométrique standard
+   (SVG : y vers le bas → +deg = sens horaire visuel).
+   Le niveau 0 couvre 360° ; chaque niveau descendant se partage le
+   secteur angulaire du parent sélectionné. */
+const NS='http://www.w3.org/2000/svg', DEG=Math.PI/180, NMAX=3, GAP=3; /* GAP = ° entre secteurs d'un même niveau */
+function sectorPath(ri,ro,a0,a1){
+  const p=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];
+  const [x0,y0]=p(ro,a0),[x1,y1]=p(ro,a1),[x2,y2]=p(ri,a1),[x3,y3]=p(ri,a0);
+  const big=(a1-a0)>Math.PI?1:0;
+  return `M ${x0} ${y0} A ${ro} ${ro} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${ri} ${ri} 0 ${big} 0 ${x3} ${y3} Z`;
+}
+/* partage de [a0,a1] en n parts égales (avec GAP° entre parts) */
+function splitSpan(a0,a1,n){
+  const step=(a1-a0)/n, out=[];
+  for(let i=0;i<n;i++)
+    out.push([a0+step*i+(n>1?GAP/2:0), a0+step*(i+1)-(n>1?GAP/2:0)]);
+  return out;
+}
+function chain(){
+  /* renvoie [{level, items, sel, span:[a0,a1], mid}] pour chaque niveau
+     courant ; s'arrête au premier secteur sélectionné sans enfants. */
+  const out=[{level:0,items:MENU,sel:Math.min(st.sel[0]??0,MENU.length-1),span:[-150,210]}];
+  let cur=MENU[out[0].sel];
+  while(cur&&cur.sub){
+    const lvl=out.length;
+    const parent=out[lvl-1];
+    const raw=st.sel[lvl];
+    const sel=Math.min(Number.isFinite(raw)?raw:0, cur.sub.length-1);
+    out.push({level:lvl,items:cur.sub,sel,
+              span:splitSpan(parent.span[0],parent.span[1],parent.items.length)[parent.sel]});
+    cur=cur.sub[sel];
+  }
+  out.forEach(L=>{L.mid=(L.span[0]+L.span[1])/2;});
+  st.sel=out.map(L=>L.sel);   /* réécrit l'état normalisé (NaN/undefined → valeurs valides) */
+  return out;
+}
+
+/* ================= état ================= */
+const wrap=$('#pie-wrap'),stage=$('#pie-stage'),pathEl=$('#pie-path');
+const st={open:false,anchor:null,cx:0,cy:0,sel:[0],svg:null,C:0,T:0,D:0};
+function $(s){return document.querySelector(s)}
+function geom(){
+  const mob=window.innerWidth<480;
+  const C=mob?28:34, Tmax=mob?62:84;
+  /* le SVG (toujours dimensionné pour NMAX niveaux) reste à ≥8px de
+     chaque bord du viewport autour du point d'ancrage. */
+  let Rmax=Math.min(st.cx-8,window.innerWidth-st.cx-8,st.cy-8,window.innerHeight-st.cy-8);
+  Rmax=Math.max(96,Rmax);
+  const T=Math.max(30,Math.min(Tmax,(Rmax-C-4)/NMAX));
+  const D=2*(C+NMAX*T);
+  return {C,T,D};
+}
+function ensureSvg(){
+  const g=geom();Object.assign(st,g);
+  let svg=st.svg;
+  if(!svg){
+    svg=document.createElementNS(NS,'svg');
+    svg.setAttribute('class','menu');
+    stage.appendChild(svg);
+    st.svg=svg;
+  }
+  svg.setAttribute('width',g.D);svg.setAttribute('height',g.D);
+  svg.setAttribute('viewBox',`${-g.D/2} ${-g.D/2} ${g.D} ${g.D}`);
+  svg.style.left=(st.cx-g.D/2)+'px';
+  svg.style.top =(st.cy-g.D/2)+'px';
+  return svg;
+}
+
+/* ================= rendu d'un niveau (dans SON secteur) ================= */
+function labelMetrics(text,arcLen,T){
+  /* retourne {lines,fs,emojiOnly} : fs adapté à la largeur d'arc dispo */
+  const maxW=arcLen*0.92;
+  let lines;
+  if(text.length<=12)lines=[text];
+  else{
+    /* coupure au blanc le PLUS PRÈS du milieu (deux parties ≥ 2 carac) */
+    let best=-1,bd=1e9;
+    for(let i=0;i<text.length;i++)if(text[i]===' '){
+      if(i<2||text.length-i<2)continue;
+      const d=Math.abs(i-text.length/2);
+      if(d<bd){bd=d;best=i;}
+    }
+    lines=best>0?[text.slice(0,best),text.slice(best+1)]:[text];
+  }
+  let fs=Math.min(15,T*0.22);
+  const est=()=>Math.max(...lines.map(l=>l.length))*0.58*fs;
+  while(est()>maxW&&fs>8)fs-=0.5;
+  return {lines,fs,emojiOnly:lines.length>2||est()>maxW*1.15};
+}
+function buildLevel(L,active){
+  const {C,T}=st;
+  const ri=C+L.level*T, ro=C+(L.level+1)*T, rm=(ri+ro)/2;
+  const g=document.createElementNS(NS,'g');
+  g.setAttribute('id','rg-'+L.level);
+  g.dataset.key=L.items.map(i=>i.id).join('|')+':'+L.sel+':'+L.span.map(n=>n.toFixed(1)).join(',');
+  const spans=splitSpan(L.span[0],L.span[1],L.items.length);
+  L.items.forEach((it,i)=>{
+    const [a0,a1]=spans[i];
+    const grp=document.createElementNS(NS,'g');
+    const selc=i===L.sel?(active?' selected':' sel-inner'):'';
+    grp.setAttribute('class','sector'+selc);
+    grp.setAttribute('role','menuitem');
+    grp.setAttribute('aria-label',t(it.i18n));
+    grp.dataset.i18n=it.i18n;grp.dataset.idx=i;
+    grp.tabIndex=(active&&i===L.sel)?0:-1;
+    const ti=document.createElementNS(NS,'title');
+    ti.textContent=t(it.i18n);grp.appendChild(ti);
+    const p=document.createElementNS(NS,'path');
+    p.setAttribute('d',sectorPath(ri,ro,a0*DEG,a1*DEG));
+    grp.appendChild(p);
+    const mid=(a0+a1)/2*DEG, x=rm*Math.cos(mid), y=rm*Math.sin(mid);
+    const em=document.createElementNS(NS,'text');
+    em.setAttribute('class','em');em.setAttribute('text-anchor','middle');
+    em.setAttribute('x',x);em.setAttribute('y',y-T*0.14);
+    em.style.fontSize=Math.max(14,Math.min(26,T*0.3))+'px';
+    em.textContent=it.ico;grp.appendChild(em);
+    const arcLen=(a1-a0)*DEG*rm;
+    const lm=labelMetrics(t(it.i18n),arcLen,T);
+    if(!lm.emojiOnly){
+      const tx=document.createElementNS(NS,'text');
+      tx.setAttribute('class','lbl');tx.setAttribute('text-anchor','middle');
+      tx.style.fontSize=lm.fs+'px';
+      lm.lines.slice(0,2).forEach((ln,k)=>{
+        const ts=document.createElementNS(NS,'tspan');
+        ts.setAttribute('x',x);ts.setAttribute('y',y+T*0.24+k*(lm.fs+3));
+        ts.textContent=ln;tx.appendChild(ts);
+      });
+      grp.appendChild(tx);
+    }
+    g.appendChild(grp);
+  });
+  return g;
+}
+function updateCenter(L0){
+  let c=document.getElementById('pie-center');
+  if(!c){
+    c=document.createElementNS(NS,'g');
+    c.id='pie-center';c.setAttribute('class','center');c.setAttribute('role','button');
+    c.appendChild(Object.assign(document.createElementNS(NS,'title'),{textContent:'Fermer (Échap)'}));
+    c.appendChild(document.createElementNS(NS,'circle'));
+    const tx=document.createElementNS(NS,'text');
+    tx.setAttribute('class','em');tx.setAttribute('text-anchor','middle');
+    c.appendChild(tx);
+    st.svg.appendChild(c);
+  }
+  c.querySelector('circle').setAttribute('r',st.C-2);
+  const tx=c.querySelector('text');
+  tx.setAttribute('y',st.C*0.3);
+  tx.style.fontSize=Math.round(st.C*0.78)+'px';
+  tx.textContent=L0.items[L0.sel].ico;
+  c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
+}
+function updatePath(levels){
+  pathEl.innerHTML=levels.map((L,k)=>{
+    const it=L.items[L.sel];
+    return k===levels.length-1?`<span class="leaf">${esc(it.ico)} ${esc(t(it.i18n))}</span>`
+      :`${esc(it.ico)} ${esc(t(it.i18n))}`;
+  }).join(' <span style="color:#cbd5e1">›</span> ');
+  pathEl.classList.remove('hide');
+  /* positionné sous le menu (ou au-dessus si pas de place), clampé dans
+     le viewport ; translateX(-50%) recentre sur st.cx */
+  const below=st.cy+st.D/2+12;
+  const top=below>window.innerHeight-52?st.cy-st.D/2-44:below;
+  pathEl.style.left=st.cx+'px';
+  pathEl.style.top=top+'px';
+}
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+function keyOf(L){return L.items.map(i=>i.id).join('|')+':'+L.sel+':'+L.span.map(n=>n.toFixed(1)).join(',');}
+function render(mode){
+  const levels=chain();
+  const svg=ensureSvg();
+  const active=levels.length-1;
+  svg.querySelectorAll('g[id^="rg-"]').forEach(gel=>{
+    const lv=+gel.id.slice(3);
+    if(!levels.some(L=>L.level===lv)&&!gel.classList.contains('g-exit')){
+      gel.classList.add('g-exit');
+      gel.querySelectorAll('.sector').forEach(s=>s.tabIndex=-1);
+      setTimeout(()=>gel.remove(),230);
+    }
+  });
+  levels.forEach(L=>{
+    let g=document.getElementById('rg-'+L.level);
+    if(g&&g.classList.contains('g-exit'))g.remove();
+    if(g&&g.dataset.key===keyOf(L)){
+      g.querySelectorAll('.sector').forEach((sec,i)=>{
+        sec.classList.toggle('selected',active===L.level&&i===L.sel);
+        sec.classList.toggle('sel-inner',active!==L.level&&i===L.sel);
+        sec.tabIndex=(active===L.level&&i===L.sel)?0:-1;
+      });
+    }else{
+      if(g)g.remove();
+      g=buildLevel(L,active===L.level);
+      g.classList.add('g-enter');
+      svg.appendChild(g);
+    }
+  });
+  updateCenter(levels[0]);
+  updatePath(levels);
+  svg.querySelector(`#rg-${active} .sector.selected`)?.focus({preventScroll:true});
+}
+
+/* ================= actions ================= */
+function openMenu(anchor,verbId){
+  closeAll(true);
+  st.open=true;st.anchor=anchor;
+  const r=anchor.getBoundingClientRect();
+  st.cx=r.left+r.width/2;st.cy=r.top+r.height/2;
+  st.sel=[Math.max(0,MENU.findIndex(m=>m.id===verbId))];
+  ensureSvg();
+  wrap.classList.add('open');wrap.setAttribute('aria-hidden','false');
+  anchor.classList.add('pie-open');
+  render();
+}
+function closeAll(instant){
+  if(!st.open)return;
+  st.open=false;
+  const svg=st.svg;
+  if(svg){svg.classList.add('closing');setTimeout(()=>svg.remove(),instant?0:190);}
+  st.svg=null;st.sel=[0];
+  wrap.classList.remove('open');wrap.setAttribute('aria-hidden','true');
+  pathEl.classList.add('hide');
+  document.querySelectorAll('.home-btn.pie-open').forEach(b=>b.classList.remove('pie-open'));
+}
+function cycle(d){
+  const levels=chain();
+  const active=levels.length-1;
+  const n=levels[active].items.length;
+  st.sel[active]=(st.sel[active]+d+n)%n;
+  render();
+}
+function pick(level,i){
+  const levels=chain();
+  const L=levels.find(x=>x.level===level);
+  if(!L)return;
+  const it=L.items[i];
+  if(it.sub){st.sel[level]=i;st.sel=st.sel.slice(0,level+1);render();}
+  else{closeAll();it.go();}
+}
+function execute(){
+  const levels=chain();
+  const L=levels[levels.length-1];
+  const it=L.items[L.sel];
+  closeAll();
+  it.go();
+}
+
+/* ================= événements ================= */
+wrap.addEventListener('wheel',e=>{
+  if(!st.open)return;e.preventDefault();
+  cycle(e.deltaY>0?1:-1);
+},{passive:false});
+document.addEventListener('keydown',e=>{
+  if(!st.open)return;
+  if(e.key==='Escape'){e.preventDefault();closeAll();}
+  else if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();cycle(1);}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();cycle(-1);}
+  else if(e.key==='Enter'||e.key===' '){e.preventDefault();execute();}
+});
+document.querySelectorAll('.home-btn').forEach(b=>{
+  b.addEventListener('click',()=>openMenu(b,b.dataset.verb));
+});
+$('#home-advanced').addEventListener('click',()=>act('navGo("assignments")'));
+$('#pie-backdrop').addEventListener('click',()=>closeAll());
+stage.addEventListener('click',e=>{
+  if(!st.open)return;
+  const sec=e.target.closest('.sector');
+  if(sec){
+    const g=sec.closest('g[id^="rg-"]');
+    pick(+g.id.slice(3),+sec.dataset.idx);
+    return;
+  }
+  if(e.target.closest('#pie-center'))closeAll();
+});
+let rsT;
+window.addEventListener('resize',()=>{
+  if(!st.open)return;clearTimeout(rsT);
+  rsT=setTimeout(()=>{
+    if(!st.open)return;
+    st.svg.remove();st.svg=null;
+    render();
+  },150);
+});
+
+/* ================= i18n toggle ================= */
+function refreshLang(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
+  if(st.open){
+    st.svg.querySelectorAll('g[id^="rg-"]').forEach(g=>g.remove());
+    const c=document.getElementById('pie-center');if(c)c.remove();
+    render();
+  }
+}
+[['#lang-fr','fr'],['#lang-en','en']].forEach(([sel,l])=>{
+  $(sel).addEventListener('click',()=>{
+    LANG=l;
+    document.querySelectorAll('.lang-tgl button').forEach(b=>b.classList.toggle('on',b===$(sel)));
+    refreshLang();
+  });
+});
+</script>
+</body>
+</html>

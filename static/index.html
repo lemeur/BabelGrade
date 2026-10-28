@@ -1123,48 +1123,71 @@ table.conv-tab thead td.conv-bd{font-weight:700}
   .md h1{font-size:22px}.md h2{font-size:18px}
   .md-card{padding:12px}
 }
-/* ---- home (simplified mode, boot default — 2026-10-27) ----
-   Three big verbs + a small "advanced" back-door to the full interface.
-   Prepare & Analyze open a radial pie menu (#pie-wrap) around the pressed
-   button; Evaluate goes straight to the evaluator form. */
-#view-home .home-hero{text-align:center;margin:38px 0 28px}
+/* ---- home (simplified mode, boot default — 2026-10-27, radial v3 2026-10-27) ----
+   No more rectangular buttons: the RADIAL menu opens by default, centred where
+   the 3 verbs used to sit. Each submenu level = a crown of SVG sectors
+   confined to its parent's angular sector (innermost = the 3 verbs).
+   Wheel/arrows cycle the outermost level, Enter/click executes, Esc/centre
+   closes. A small "advanced" back-door keeps the full interface one tap away. */
+#view-home .home-hero{text-align:center;margin:30px 0 10px}
 #view-home .home-hero h1{font-size:26px;margin:0 0 6px}
 #view-home .home-hero p{color:var(--muted);margin:0}
-.home-row{display:flex;gap:18px;justify-content:center;flex-wrap:wrap;margin:0 auto;max-width:780px}
-.home-btn{--hb:var(--acc);flex:1 1 190px;max-width:260px;min-height:150px;
-  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;
-  background:var(--panel);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);
-  cursor:pointer;font-size:17px;font-weight:600;color:var(--ink);
-  transition:transform .15s,box-shadow .15s,border-color .15s,background .15s}
-.home-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(15,23,42,.12);border-color:var(--hb)}
-.home-btn.pie-open{border-color:var(--hb);background:var(--acc-soft)}
-.home-ico{font-size:38px;line-height:1}
-#home-prepare{--hb:#0d9488}
-#home-evaluate{--hb:#2563eb}
-#home-analyze{--hb:#7c3aed}
-.home-adv-wrap{text-align:center;margin-top:28px}
+/* the space the radial menu occupies (anchor = its centre) */
+.home-center{position:relative;height:min(420px,58vh);min-height:300px}
+#home-anchor{position:absolute;left:50%;top:50%;width:0;height:0}
+/* re-open affordance shown when the menu is closed (the menu opens by
+   default; closing it leaves a ghost pill in its place) */
+.home-reopen{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  border:1px dashed var(--line);background:var(--panel);border-radius:999px;
+  padding:11px 20px;font:inherit;font-size:15px;font-weight:600;color:var(--ink);
+  cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
+.home-reopen:hover{border-color:var(--acc);border-style:solid;color:var(--acc)}
+.home-reopen.hide{display:none}
+.home-adv-wrap{text-align:center;margin-bottom:34px}
 @media(max-width:480px){
-  #view-home .home-hero{margin:22px 0 18px}
+  #view-home .home-hero{margin:18px 0 6px}
   #view-home .home-hero h1{font-size:21px}
-  .home-row{flex-direction:column;align-items:stretch;max-width:340px}
-  .home-btn{flex:none;max-width:none;min-height:96px;flex-direction:row;gap:12px}
-  .home-ico{font-size:30px}
+  .home-center{height:min(380px,55vh);min-height:280px}
 }
-/* radial (pie) menu — fixed overlay, items fan out on an arc above the
-   pressed button (below it when the button is near the top edge).
+/* radial menu — fixed overlay, SVG crowns centred on #home-anchor.
    z-index 70: above content/header, below modals (80) and sheets (92+). */
 #pie-wrap{position:fixed;inset:0;z-index:70;display:none}
 #pie-wrap.open{display:block}
-#pie-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.28)}
-#pie-arc{position:absolute;left:0;top:0;width:0;height:0}
-.pie-item{position:absolute;transform:translate(-50%,-50%) scale(.55);opacity:0;
-  transition:transform .16s ease,opacity .16s ease;
-  display:flex;align-items:center;gap:8px;white-space:nowrap;
-  background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:10px 16px;
-  font-size:14px;font-weight:600;color:var(--ink);cursor:pointer;
-  box-shadow:0 4px 14px rgba(15,23,42,.18);min-height:44px}
-#pie-wrap.open .pie-item{transform:translate(-50%,-50%) scale(1);opacity:1}
-.pie-item:hover,.pie-item:focus{border-color:var(--acc);outline:none}
+#pie-backdrop{position:absolute;inset:0;
+  background:radial-gradient(120% 95% at 50% 42%,
+    rgba(244,247,252,.45) 0%, rgba(244,247,252,.86) 45%, rgba(244,247,252,.97) 100%);
+  opacity:0;transition:opacity .18s ease}
+#pie-wrap.open #pie-backdrop{opacity:1}
+#pie-stage{position:absolute;inset:0}
+.rsvg{position:absolute;overflow:visible;user-select:none;-webkit-user-select:none;
+  transition:opacity .18s ease}
+.rsvg.closing{opacity:0}
+.rsvg .sector path{fill:rgba(255,255,255,.94);stroke:var(--line);stroke-width:1;
+  transition:fill .12s ease;cursor:pointer}
+.rsvg .sector:hover path{fill:#dbeafe}
+.rsvg .sector.sel-inner path{fill:var(--acc-soft);stroke:var(--acc)}
+.rsvg .sector.selected path{fill:var(--acc);stroke:var(--acc)}
+.rsvg .sector:focus{outline:none}
+.rsvg .sector text{pointer-events:none}
+.rsvg .sector .lbl{fill:var(--ink);font-weight:600}
+.rsvg .sector.selected .lbl{fill:#fff}
+.rsvg .center circle{fill:var(--panel);stroke:var(--line);
+  filter:drop-shadow(0 3px 10px rgba(15,23,42,.25));transition:fill .12s ease;cursor:pointer}
+.rsvg .center:hover circle{fill:var(--acc-soft)}
+.rsvg .center:focus{outline:none}
+.rsvg .center text{pointer-events:none}
+/* current path pill under the menu (📚 Préparer › 🏫 Classe / élèves) */
+#pie-path.hide{display:none}
+#pie-path{position:absolute;transform:translateX(-50%);
+  background:var(--panel);border:1px solid var(--line);border-radius:999px;
+  box-shadow:var(--shadow);padding:6px 14px;font-size:13px;font-weight:600;color:var(--muted);
+  white-space:nowrap;max-width:min(92vw,560px);overflow:hidden;text-overflow:ellipsis}
+#pie-path .leaf{color:var(--ink)}
+g.g-enter{animation:gIn .3s ease-out both}
+@keyframes gIn{from{opacity:0;transform:scale(.88)}}
+g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .2s ease;
+  pointer-events:none}
+#pie-stage g{transform-box:view-box;transform-origin:50% 50%}
 </style>
 </head>
 <body>
@@ -1197,12 +1220,14 @@ table.conv-tab thead td.conv-bd{font-weight:700}
      on screen, display:block under @media print (body>*:not(#print-root) hidden). -->
 <div id="print-root" style="display:none"></div>
 
-<!-- Radial (pie) menu overlay for the home view (2026-10-27). Items are
-     injected by pieOpen(kind, anchorEl); fixed z-70 so it sits above content
-     and the header but below modals (z-80). -->
+<!-- Radial menu overlay for the home view (2026-10-27, v3: crowns of SVG
+     sectors, each level confined to its parent's angular sector). Crowns
+     are injected by the radial engine (openMenu/radialRender); fixed z-70
+     so it sits above content and the header but below modals (z-80). -->
 <div id="pie-wrap" aria-hidden="true">
   <div id="pie-backdrop"></div>
-  <div id="pie-arc"></div>
+  <div id="pie-stage"></div>
+  <div id="pie-path" class="hide"></div>
 </div>
 
 
@@ -1295,24 +1320,20 @@ table.conv-tab thead td.conv-bd{font-weight:700}
 
 <main class="wrap">
   <!-- ================= HOME (simplified mode, boot default — 2026-10-27) =================
-       Three big verbs: Prepare / Evaluate / Analyze. Prepare & Analyze open a
-       radial (pie) menu around the pressed button; Evaluate goes straight to
-       the evaluator form. The full interface ("advanced") stays one tap away:
-       #home-advanced here, #hdr-home in the header. -->
+       No more rectangular buttons (2026-10-27 radial v3): the RADIAL menu
+       opens by default, centred on #home-anchor. Innermost crown = the 3
+       verbs; each submenu level = a crown confined to the selected parent's
+       angular sector. The full interface ("advanced") stays one tap away:
+       #home-advanced below, #hdr-home in the header. -->
   <section id="view-home" class="hide">
     <div class="home-hero">
       <h1 data-i18n="home.title">What would you like to do?</h1>
       <p data-i18n="home.sub">Pick an action — the full interface lives in advanced mode.</p>
     </div>
-    <div class="home-row">
-      <button class="home-btn" id="home-prepare" data-pie="prepare">
-        <span class="home-ico">📚</span><span data-i18n="home.prepare">Prepare</span>
-      </button>
-      <button class="home-btn" id="home-evaluate">
-        <span class="home-ico">✍️</span><span data-i18n="home.evaluate">Evaluate</span>
-      </button>
-      <button class="home-btn" id="home-analyze" data-pie="analyze">
-        <span class="home-ico">📊</span><span data-i18n="home.analyze">Analyze</span>
+    <div class="home-center" id="home-center">
+      <div id="home-anchor"></div>
+      <button class="home-reopen hide" id="home-reopen">
+        <span style="font-size:18px">◎</span><span data-i18n="home.reopen">Open the menu</span>
       </button>
     </div>
     <div class="home-adv-wrap">
@@ -2084,7 +2105,7 @@ function wireAuth(){
 const I18N={
  en:{
   'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.jobs':'Jobs',
-  'home.title':'What would you like to do?','home.sub':'Pick an action — the full interface lives in advanced mode.','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History',
+  'home.title':'What would you like to do?','home.sub':'Pick an action — the full interface lives in advanced mode.','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.advMenu':'Advanced mode','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
   'an.assignment':'Assignment (instruction + source document)','an.adhoc':'— ad-hoc (define the context below) —',
@@ -2171,7 +2192,7 @@ const I18N={
  },
  fr:{
   'nav.analyze':'Analyser','nav.history':'Évaluations','nav.assignments':'Sujets','nav.rubrics':'Grilles','hdr.evaluate':'✍️ Évaluer','nav.students':'Élèves','nav.data':'Données',
-  'home.title':'Que souhaitez-vous faire ?','home.sub':'Choisissez une action — l’interface complète se trouve en mode avancé.','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique',
+  'home.title':'Que souhaitez-vous faire ?','home.sub':'Choisissez une action — l’interface complète se trouve en mode avancé.','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.advMenu':'Mode avancé','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique',
   'menu.export':'Exporter les élèves (CSV)','menu.import':'Importer les élèves (CSV)','menu.reset':'Réinitialiser la base','menu.wipe':'Réinit. + effacer les fichiers','menu.confirmWipe':'RÉINITIALISER la base ET supprimer tous les fichiers stockés (photos, audio, PDFs) dans data/uploads/ ?\n\nTous les élèves, productions et analyses seront effacés. Irréversible.','menu.confirmReset':'RÉINITIALISER la base ?\n\nTous les élèves, productions et analyses seront effacés (fichiers stockés conservés sur disque). Irréversible.',
   'an.1':'Qu’est-ce qu’on évalue ?','an.2':'Élève & niveau cible','an.3':'Le travail de l’élève','an.4':'Paramètres d’évaluation','an.otherFormats':'Autres formats d’entrée (photos / PDF / audio)','an.rubricNote':'La grille définit les critères notés par l’IA (et le rapport que vous relirez).',
   'an.assignment':'Sujet (la consigne + le document source)','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
@@ -2258,7 +2279,7 @@ const I18N={
  },
  es:{
   'nav.analyze':'Analizar','nav.history':'Evaluaciones','nav.assignments':'Tareas','nav.rubrics':'Rúbricas','hdr.evaluate':'✍️ Evaluar','nav.students':'Estudiantes','nav.data':'Datos',
-  'home.title':'¿Qué te gustaría hacer?','home.sub':'Elige una acción — la interfaz completa está en el modo avanzado.','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial',
+  'home.title':'¿Qué te gustaría hacer?','home.sub':'Elige una acción — la interfaz completa está en el modo avanzado.','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.advMenu':'Modo avanzado','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial',
   'menu.export':'Exportar estudiantes (CSV)','menu.import':'Importar estudiantes (CSV)','menu.reset':'Reiniciar la base de datos','menu.wipe':'Reiniciar + borrar archivos','menu.confirmWipe':'¿REINICIAR la base de datos Y borrar todos los archivos guardados (fotos, audio, PDFs) en data/uploads/?\n\nSe borrarán todos los estudiantes, producciones y análisis. No se puede deshacer.','menu.confirmReset':'¿REINICIAR la base de datos?\n\nSe borrarán todos los estudiantes, producciones y análisis (los archivos guardados se conservan en disco). No se puede deshacer.',
   'an.1':'¿Qué estamos evaluando?','an.2':'Estudiante y nivel objetivo','an.3':'El trabajo del estudiante','an.4':'Ajustes de evaluación','an.otherFormats':'Otros formatos de entrada (fotos / PDF / audio)','an.rubricNote':'La rúbrica define los criterios que la IA puntuará (y el informe que revisarás).',
   'an.assignment':'Tarea (consigna + documento fuente)','an.adhoc':'— ad hoc (definir el contexto abajo) —',
@@ -2345,7 +2366,7 @@ const I18N={
  },
  de:{
   'nav.analyze':'Analysieren','nav.history':'Bewertungen','nav.assignments':'Aufgaben','nav.rubrics':'Rubriken','hdr.evaluate':'✍️ Bewerten','nav.students':'Schüler','nav.data':'Daten',
-  'home.title':'Was möchtest du tun?','home.sub':'Wähle eine Aktion — die vollständige Oberfläche findest du im erweiterten Modus.','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf',
+  'home.title':'Was möchtest du tun?','home.sub':'Wähle eine Aktion — die vollständige Oberfläche findest du im erweiterten Modus.','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.advMenu':'Erweiterter Modus','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf',
   'menu.export':'Schüler:innen CSV exportieren','menu.import':'Schüler:innen CSV importieren','menu.reset':'Datenbank zurücksetzen','menu.wipe':'Zurücksetzen + Dateien löschen','menu.confirmWipe':'DATENBANK ZURÜCKSETZEN und alle gespeicherten Dateien (Fotos, Audio, PDFs) in data/uploads/ löschen?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht. Das kann nicht rückgängig gemacht werden.','menu.confirmReset':'DATENBANK ZURÜCKSETZEN?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht (gespeicherte Dateien bleiben auf der Platte). Das kann nicht rückgängig gemacht werden.',
   'an.1':'Was bewerten wir?','an.2':'Schüler:in & Zielstufe','an.3':'Die Arbeit der Schüler:in','an.4':'Bewertungseinstellungen','an.otherFormats':'Weitere Eingabeformate (Fotos / PDF / Audio)','an.rubricNote':'Die Rubrik bestimmt die Kriterien, die die KI bewertet (und den Bericht, den Sie prüfen werden).',
   'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
@@ -2505,6 +2526,7 @@ function applyI18n(){
   if($('#view-rubrics')&&!$('#view-rubrics').closest('.hide')){renderRubricList();renderRubricDetail();}
   refreshUploadStatuses();
   refreshMFields();   /* mode-field icon labels + placeholders re-translate (defined lower in the file, but only ever CALLED from here/boot) */
+  radialRefreshI18n();   /* home radial menu (2026-10-27 v3): re-render the open crowns in the new language */
   /* point 15: task editor boxes show the CURRENT file (baked text) — re-paint
      them after the static [data-i18n] pass so labels vs current-file survive. */
   if(typeof asgnEditId!=='undefined'&&asgnEditId){paintAssignmentFileCur();$('#asg-add').textContent=t('assignments.editBtn');}
@@ -2621,69 +2643,306 @@ function goEvaluate(){
 }
 /* direct access to the evaluator from the header (every view) */
 $('#hdr-evaluate').addEventListener('click',goEvaluate);
-/* ---- home (simplified mode, 2026-10-27): radial pie menu + the 3 verbs ----
-   Prepare → [class/subjects · subject] · Evaluate → straight to the form
-   Analyze → [student progression · assignment results · history]
-   The pie is a FIXED overlay (z-70): items fan out on an arc ABOVE the
-   pressed button (below it when the button is near the top edge), radius
-   clamped to the viewport so labels never overflow on a 390px phone. */
-const PIE_ITEMS={
-  prepare:[
-    {ico:'🏫',i18n:'home.prepClass',go:()=>navGo('students',null,{scroll:true})},
-    {ico:'📚',i18n:'home.prepSubject',go:()=>navGo('assignments',null,{scroll:true})},
-  ],
-  analyze:[
-    {ico:'📈',i18n:'home.anStudent',go:()=>navGo('students',null,{scroll:true})},
-    {ico:'📊',i18n:'home.anAssignment',go:()=>navGo('assignments',null,{scroll:true})},
-    {ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
-  ],
-};
-function pieClose(){
-  const w=$('#pie-wrap');if(!w)return;
-  w.classList.remove('open');w.setAttribute('aria-hidden','true');
-  $$('.pie-item').forEach(b=>b.remove());
-  $$('.home-btn.pie-open').forEach(b=>b.classList.remove('pie-open'));
+/* ---- home radial menu (v3, 2026-10-27) ----
+   Concentric SVG crowns, OPEN BY DEFAULT on home: innermost crown = the 3
+   verbs (Prepare / Evaluate / Analyze); each submenu level = an OUTER crown
+   confined to the selected parent's angular sector (level 1 spans 120°,
+   level 2 ~40° …). Crowns are drawn in SVG <g id="rg-N"> groups, one per
+   level, rebuilt when the selection changes (soft exit/enter animation).
+   Interaction (ported from the axln/radial-menu-vue model, vanilla JS/SVG,
+   zero deps): wheel / ←→ cycle the OUTERMOST level, Enter or click =
+   execute, Esc or centre-click = close. The path pill under the menu shows
+   the current path (📚 Préparer › 🏫 Classe / élèves). The tree is open:
+   add {sub:[…]} on any leaf to nest another level — geometry is automatic. */
+const RADIAL_MENU=[
+  {id:'prepare',ico:'📚',i18n:'home.prepare',sub:[
+    {id:'class',ico:'🏫',i18n:'home.prepClass',go:()=>navGo('students',null,{scroll:true})},
+    {id:'subject',ico:'📚',i18n:'home.prepSubject',go:()=>navGo('assignments',null,{scroll:true})},
+  ]},
+  {id:'evaluate',ico:'✍️',i18n:'home.evaluate',go:()=>goEvaluate()},
+  {id:'analyze',ico:'📊',i18n:'home.analyze',sub:[
+    {id:'student',ico:'📈',i18n:'home.anStudent',go:()=>navGo('students',null,{scroll:true})},
+    {id:'assignment',ico:'📊',i18n:'home.anAssignment',go:()=>navGo('assignments',null,{scroll:true})},
+    {id:'history',ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
+  ]},
+  /* the full interface stays one sector away (the old rectangular back-door
+     lived here as a ghost button; it remains below the menu as a fallback). */
+  {id:'advanced',ico:'🛠️',i18n:'home.advMenu',go:()=>navGo('assignments',null,{scroll:true})},
+];
+const RNS='http://www.w3.org/2000/svg',RDEG=Math.PI/180,RMAXL=3,RGAP=3; /* GAP = ° between sectors of a level */
+const RST={open:false,cx:0,cy:0,sel:[0],svg:null,C:0,T:0,D:0};
+function rSectorPath(ri,ro,a0,a1){
+  const p=(r,a)=>[r*Math.cos(a),r*Math.sin(a)];
+  const [x0,y0]=p(ro,a0),[x1,y1]=p(ro,a1),[x2,y2]=p(ri,a1),[x3,y3]=p(ri,a0);
+  const big=(a1-a0)>Math.PI?1:0;
+  return `M ${x0} ${y0} A ${ro} ${ro} 0 ${big} 1 ${x1} ${y1} L ${x2} ${y2} A ${ri} ${ri} 0 ${big} 0 ${x3} ${y3} Z`;
 }
-function pieOpen(kind,anchor){
-  const items=PIE_ITEMS[kind];if(!items||!anchor)return;
-  if($('#pie-wrap').classList.contains('open'))pieClose();
-  const w=$('#pie-wrap'),arc=$('#pie-arc');
-  const r=anchor.getBoundingClientRect();
-  const cx=r.left+r.width/2, cy=r.top+r.height/2;
-  const n=items.length;
-  /* arc fans up-left → up-right over 120° (or DOWN when the button is near
-     the top edge and the menu would clip above the header). The radius is
-     clamped against each edge with a MARGIN = half the widest label (~170px)
-     + slack, so the outermost labels never leave the viewport (the 390px
-     first-item clip, found in test_p8, came from a too-small margin). */
-  const above=r.top>200;
-  let rad=Math.min(150,cx-115,window.innerWidth-cx-115,
-                   above?cy-115:window.innerHeight-cy-110);
-  rad=Math.max(84,rad);
-  const start=above?-150:30;            // angles: 0°=right, -90°=up, +90°=down
-  const step=n>1?120/(n-1):0;
-  let html='';
-  items.forEach((it,i)=>{
-    const a=(start+step*i)*Math.PI/180;
-    const xx=cx+Math.cos(a)*rad, yy=cy+Math.sin(a)*rad;
-    html+=`<button class="pie-item" data-pie-idx="${i}" style="left:${xx}px;top:${yy}px">${it.ico} ${esc(t(it.i18n))}</button>`;
+function rSplitSpan(a0,a1,n){
+  const step=(a1-a0)/n,out=[];
+  for(let i=0;i<n;i++)
+    out.push([a0+step*i+(n>1?RGAP/2:0),a0+step*(i+1)-(n>1?RGAP/2:0)]);
+  return out;
+}
+function rChain(){
+  /* one entry per active level: {level, items, sel, span:[a0,a1]}; stops at
+     the first selected leaf. Level 0 always spans 360° (selected verb
+     centred on top); each deeper level is confined to the span of its
+     selected parent. */
+  const out=[{level:0,items:RADIAL_MENU,sel:Math.min(RST.sel[0]??0,RADIAL_MENU.length-1),span:[-150,210]}];
+  let cur=RADIAL_MENU[out[0].sel];
+  while(cur&&cur.sub){
+    const lvl=out.length;
+    const parent=out[lvl-1];
+    const raw=RST.sel[lvl];
+    const sel=Math.min(Number.isFinite(raw)?raw:0,cur.sub.length-1);
+    out.push({level:lvl,items:cur.sub,sel,
+      span:rSplitSpan(parent.span[0],parent.span[1],parent.items.length)[parent.sel]});
+    cur=cur.sub[sel];
+  }
+  out.forEach(L=>{L.mid=(L.span[0]+L.span[1])/2;});
+  RST.sel=out.map(L=>L.sel);   /* rewrites normalised state (undefined → valid values) */
+  return out;
+}
+function rGeom(){
+  const mob=window.innerWidth<480;
+  const C=mob?28:34,Tmax=mob?62:84;
+  /* the SVG (always sized for RMAXL levels) stays ≥8px from every viewport
+     edge around the anchor point. */
+  let Rmax=Math.min(RST.cx-8,window.innerWidth-RST.cx-8,RST.cy-8,window.innerHeight-RST.cy-8);
+  Rmax=Math.max(96,Rmax);
+  const T=Math.max(30,Math.min(Tmax,(Rmax-C-4)/RMAXL));
+  const D=2*(C+RMAXL*T);
+  return {C,T,D};
+}
+function rEnsureSvg(){
+  const g=rGeom();Object.assign(RST,g);
+  let svg=RST.svg;
+  if(!svg){
+    svg=document.createElementNS(RNS,'svg');
+    svg.setAttribute('class','rsvg');
+    $('#pie-stage').appendChild(svg);
+    RST.svg=svg;
+  }
+  svg.setAttribute('width',g.D);svg.setAttribute('height',g.D);
+  svg.setAttribute('viewBox',`${-g.D/2} ${-g.D/2} ${g.D} ${g.D}`);
+  svg.style.left=(RST.cx-g.D/2)+'px';
+  svg.style.top=(RST.cy-g.D/2)+'px';
+  return svg;
+}
+function rLabelMetrics(text,arcLen,T){
+  /* {lines,fs,emojiOnly}: font size fitted to the arc width available */
+  const maxW=arcLen*0.92;
+  let lines;
+  if(text.length<=12)lines=[text];
+  else{
+    /* break at the space CLOSEST TO THE MIDDLE (both parts ≥2 chars) */
+    let best=-1,bd=1e9;
+    for(let i=0;i<text.length;i++)if(text[i]===' '){
+      if(i<2||text.length-i<2)continue;
+      const d=Math.abs(i-text.length/2);
+      if(d<bd){bd=d;best=i;}
+    }
+    lines=best>0?[text.slice(0,best),text.slice(best+1)]:[text];
+  }
+  let fs=Math.min(15,T*0.22);
+  const est=()=>Math.max(...lines.map(l=>l.length))*0.58*fs;
+  while(est()>maxW&&fs>8)fs-=0.5;
+  return {lines,fs,emojiOnly:lines.length>2||est()>maxW*1.15};
+}
+function rBuildLevel(L,active){
+  const {C,T}=RST;
+  const ri=C+L.level*T,ro=C+(L.level+1)*T,rm=(ri+ro)/2;
+  const g=document.createElementNS(RNS,'g');
+  g.setAttribute('id','rg-'+L.level);
+  g.dataset.key=rKey(L);
+  const spans=rSplitSpan(L.span[0],L.span[1],L.items.length);
+  L.items.forEach((it,i)=>{
+    const [a0,a1]=spans[i];
+    const grp=document.createElementNS(RNS,'g');
+    grp.setAttribute('class','sector'+(i===L.sel?(active?' selected':' sel-inner'):''));
+    grp.setAttribute('role','menuitem');
+    grp.setAttribute('aria-label',t(it.i18n));
+    grp.dataset.i18n=it.i18n;grp.dataset.idx=i;
+    grp.tabIndex=(active&&i===L.sel)?0:-1;
+    grp.appendChild(Object.assign(document.createElementNS(RNS,'title'),{textContent:t(it.i18n)}));
+    const p=document.createElementNS(RNS,'path');
+    p.setAttribute('d',rSectorPath(ri,ro,a0*RDEG,a1*RDEG));
+    grp.appendChild(p);
+    const mid=(a0+a1)/2*RDEG,x=rm*Math.cos(mid),y=rm*Math.sin(mid);
+    const em=document.createElementNS(RNS,'text');
+    em.setAttribute('class','em');em.setAttribute('text-anchor','middle');
+    em.setAttribute('x',x);em.setAttribute('y',y-T*0.14);
+    em.style.fontSize=Math.max(14,Math.min(26,T*0.3))+'px';
+    em.textContent=it.ico;grp.appendChild(em);
+    const lm=rLabelMetrics(t(it.i18n),(a1-a0)*RDEG*rm,T);
+    if(!lm.emojiOnly){
+      const tx=document.createElementNS(RNS,'text');
+      tx.setAttribute('class','lbl');tx.setAttribute('text-anchor','middle');
+      tx.style.fontSize=lm.fs+'px';
+      lm.lines.slice(0,2).forEach((ln,k)=>{
+        const ts=document.createElementNS(RNS,'tspan');
+        ts.setAttribute('x',x);ts.setAttribute('y',y+T*0.24+k*(lm.fs+3));
+        ts.textContent=ln;tx.appendChild(ts);
+      });
+      grp.appendChild(tx);
+    }
+    g.appendChild(grp);
   });
-  arc.innerHTML=html;
-  void arc.offsetWidth;                  /* reflow at the base (folded) state */
+  return g;
+}
+function rUpdateCenter(L0){
+  let c=document.getElementById('pie-center');
+  if(!c){
+    c=document.createElementNS(RNS,'g');
+    c.id='pie-center';c.setAttribute('class','center');c.setAttribute('role','button');
+    c.appendChild(Object.assign(document.createElementNS(RNS,'title'),{textContent:t('home.closeMenu')}));
+    c.appendChild(document.createElementNS(RNS,'circle'));
+    const tx=document.createElementNS(RNS,'text');
+    tx.setAttribute('class','em');tx.setAttribute('text-anchor','middle');
+    c.appendChild(tx);
+    RST.svg.appendChild(c);
+  }
+  c.querySelector('title').textContent=t('home.closeMenu');
+  c.querySelector('circle').setAttribute('r',RST.C-2);
+  const tx=c.querySelector('text');
+  tx.setAttribute('y',RST.C*0.3);
+  tx.style.fontSize=Math.round(RST.C*0.78)+'px';
+  tx.textContent=L0.items[L0.sel].ico;
+  c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
+}
+function rUpdatePath(levels){
+  const p=$('#pie-path');if(!p)return;
+  p.innerHTML=levels.map((L,k)=>{
+    const it=L.items[L.sel];
+    return k===levels.length-1?`<span class="leaf">${esc(it.ico)} ${esc(t(it.i18n))}</span>`
+      :`${esc(it.ico)} ${esc(t(it.i18n))}`;
+  }).join(' <span style="color:#cbd5e1">›</span> ');
+  p.classList.remove('hide');
+  /* under the menu (above it when no room), clamped in the viewport;
+     translateX(-50%) re-centres on RST.cx */
+  const below=RST.cy+RST.D/2+12;
+  const top=below>window.innerHeight-52?RST.cy-RST.D/2-44:below;
+  p.style.left=RST.cx+'px';
+  p.style.top=top+'px';
+}
+function rKey(L){return L.items.map(i=>i.id).join('|')+':'+L.sel+':'+L.span.map(n=>n.toFixed(1)).join(',');}
+function rRender(){
+  const levels=rChain();
+  const svg=rEnsureSvg();
+  const active=levels.length-1;
+  svg.querySelectorAll('g[id^="rg-"]').forEach(gel=>{
+    const lv=+gel.id.slice(3);
+    if(!levels.some(L=>L.level===lv)&&!gel.classList.contains('g-exit')){
+      gel.classList.add('g-exit');
+      gel.querySelectorAll('.sector').forEach(s=>s.tabIndex=-1);
+      setTimeout(()=>gel.remove(),230);
+    }
+  });
+  levels.forEach(L=>{
+    let g=document.getElementById('rg-'+L.level);
+    if(g&&g.classList.contains('g-exit'))g.remove();
+    if(g&&g.dataset.key===rKey(L)){
+      g.querySelectorAll('.sector').forEach((sec,i)=>{
+        sec.classList.toggle('selected',active===L.level&&i===L.sel);
+        sec.classList.toggle('sel-inner',active!==L.level&&i===L.sel);
+        sec.tabIndex=(active===L.level&&i===L.sel)?0:-1;
+      });
+    }else{
+      if(g)g.remove();
+      g=rBuildLevel(L,active===L.level);
+      g.classList.add('g-enter');
+      svg.appendChild(g);
+    }
+  });
+  rUpdateCenter(levels[0]);
+  rUpdatePath(levels);
+  svg.querySelector(`#rg-${active} .sector.selected`)?.focus({preventScroll:true});
+}
+function openMenu(){
+  /* home opens the radial menu by default (2026-10-27) */
+  if(RST.open)return;
+  const vh=$('#view-home');if(!vh||vh.classList.contains('hide'))return;
+  const a=$('#home-anchor');if(!a)return;
+  const r=a.getBoundingClientRect();
+  RST.cx=r.left+r.width/2;RST.cy=r.top+r.height/2;
+  RST.open=true;RST.sel=[0];
+  rEnsureSvg();
+  const w=$('#pie-wrap');
   w.classList.add('open');w.setAttribute('aria-hidden','false');
-  anchor.classList.add('pie-open');
-  arc.querySelectorAll('.pie-item').forEach((b,i)=>{
-    b.addEventListener('click',()=>{const it=items[i];pieClose();it.go();});
-  });
+  $('#home-reopen').classList.add('hide');
+  rRender();
+}
+function pieClose(){
+  if(!RST.open)return;
+  RST.open=false;
+  const svg=RST.svg;
+  if(svg){svg.classList.add('closing');setTimeout(()=>svg.remove(),190);}
+  RST.svg=null;RST.sel=[0];
+  const w=$('#pie-wrap');
+  w.classList.remove('open');w.setAttribute('aria-hidden','true');
+  const p=$('#pie-path');if(p)p.classList.add('hide');
+  $('#home-reopen').classList.remove('hide');
+}
+function rCycle(d){
+  const levels=rChain();
+  const active=levels.length-1;
+  const n=levels[active].items.length;
+  RST.sel[active]=(RST.sel[active]+d+n)%n;
+  rRender();
+}
+function rPick(level,i){
+  const L=rChain().find(x=>x.level===level);
+  if(!L)return;
+  const it=L.items[i];
+  if(it.sub){RST.sel[level]=i;RST.sel=RST.sel.slice(0,level+1);rRender();}
+  else{pieClose();it.go();}
+}
+function rExecute(){
+  const levels=rChain();
+  const it=levels[levels.length-1].items[levels[levels.length-1].sel];
+  pieClose();
+  it.go();
+}
+function radialRefreshI18n(){   /* called from applyI18n() when the menu is open */
+  if(!(RST.open&&RST.svg))return;
+  RST.svg.querySelectorAll('g[id^="rg-"]').forEach(g=>g.remove());
+  const c=document.getElementById('pie-center');if(c)c.remove();
+  rRender();
 }
 $('#pie-backdrop').addEventListener('click',pieClose);
-document.addEventListener('keydown',e=>{if(e.key==='Escape')pieClose();});
-[['#home-prepare','prepare'],['#home-analyze','analyze']].forEach(([sel,kind])=>{
-  $(sel).addEventListener('click',()=>pieOpen(kind,$(sel)));
+$('#pie-wrap').addEventListener('wheel',e=>{
+  if(!RST.open)return;e.preventDefault();
+  rCycle(e.deltaY>0?1:-1);
+},{passive:false});
+document.addEventListener('keydown',e=>{
+  if(!RST.open)return;
+  if(e.key==='Escape'){e.preventDefault();pieClose();}
+  else if(e.key==='ArrowRight'||e.key==='ArrowDown'){e.preventDefault();rCycle(1);}
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){e.preventDefault();rCycle(-1);}
+  else if(e.key==='Enter'||e.key===' '){e.preventDefault();rExecute();}
 });
-$('#home-evaluate').addEventListener('click',()=>{pieClose();goEvaluate();});
+$('#pie-stage').addEventListener('click',e=>{
+  if(!RST.open)return;
+  const sec=e.target.closest('.sector');
+  if(sec){
+    const g=sec.closest('g[id^="rg-"]');
+    rPick(+g.id.slice(3),+sec.dataset.idx);
+    return;
+  }
+  if(e.target.closest('#pie-center'))pieClose();
+});
+let rResizeT;
+window.addEventListener('resize',()=>{
+  if(!RST.open)return;clearTimeout(rResizeT);
+  rResizeT=setTimeout(()=>{
+    if(!RST.open)return;
+    RST.svg.remove();RST.svg=null;
+    rRender();
+  },150);
+});
 $('#home-advanced').addEventListener('click',()=>navGo('assignments',null,{scroll:true}));
 $('#hdr-home').addEventListener('click',()=>navGo('home',null,{scroll:true}));
+$('#home-reopen').addEventListener('click',openMenu);
 /* assignments view: ad-hoc evaluation button */
 $('#asg-adhoc').addEventListener('click',goEvaluate);
 /* ---------------- point 10: printable attestation sheet (the clean paper) ----------------
@@ -2999,10 +3258,14 @@ let _navReconcilePending=false; // set by back/forward so loadHistory reconciles
 
 function navApplyView(view,sub,opts){
   opts=opts||{};
+  pieClose();   /* radial v3: the home radial menu never overlays another view
+                    (the home branch below re-opens it via rAF after layout). */
   if(view==='home'){
     /* home = the simplified start screen (boot default, 2026-10-27): not a nav
        tab, like the evaluator — no .on highlight, no loader. The tab bar
-       itself is hidden here too (the ONLY minimal-chrome screen). */
+       itself is hidden here too (the ONLY minimal-chrome screen).
+       2026-10-27 radial v3: the radial menu OPENS BY DEFAULT on home
+       (rAF so the anchor's layout is settled first). */
     pieClose();
     $$('.wrap > section').forEach(v=>v.classList.add('hide'));
     $('#view-home').classList.remove('hide');
@@ -3011,6 +3274,7 @@ function navApplyView(view,sub,opts){
     $('#hdr-home').classList.add('hide');   /* the "◂ Simplified" button is meaningless ON home */
     refreshTblWraps();
     window.scrollTo({top:0});
+    requestAnimationFrame(openMenu);
     return;
   }
   if(view==='evaluator'){_evaluatorEnter();return;}

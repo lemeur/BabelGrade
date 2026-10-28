@@ -129,6 +129,8 @@ def main():
             pg.click("#auth-login-btn")
             pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
         pg.wait_for_timeout(800)
+        pg.evaluate("pieClose()")   # 2026-10-27: home radial menu opens by default —
+                                    # close it so the header buttons are clickable
         check(pg.evaluate("localStorage.getItem('elt-lang')") == "fr",
               "boot in FR")
 

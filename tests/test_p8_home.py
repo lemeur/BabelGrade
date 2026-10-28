@@ -1,25 +1,27 @@
 #!/usr/bin/env python3
-"""Home (simplified mode) suite — 2026-10-27.
+"""Home (simplified mode) suite — radial menu v3 (2026-10-27).
 
-Boot default is now the simplified start screen (#view-home, hash #home):
-three big verbs (Prepare / Evaluate / Analyze) + a small "Advanced mode"
-button. Prepare and Analyze open a RADIAL (pie) menu around the pressed
-button; Evaluate goes straight to the evaluator form. The full interface
-(still reachable via the pie items, "Advanced mode", or the header
-"◂ Simplified" button) is unchanged.
+Boot default is the simplified start screen (#view-home, hash #home).
+The 3 rectangular verb buttons are GONE: the RADIAL menu (concentric SVG
+crowns, innermost = the 4 verbs incl. "Advanced mode") OPENS BY DEFAULT,
+centred on #home-anchor. Each submenu level = an outer crown confined to
+the selected parent's angular sector. Wheel/arrows cycle the outermost
+level, Enter executes, Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
-- boot: #home hash, home view visible, 3 verbs + advanced button, tab bar
-  hidden, no JS errors
-- pie menu: opens on Prepare (2 FR items), on Analyze (3 FR items), items
-  inside the viewport, click navigates (class/subject/progression/results/
-  history), re-open after leaving, closes on backdrop / Esc
-- Evaluate verb → evaluator form visible
-- Advanced mode → assignments view + tab bar back; "◂ Simplified" in the
-  header → back to home
-- back button: home → assignments (push) → back lands on home
+- boot: #home hash, home view visible, menu OPEN with L0 (4 verbs FR) +
+  L1 (Préparer's 2 items), no JS errors, no rectangular .home-btn left
+- crowns geometry: L1 angles inside the selected L0 sector (Préparer ≈
+  [-150°,-30°] → L1 inside it), all sectors in the viewport
+- navigation: wheel cycles L1 (Classe/Sujet), Enter executes → view + hash,
+  menu closed; click Analyse inner sector → its 3-item crown; click
+  Historique → history; re-open via #home-reopen pill
+- Advanced sector → assignments view; "◂ Simplified" header → back to home
+  (menu re-opens)
+- Evaluate leaf → evaluator form
+- back button: home → assignments (push) → back lands on home + menu open
 - typed #home from another view
-- 390px: home fits (no page overflow), pie opens with all items in viewport
+- 390px: menu opens, crowns in viewport, leaf click navigates
 
 Follows the repo test conventions: login(tibo/****), lang forced via
 add_init_script, own checks + exit(1) on failure. No API writes → no
@@ -43,21 +45,70 @@ def login(pg, lang="fr"):
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
 
-def home_state(pg):
-    return pg.evaluate("""() => ({
-      hash: location.hash,
-      homeVisible: !document.querySelector('#view-home').classList.contains('hide'),
-      othersHidden: [...document.querySelectorAll('.wrap > section')].filter(s => s.id !== 'view-home' && !s.classList.contains('hide')).length === 0,
-      navHidden: document.querySelector('#nav').classList.contains('hide'),
-      hdrHomeHidden: document.querySelector('#hdr-home').classList.contains('hide'),
-      verbs: [...document.querySelectorAll('.home-btn')].map(b => b.textContent.trim()),
-      adv: document.querySelector('#home-advanced').textContent.trim(),
-      pieOpen: document.querySelector('#pie-wrap').classList.contains('open'),
-      pieItems: [...document.querySelectorAll('.pie-item')].map(b => {
-        const r = b.getBoundingClientRect();
-        return {t: b.textContent.trim(), inVp: r.left >= 0 && r.right <= window.innerWidth + 1 && r.top >= 0 && r.bottom <= window.innerHeight + 1, h: r.height};
-      })
-    })""")
+JS_CROWNS = """() => {
+  const out = {};
+  out.open = document.querySelector('#pie-wrap').classList.contains('open');
+  out.rectBtns = document.querySelectorAll('.home-btn').length;
+  out.svgIn = (() => {
+    const s = document.querySelector('#pie-stage svg.rsvg');
+    if (!s) return false;
+    const r = s.getBoundingClientRect();
+    return r.left >= -1 && r.right <= window.innerWidth + 1
+        && r.top >= 0 && r.bottom <= window.innerHeight + 1;
+  })();
+  out.path = document.querySelector('#pie-path').textContent.trim().replace(/\\s+/g,' ');
+  out.sectors = [...document.querySelectorAll('#pie-stage g[id^="rg-"]')]
+    .filter(g => !g.classList.contains('g-exit'))
+    .map(g => ({
+      id: g.id,
+      items: [...g.querySelectorAll('.sector')].map(s => ({
+        t: (s.getAttribute('aria-label') || '').trim(),
+        sel: s.classList.contains('selected') || s.classList.contains('sel-inner'),
+        inVp: (() => { const r = s.getBoundingClientRect();
+          return r.left >= -1 && r.right <= window.innerWidth + 1
+              && r.top >= 0 && r.bottom <= window.innerHeight + 1; })()
+      }))
+    }));
+  out.center = document.querySelector('#pie-center text')
+    ? document.querySelector('#pie-center text').textContent : '';
+  out.reopenHidden = document.querySelector('#home-reopen').classList.contains('hide');
+  return out;
+}"""
+
+def angles(pg):
+    """Sample each sector path's outline (getPointAtLength) and return the
+    min/max angle (deg, 0°=right, CW positive in screen coords) relative to
+    the anchor centre — independent of the path string format."""
+    return pg.evaluate("""() => {
+      const out = {};
+      const cx = document.querySelector('#home-anchor').getBoundingClientRect();
+      const acx = cx.left + cx.width / 2, acy = cx.top + cx.height / 2;
+      for (const g of document.querySelectorAll('#pie-stage g[id^="rg-"]:not(.g-exit)')) {
+        out[g.id] = [...g.querySelectorAll('.sector')].map(s => {
+          const p = s.querySelector('path');
+          const L = p.getTotalLength();
+          let mn = Infinity, mx = -Infinity;
+          for (let i = 0; i <= 40; i++) {
+            const pt = p.getPointAtLength(L * i / 40);
+            /* SVG local coords: the viewBox origin (0,0) sits exactly on the
+               anchor centre, so no offset is needed */
+            const a = Math.atan2(pt.y, pt.x) * 180 / Math.PI;
+            mn = Math.min(mn, a); mx = Math.max(mx, a);
+          }
+          return [mn, mx];
+        });
+      }
+      return out;
+    }""")
+
+def click_sector(pg, selector):
+    x, y = pg.evaluate("""sel => {
+      const s = document.querySelector(sel);
+      const t = s.querySelector('.lbl') || s.querySelector('.em');
+      const r = t.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height / 2];
+    }""", selector)
+    pg.mouse.click(x, y)
 
 with sync_playwright() as p:
     b = p.chromium.launch(headless=True, args=["--no-sandbox", "--disable-gpu"])
@@ -66,112 +117,165 @@ with sync_playwright() as p:
     errors = []
     pg.on("pageerror", lambda e: errors.append(str(e)))
     login(pg)
-    pg.wait_for_timeout(600)
+    pg.wait_for_timeout(700)
 
-    # --- boot state ---
-    s = home_state(pg)
-    check("boot: hash #home", s["hash"] == "#home", s["hash"])
-    check("boot: home view visible + all others hidden", s["homeVisible"] and s["othersHidden"], s)
-    check("boot: 3 verbs (FR)", [v.replace(" ", "").strip() for v in s["verbs"]] ==
-          ["📚Préparer", "✍️Évaluer", "📊Analyser"], s["verbs"])
-    check("boot: advanced button FR", s["adv"] == "Mode avancé ▸", s["adv"])
-    check("boot: tab bar hidden on home", s["navHidden"], s)
-    check("boot: '◂ Simplified' header button hidden on home", s["hdrHomeHidden"], s)
-    check("boot: pie closed", not s["pieOpen"], s)
+    # --- boot state: menu open by default ---
+    s = pg.evaluate(JS_CROWNS)
+    check("boot: hash #home", pg.evaluate("location.hash") == "#home")
+    check("boot: home view visible",
+          not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
+    check("boot: no JS errors", not errors, errors[:3])
+    check("boot: no rectangular .home-btn left", s["rectBtns"] == 0, s["rectBtns"])
+    check("boot: radial menu OPEN by default", s["open"], s["open"])
+    check("boot: re-open pill hidden while open", s["reopenHidden"], s)
+    check("boot: L0 = 4 verbs (FR) + L1 = 2 items (Préparer)",
+          [i["t"] for i in s["sectors"][0]["items"]] ==
+          ["Préparer", "Évaluer", "Analyser", "Mode avancé"]
+          and [i["t"] for i in s["sectors"][1]["items"]] ==
+          ["Classe / élèves", "Sujet"], s["sectors"])
+    check("boot: all sectors in viewport, svg in viewport",
+          all(i["inVp"] for c in s["sectors"] for i in c["items"]) and s["svgIn"], s)
+    check("boot: centre shows the selected verb emoji (📚)", s["center"] == "📚", s["center"])
+    check("boot: path pill = 📚 Préparer › 🏫 Classe / élèves",
+          "Préparer" in s["path"] and "Classe / élèves" in s["path"], s["path"])
+    pg.screenshot(path="tests/home_radial_boot.png")
 
-    # --- pie: Prepare ---
-    pg.click("#home-prepare")
-    pg.wait_for_timeout(300)
-    s = home_state(pg)
-    check("pie(Prepare): open", s["pieOpen"], s)
-    check("pie(Prepare): 2 items (class + subject)", [i["t"] for i in s["pieItems"]] ==
-          ["🏫 Classe / élèves", "📚 Sujet"], s["pieItems"])
-    check("pie(Prepare): items in viewport, tappable",
-          all(i["inVp"] and i["h"] >= 40 for i in s["pieItems"]), s["pieItems"])
-    pg.screenshot(path="tests/home_pie_prepare.png")
-    # click "Sujet" → assignments
-    pg.click(".pie-item[data-pie-idx='1']")
-    pg.wait_for_timeout(400)
-    check("pie(Prepare): 'Sujet' → assignments view + hash",
+    # --- geometry: L1 confined to the selected L0 sector ---
+    ang = angles(pg)
+    l0p = ang.get("rg-0", [None])[0]
+    l1 = ang.get("rg-1", [])
+    check("geometry: L0 Préparer ≈ [-148.5°,-61.5°] (360°/4 sectors)",
+          l0p and l0p[0] <= -148 and l0p[1] >= -62 and l0p[1] <= -60, l0p)
+    check("geometry: L1 inside the selected L0 sector (±GAP)",
+          all(a[0] >= l0p[0] - 4 and a[1] <= l0p[1] + 4 for a in l1),
+          {"l0": l0p, "l1": l1})
+
+    # --- wheel cycles the outer crown; Enter executes ---
+    pg.mouse.move(640, 450)
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    check("wheel: L1 selection moves to 'Sujet'",
+          s["sectors"][1]["items"][1]["sel"] and "Sujet" in s["path"], s["path"])
+    pg.keyboard.press("Enter")
+    pg.wait_for_timeout(500)
+    check("Enter on 'Sujet': assignments view + hash",
           pg.evaluate("location.hash") == "#assignments"
           and not pg.evaluate("document.querySelector('#view-assignments').classList.contains('hide')"))
-    check("pie(Prepare): closed after navigation", not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
+    check("menu closed after navigation",
+          not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
+    check("re-open pill visible after close",
+          not pg.evaluate("document.querySelector('#home-reopen').classList.contains('hide')"))
 
-    # --- pie: Analyze ---
+    # --- back to home: menu re-opens; Analyse branch ---
     pg.evaluate("navGo('home')")
+    pg.wait_for_timeout(400)
+    s = pg.evaluate(JS_CROWNS)
+    check("return home: menu re-opened by default", s["open"], s)
+    click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Analyser
     pg.wait_for_timeout(300)
-    pg.click("#home-analyze")
-    pg.wait_for_timeout(300)
-    s = home_state(pg)
-    check("pie(Analyze): open, 3 items (progression/results/history)",
-          [i["t"] for i in s["pieItems"]] ==
-          ["📈 Progression d’un élève", "📊 Résultats sur un sujet", "🗂️ Historique"],
-          s["pieItems"])
-    pg.screenshot(path="tests/home_pie_analyze.png")
-    # click "Historique" → history
-    pg.click(".pie-item[data-pie-idx='2']")
+    s = pg.evaluate(JS_CROWNS)
+    check("Analyse selected: L1 = 3 items (progression/results/history)",
+          [i["t"] for i in s["sectors"][1]["items"]] ==
+          ["Progression d’un élève", "Résultats sur un sujet", "Historique"],
+          s["sectors"][1]["items"])
+    check("centre shows 📊 when Analyse selected", s["center"] == "📊", s["center"])
+    pg.screenshot(path="tests/home_radial_analyze.png")
+    # geometry: Analyse's L1 must sit inside its L0 sector (≈ [28.5°,118.5°])
+    ang = angles(pg)
+    l0a = ang.get("rg-0", [None])[2]
+    l1a = ang.get("rg-1", [])
+    check("geometry: L0 Analyse ≈ [28.5°,118.5°]",
+          l0a and l0a[0] >= 27 and l0a[1] <= 120, l0a)
+    check("geometry: Analyse L1 inside its L0 sector (±GAP)",
+          l0a and all(a[0] >= l0a[0] - 4 and a[1] <= l0a[1] + 4 for a in l1a),
+          {"l0": l0a, "l1": l1a})
+    click_sector(pg, "#rg-1 .sector[data-idx='2']")   # Historique (leaf)
     pg.wait_for_timeout(600)
-    check("pie(Analyze): 'Historique' → history view + hash",
+    check("'Historique' → history view + hash",
           pg.evaluate("location.hash") == "#history"
           and not pg.evaluate("document.querySelector('#view-history').classList.contains('hide')"))
-    # item 1 → students (progression)
-    pg.evaluate("navGo('home')"); pg.wait_for_timeout(200)
-    pg.click("#home-analyze"); pg.wait_for_timeout(250)
-    pg.click(".pie-item[data-pie-idx='0']")
-    pg.wait_for_timeout(400)
-    check("pie(Analyze): 'Progression' → students view",
-          pg.evaluate("location.hash") == "#students")
 
-    # --- close on backdrop + Esc ---
-    pg.evaluate("navGo('home')"); pg.wait_for_timeout(200)
-    pg.click("#home-prepare"); pg.wait_for_timeout(200)
-    pg.click("#pie-backdrop")
-    pg.wait_for_timeout(200)
-    check("pie: backdrop click closes", not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
-    pg.click("#home-prepare"); pg.wait_for_timeout(200)
+    # --- re-open pill → menu opens ---
+    pg.evaluate("navGo('home')")
+    pg.wait_for_timeout(300)
+    pg.evaluate("pieClose()")
+    pg.wait_for_timeout(300)
+    pg.click("#home-reopen")
+    pg.wait_for_timeout(300)
+    s = pg.evaluate(JS_CROWNS)
+    check("re-open pill: clicking re-opens the menu at L0",
+          s["open"] and s["sectors"][0]["items"][0]["sel"], s)
+
+    # --- Esc closes ---
     pg.keyboard.press("Escape")
-    pg.wait_for_timeout(200)
-    check("pie: Esc closes", not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
+    pg.wait_for_timeout(300)
+    s = pg.evaluate(JS_CROWNS)
+    check("Esc closes the menu", not s["open"], s["open"])
 
-    # --- Evaluate verb → straight to the form ---
-    pg.click("#home-evaluate")
+    # --- wheel cycles the OPEN outer crown even from L0 verbs (design: the
+    #     wheel always drives the deepest open crown; L0 verbs are reached
+    #     by clicking) ---
+    pg.click("#home-reopen"); pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    l1_before = [i["sel"] for i in s["sectors"][1]["items"]]
+    pg.mouse.move(640, 450)
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    l1_after = [i["sel"] for i in s["sectors"][1]["items"]]
+    check("wheel from L0 verbs cycles the open L1 crown (Préparer → Sujet)",
+          l1_before == [True, False] and l1_after == [False, True],
+          {"before": l1_before, "after": l1_after})
+
+    # --- Advanced sector → full interface; header back → home ---
+    pg.mouse.move(640, 450)
+    for _ in range(2):
+        pg.mouse.wheel(0, 120); pg.wait_for_timeout(150)   # L1: back to Classe
+    pg.keyboard.press("Escape"); pg.wait_for_timeout(250)
+    pg.click("#home-reopen"); pg.wait_for_timeout(250)
+    click_sector(pg, "#rg-0 .sector[data-idx='3']")          # Mode avancé
+    pg.wait_for_timeout(400)
+    check("Advanced sector: assignments view + tab bar",
+          pg.evaluate("location.hash") == "#assignments"
+          and not pg.evaluate("document.querySelector('#nav').classList.contains('hide')"))
+    pg.click("#hdr-home")
+    pg.wait_for_timeout(400)
+    s = pg.evaluate(JS_CROWNS)
+    check("'◂ Simplified': back to home + menu open",
+          pg.evaluate("location.hash") == "#home" and s["open"], s["open"])
+
+    # --- Evaluate leaf → evaluator form ---
+    pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)
+    click_sector(pg, "#rg-0 .sector[data-idx='1']")          # Évaluer (leaf)
     pg.wait_for_timeout(400)
     check("Evaluate: evaluator form visible + hash",
           pg.evaluate("location.hash") == "#evaluator"
           and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')"))
-    check("Evaluate: tab bar restored", not pg.evaluate("document.querySelector('#nav').classList.contains('hide')"))
-    check("Evaluate: '◂ Simplified' header button visible",
-          not pg.evaluate("document.querySelector('#hdr-home').classList.contains('hide')"))
+    check("Evaluate: menu closed",
+          not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
 
-    # --- Advanced mode → full interface; header back-button → home ---
-    pg.evaluate("navGo('home')"); pg.wait_for_timeout(200)
-    pg.click("#home-advanced")
-    pg.wait_for_timeout(400)
-    check("Advanced: assignments view + tab bar",
-          pg.evaluate("location.hash") == "#assignments"
-          and not pg.evaluate("document.querySelector('#nav').classList.contains('hide')"))
-    pg.click("#hdr-home")
-    pg.wait_for_timeout(300)
-    check("'◂ Simplified': back to home",
-          pg.evaluate("location.hash") == "#home"
-          and not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
-
-    # --- browser back/forward through home ---
-    pg.evaluate("navGo('assignments')"); pg.wait_for_timeout(300)
-    pg.go_back(); pg.wait_for_timeout(300)
-    check("back: assignments → home",
-          pg.evaluate("location.hash") == "#home"
-          and not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
-    pg.go_forward(); pg.wait_for_timeout(300)
+    # --- browser back/forward through home (menu must re-open on home) ---
+    pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)   # pop-back to the root entry
+    pg.evaluate("navGo('assignments')"); pg.wait_for_timeout(300)  # push
+    pg.go_back(); pg.wait_for_timeout(400)
+    s = pg.evaluate(JS_CROWNS)
+    check("back: assignments → home + menu open",
+          pg.evaluate("location.hash") == "#home" and s["open"], s["open"])
+    pg.go_forward(); pg.wait_for_timeout(400)
     check("forward: home → assignments",
           pg.evaluate("location.hash") == "#assignments"
           and not pg.evaluate("document.querySelector('#view-assignments').classList.contains('hide')"))
+    check("forward: menu closed on assignments",
+          not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
 
     # --- typed #home from another view ---
     pg.evaluate("() => { location.hash = '#home'; }")
-    pg.wait_for_timeout(300)
-    check("typed #home: home view shown",
-          not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
+    pg.wait_for_timeout(400)
+    s = pg.evaluate(JS_CROWNS)
+    check("typed #home: home view shown + menu open",
+          not pg.evaluate("document.querySelector('#view-home').classList.contains('hide')")
+          and s["open"], s["open"])
 
     check("no JS errors (desktop)", not errors, errors[:3])
 
@@ -182,27 +286,28 @@ with sync_playwright() as p:
     merr = []
     m.on("pageerror", lambda e: merr.append(str(e)))
     login(m)
-    m.wait_for_timeout(500)
-    check("390: home visible at boot", not m.evaluate("document.querySelector('#view-home').classList.contains('hide')"))
+    m.wait_for_timeout(600)
+    s = m.evaluate(JS_CROWNS)
+    check("390: menu open at boot, L0 4 + L1 2",
+          s["open"] and len(s["sectors"][0]["items"]) == 4 and len(s["sectors"][1]["items"]) == 2,
+          {k: s[k] for k in ("open", "sectors")})
     check("390: no page-level overflow",
           m.evaluate("document.documentElement.scrollWidth") <= 391,
           m.evaluate("document.documentElement.scrollWidth"))
+    check("390: svg + sectors in viewport",
+          s["svgIn"] and all(i["inVp"] for c in s["sectors"] for i in c["items"]), s)
     m.screenshot(path="tests/home_390.png")
-    m.click("#home-analyze")
+    click_sector(m, "#rg-0 .sector[data-idx='2']")   # Analyser
     m.wait_for_timeout(300)
-    st = m.evaluate("""() => [...document.querySelectorAll('.pie-item')].map(b => {
-      const r = b.getBoundingClientRect();
-      return {t: b.textContent.trim(), inVp: r.left >= -1 && r.right <= 391 && r.top >= 0 && r.bottom <= 845};
-    })""")
-    check("390: pie(Analyze) 3 items all in viewport",
-          len(st) == 3 and all(i["inVp"] for i in st), st)
+    s = m.evaluate(JS_CROWNS)
+    check("390: Analyse crown 3 items in viewport",
+          len(s["sectors"][1]["items"]) == 3
+          and all(i["inVp"] for i in s["sectors"][1]["items"]), s["sectors"][1])
     m.screenshot(path="tests/home_390_pie.png")
-    m.click(".pie-item[data-pie-idx='2']")
-    m.wait_for_timeout(500)
-    check("390: pie 'Historique' → history cards",
-          m.evaluate("location.hash") == "#history"
-          and (m.evaluate("document.querySelectorAll('#hist-cards .hcard').length") > 0
-               or m.evaluate("document.querySelectorAll('#hist tbody tr').length") > 0))
+    click_sector(m, "#rg-1 .sector[data-idx='2']")   # Historique
+    m.wait_for_timeout(600)
+    check("390: 'Historique' → history view",
+          m.evaluate("location.hash") == "#history")
     check("390: no JS errors", not merr, merr[:3])
     mctx.close()
     ctx.close()
