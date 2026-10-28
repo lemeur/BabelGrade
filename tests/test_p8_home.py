@@ -12,10 +12,11 @@ level, Enter executes, Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
 - boot: #home hash, home view visible, menu OPEN with L0 (3 verbs FR:
-  Évaluer top / Analyser right / Préparer left, Évaluer selected → no L1),
-  hero title not dimmed, no JS errors, no rectangular .home-btn left, no
-  #pie-path description pill (removed 2026-10-28: redundant, covered the
-  "Mode avancé" button)
+  Évaluer top / Analyser right / Préparer left; Évaluer selected → its L1
+  sub-crown open = "Sur sujet" / "Directe", 2026-10-28), hero title not
+  dimmed, no JS errors, no rectangular .home-btn left, no #pie-path
+  description pill (removed 2026-10-28: redundant, covered the "Mode avancé"
+  button)
 - crowns geometry: L0 Évaluer ≈ [-150°,-30°] (top sector); Analyse L1 inside
   its L0 sector
 - navigation: wheel cycles L1 (Classe/Sujet), Enter executes → view + hash,
@@ -23,7 +24,9 @@ Covers (desktop 1280, FR; then 390px mobile):
   Historique → history; re-open via #home-reopen pill
 - "Mode avancé" rectangular button (ACTIVE while menu open) → assignments
   view; "◂ Simplified" header → back to home (menu re-opens)
-- Evaluate leaf → evaluator form
+- Évaluateur verb → its sub-crown (Sur sujet / Directe): "Sur sujet"
+  pre-selects the most recent assignment (inherited card up, ad-hoc boxes
+  hidden), "Directe" is ad-hoc (context boxes visible) — 2026-10-28
 - back button: home → assignments (push) → back lands on home + menu open
 - typed #home from another view
 - 390px: menu opens, crowns in viewport, leaf click navigates
@@ -145,8 +148,10 @@ with sync_playwright() as p:
     check("boot: L0 = 3 verbs FR: Évaluer top / Analyser right / Préparer left",
           [i["t"] for i in s["sectors"][0]["items"]] ==
           ["Évaluer", "Analyser", "Préparer"], s["sectors"])
-    check("boot: Évaluer (leaf) selected → no sub-crown",
-          len(s["sectors"]) == 1, len(s["sectors"]))
+    check("boot: Évaluer is a verb (sub-crown open) → L1 = 2 items (Sur sujet / Directe)",
+          len(s["sectors"]) == 2
+          and [i["t"] for i in s["sectors"][1]["items"]] ==
+          ["Sur sujet", "Directe"], s["sectors"])
     check("boot: all sectors in viewport, svg in viewport",
           all(i["inVp"] for c in s["sectors"] for i in c["items"]) and s["svgIn"], s)
     check("boot: hero title not dimmed (z-71, above the menu backdrop)",
@@ -252,23 +257,24 @@ with sync_playwright() as p:
     s = pg.evaluate(JS_CROWNS)
     check("Esc closes the menu", not s["open"], s["open"])
 
-    # --- wheel cycles the OPEN outer crown; from L0 with a leaf selected,
-    #     the wheel cycles L0 verbs — landing on a non-leaf verb auto-opens
-    #     its crown (rChain normalisation); Enter executes the leaf ---
+    # --- wheel cycles the OPEN outer crown; at boot the outermost open crown
+    #     is Évaluer's L1 (Sur sujet / Directe) — wheel cycles it, Enter runs
+    #     the selected leaf ---
     pg.click("#home-reopen"); pg.wait_for_timeout(250)
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
-    check("wheel from L0 (leaf selected): Évaluer → Analyser + L1 auto-open",
-          s["sectors"][0]["items"][1]["sel"] and s["center"] == "📊"
-          and len(s["sectors"]) == 2 and s["sectors"][1]["items"][0]["sel"],
-          s["center"])
+    check("wheel: L1 (Évaluer) selection moves to 'Directe'",
+          s["sectors"][1]["items"][1]["sel"] and s["center"] == "✍️",
+          [i["t"] for i in s["sectors"][1]["items"]])
     pg.keyboard.press("Enter")
     pg.wait_for_timeout(500)
-    check("Enter: executes the auto-drilled leaf 'Progression d’un élève' → students",
-          pg.evaluate("location.hash") == "#students"
-          and not pg.evaluate("document.querySelector('#view-students').classList.contains('hide')"))
+    check("Enter on 'Directe': evaluator form + ad-hoc context boxes visible",
+          pg.evaluate("location.hash") == "#evaluator"
+          and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')")
+          and pg.evaluate("!document.querySelector('#assignment-inherited').classList.contains('hide')===false"
+                          " && document.querySelector('#context-panel').style.display!=='none'"))
     check("menu closed after Enter",
           not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
 
@@ -294,15 +300,38 @@ with sync_playwright() as p:
     check("'◂ Simplified': back to home + menu open",
           pg.evaluate("location.hash") == "#home" and s["open"], s["open"])
 
-    # --- Evaluate leaf → evaluator form ---
+    # --- Evaluate verb → its sub-crown (Sur sujet / Directe); each leaf goes
+    #     to the evaluator in its own state: "Sur sujet" pre-selects the most
+    #     recent assignment (inherited card up, ad-hoc boxes hidden), "Directe"
+    #     is ad-hoc (context boxes visible) ---
     pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)
-    click_sector(pg, "#rg-0 .sector[data-idx='0']")          # Évaluer (top, leaf)
+    click_sector(pg, "#rg-0 .sector[data-idx='0']")          # Évaluer (top, verb)
     pg.wait_for_timeout(400)
-    check("Evaluate: evaluator form visible + hash",
+    s = pg.evaluate(JS_CROWNS)
+    check("Évaluateur sub-crown open: L1 = Sur sujet / Directe",
+          len(s["sectors"]) == 2
+          and [i["t"] for i in s["sectors"][1]["items"]] == ["Sur sujet", "Directe"],
+          s["sectors"])
+    click_sector(pg, "#rg-1 .sector[data-idx='0']")          # Sur sujet (leaf)
+    pg.wait_for_timeout(400)
+    check("'Sur sujet' → evaluator + most recent assignment pre-selected",
           pg.evaluate("location.hash") == "#evaluator"
-          and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')"))
-    check("Evaluate: menu closed",
+          and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')")
+          and pg.evaluate("document.querySelector('#assignment').value!==''")
+          and pg.evaluate("!document.querySelector('#assignment-inherited').classList.contains('hide')"))
+    check("menu closed after 'Sur sujet'",
           not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
+    # back to home, then the Directe branch
+    pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)
+    click_sector(pg, "#rg-0 .sector[data-idx='0']")          # Évaluer
+    pg.wait_for_timeout(300)
+    click_sector(pg, "#rg-1 .sector[data-idx='1']")          # Directe (leaf)
+    pg.wait_for_timeout(400)
+    check("'Directe' → evaluator + ad-hoc context boxes visible (no subject)",
+          pg.evaluate("location.hash") == "#evaluator"
+          and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')")
+          and pg.evaluate("document.querySelector('#assignment').selectedIndex === 0")
+          and pg.evaluate("document.querySelector('#context-panel').style.display !== 'none'"))
 
     # --- browser back/forward through home (menu must re-open on home) ---
     pg.evaluate("navGo('home')"); pg.wait_for_timeout(350)   # pop-back to the root entry
@@ -337,8 +366,9 @@ with sync_playwright() as p:
     login(m)
     m.wait_for_timeout(600)
     s = m.evaluate(JS_CROWNS)
-    check("390: menu open at boot, L0 = 3 verbs (Évaluer selected, no L1)",
-          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 1,
+    check("390: menu open at boot, L0 = 3 verbs + L1 = 2 (Évaluer sub-crown)",
+          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 2
+          and len(s["sectors"][1]["items"]) == 2,
           {k: s[k] for k in ("open", "sectors")})
     check("390: no page-level overflow",
           m.evaluate("document.documentElement.scrollWidth") <= 391,
