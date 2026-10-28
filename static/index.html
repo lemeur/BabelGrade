@@ -1188,17 +1188,27 @@ body.home-active #menu-data-wrap{display:none}
 .rsvg .center:hover circle{fill:var(--acc-soft)}
 .rsvg .center:focus{outline:none}
 .rsvg .center text{pointer-events:none}
-/* Fan-out (éventail, 2026-10-28): when a crown appears/disappears, each
-   sector sweeps in/out around the wheel centre from its closed position
-   (toward the parent's sector mid-angle — --fan, set in rBuildLevel) with a
-   per-index stagger (--i), like a hand fan opening; exit closes in reverse. */
-g.g-enter .sector{animation:secIn .34s cubic-bezier(.22,.9,.32,1.12) both;
-  animation-delay:calc(var(--i,0)*45ms)}
-@keyframes secIn{0%{opacity:0;transform:rotate(var(--fan,0deg)) scale(.85)}
-  100%{opacity:1;transform:none}}
-g.g-exit .sector{animation:secOut .2s ease-in both;
-  animation-delay:calc(var(--i,0)*18ms);pointer-events:none}
-@keyframes secOut{0%{opacity:1}100%{opacity:0;transform:rotate(var(--fan,0deg)) scale(.9)}}
+/* Fan-out (éventail / deck de cartes, 2026-10-28) : l'ouverture d'une
+   couronne se joue comme un paquet de cartes superposées. Au départ TOUS les
+   secteurs sont empilés à la position du 1er segment (--fan = 0 pour le 1er,
+   écart angulaire vers le 1er pour les autres → pile sous le 1er), puis le
+   2e, le 3e… glissent tour à tour vers leur position, révélant le segment
+   précédent (stagger --i, le 1er = carte du devant). PAS de scale : la
+   rotation seule (autour du centre de la roue) fait balayer les cartes
+   tangentiellement — pas une spirale « aspirée au centre ». Exit : même
+   balayement en sens inverse, les cartes retournent sous le 1er. */
+g.g-enter .sector{transform-box:view-box;transform-origin:center;
+  animation:secIn .5s cubic-bezier(.2,.75,.25,1) both;
+  /* +290ms par niveau : la couronne N+1 ne se déploie que QUAND la N s'est
+     posée (pas de chevauchement de piles au boot L0+L1). */
+  animation-delay:calc((40ms + var(--i,0)*190ms) + var(--lvl,0)*290ms)}
+@keyframes secIn{0%{opacity:0;transform:rotate(var(--fan,0deg))}
+  45%{opacity:1}100%{opacity:1;transform:rotate(0deg)}}
+g.g-exit .sector{transform-box:view-box;transform-origin:center;
+  animation:secOut .3s ease-in both;
+  animation-delay:calc(var(--i,0)*45ms);pointer-events:none}
+@keyframes secOut{0%{opacity:1;transform:rotate(0deg)}
+  100%{opacity:0;transform:rotate(var(--fan,0deg))}}
 g.g-exit{pointer-events:none}
 #pie-stage g{transform-box:view-box;transform-origin:50% 50%}
 </style>
@@ -2805,15 +2815,24 @@ function rBuildLevel(L,active){
   const g=document.createElementNS(RNS,'g');
   g.classList.add('crown');
   g.dataset.lv=L.level;
+  g.style.setProperty('--lvl',L.level);
   g.dataset.key=rKey(L);
   const spans=rSplitSpan(L.span[0],L.span[1],L.items.length);
+  /* Ordre DOM inversé : SVG peint dans l'ordre des enfants → le 1er segment
+     (idx 0) est ajouté EN DERNIER = carte du DEVOIR du paquet ; les autres
+     sont empilés sous lui et se déploient un à un (fan-out). */
+  const built=[];
   L.items.forEach((it,i)=>{
     const [a0,a1]=spans[i];
     const grp=document.createElementNS(RNS,'g');
     grp.style.setProperty('--i',i);
-    /* Fan (éventail): closed pose = this sector rotated toward the crown's
-       overall mid-angle, so the whole crown sweeps open from a bundle. */
-    grp.style.setProperty('--fan',(((L.span[0]+L.span[1])/2)-((a0+a1)/2))+'deg');
+    /* Fan (deck de cartes): closed pose = ce secteur tourné pour se SUPERPOSER
+       au 1er segment (pile sous lui, qui est la carte du devant). CSS rotate
+       (+θ) ajoute θ à l'angle d'écran (y ↓) → il faut θ = angle(1er) −
+       angle(secteur) pour ramener ce secteur sur le mid-angle du 1er. Le 1er
+       a --fan:0 et reste immobile ; les suivants partent empilés dessus et se
+       déploient un à un. */
+    grp.style.setProperty('--fan',(((spans[0][0]+spans[0][1])/2)-((a0+a1)/2))+'deg');
     grp.setAttribute('class','sector'+(i===L.sel?(active?' selected':' sel-inner'):''));
     grp.setAttribute('role','menuitem');
     grp.setAttribute('aria-label',t(it.i18n));
@@ -2841,8 +2860,11 @@ function rBuildLevel(L,active){
       });
       grp.appendChild(tx);
     }
-    g.appendChild(grp);
+    built[i]=grp;
   });
+  /* Ajout DOM : idx N-1 → 0, pour que le 1er segment (idx 0) soit le dernier
+     enfant = le plus au-dessus dans le paquet. */
+  for(let i=built.length-1;i>=0;i--)g.appendChild(built[i]);
   return g;
 }
 function rUpdateCenter(L0){
@@ -2879,7 +2901,9 @@ function rRender(){
        pas de re-déclenchement de l'animation d'entrée. */
     const existing=live.find(gel=>gel.dataset.key===key&&+gel.dataset.lv===L.level);
     if(existing){
-      existing.querySelectorAll('.sector').forEach((sec,i)=>{
+      /* Ordre DOM inversé (idx 0 en dernier) → on lit l'index via dataset.idx. */
+      existing.querySelectorAll('.sector').forEach(sec=>{
+        const i=+sec.dataset.idx;
         sec.classList.toggle('selected',active===L.level&&i===L.sel);
         sec.classList.toggle('sel-inner',active!==L.level&&i===L.sel);
         sec.tabIndex=(active===L.level&&i===L.sel)?0:-1;
@@ -2898,8 +2922,9 @@ function rRender(){
       old.classList.remove('g-enter');
       old.classList.add('g-exit');
       old.querySelectorAll('.sector').forEach(s=>s.tabIndex=-1);
-      /* retrait immédiat (pas de fuite si aucun rRender ne suit) */
-      setTimeout(()=>old.remove(),360);
+      /* retrait au terme de la sortie (dernière carte : délai max + durée) */
+      const nOld=old.querySelectorAll('.sector').length;
+      setTimeout(()=>old.remove(),45*(nOld-1)+300+30);
     }
     const g=rBuildLevel(L,active===L.level);
     g.setAttribute('id','rg-'+L.level);

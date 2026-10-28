@@ -69,13 +69,15 @@ JS_CROWNS = """() => {
     .filter(g => !g.classList.contains('g-exit'))
     .map(g => ({
       id: g.id,
-      items: [...g.querySelectorAll('.sector')].map(s => ({
-        t: (s.getAttribute('aria-label') || '').trim(),
-        sel: s.classList.contains('selected') || s.classList.contains('sel-inner'),
-        inVp: (() => { const r = s.getBoundingClientRect();
-          return r.left >= -1 && r.right <= window.innerWidth + 1
-              && r.top >= 0 && r.bottom <= window.innerHeight + 1; })()
-      }))
+      items: [...g.querySelectorAll('.sector')]
+        .sort((a, b) => (+a.dataset.idx) - (+b.dataset.idx))
+        .map(s => ({
+          t: (s.getAttribute('aria-label') || '').trim(),
+          sel: s.classList.contains('selected') || s.classList.contains('sel-inner'),
+          inVp: (() => { const r = s.getBoundingClientRect();
+            return r.left >= -1 && r.right <= window.innerWidth + 1
+                && r.top >= -1 && r.bottom <= window.innerHeight + 1; })()
+        }))
     }));
   out.center = document.querySelector('#pie-center text')
     ? document.querySelector('#pie-center text').textContent : '';
@@ -93,7 +95,10 @@ def angles(pg):
     return pg.evaluate("""() => {
       const out = {};
       for (const g of document.querySelectorAll('#pie-stage g[id^="rg-"]:not(.g-exit)')) {
-        out[g.id] = [...g.querySelectorAll('.sector')].map(s => {
+        /* DOM = ordre de peinture inversé (idx 0 en dernier) → on trie par
+           data-idx pour retrouver l'ordre logique des items. */
+        out[g.id] = [...g.querySelectorAll('.sector')]
+          .sort((a, b) => (+a.dataset.idx) - (+b.dataset.idx)).map(s => {
           const p = s.querySelector('path');
           const L = p.getTotalLength();
           const raw = [];
@@ -134,7 +139,7 @@ with sync_playwright() as p:
     errors = []
     pg.on("pageerror", lambda e: errors.append(str(e)))
     login(pg)
-    pg.wait_for_timeout(700)
+    pg.wait_for_timeout(1300)   # laisse finir le fan-out L0 (+L1 retardé)
 
     # --- boot state: menu open by default ---
     s = pg.evaluate(JS_CROWNS)
@@ -178,7 +183,7 @@ with sync_playwright() as p:
 
     # --- click Préparer → its L1 crown (Classe/Sujet) ---
     click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Préparer (bottom-left)
-    pg.wait_for_timeout(300)
+    pg.wait_for_timeout(1500)
     s = pg.evaluate(JS_CROWNS)
     check("Préparer selected: L1 = 2 items (Classe / Sujet)",
           [i["t"] for i in s["sectors"][1]["items"]] ==
@@ -216,7 +221,7 @@ with sync_playwright() as p:
     s = pg.evaluate(JS_CROWNS)
     check("return home: menu re-opened by default", s["open"], s)
     click_sector(pg, "#rg-0 .sector[data-idx='1']")   # Analyser (bottom-right)
-    pg.wait_for_timeout(300)
+    pg.wait_for_timeout(1500)
     s = pg.evaluate(JS_CROWNS)
     check("Analyse selected: L1 = 3 items (progression/results/history)",
           [i["t"] for i in s["sectors"][1]["items"]] ==
@@ -364,7 +369,7 @@ with sync_playwright() as p:
     merr = []
     m.on("pageerror", lambda e: merr.append(str(e)))
     login(m)
-    m.wait_for_timeout(600)
+    m.wait_for_timeout(1900)   # laisse finir le fan-out L0 + L1 retardé
     s = m.evaluate(JS_CROWNS)
     check("390: menu open at boot, L0 = 3 verbs + L1 = 2 (Évaluer sub-crown)",
           s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 2
@@ -377,7 +382,7 @@ with sync_playwright() as p:
           s["svgIn"] and all(i["inVp"] for c in s["sectors"] for i in c["items"]), s)
     m.screenshot(path="tests/home_390.png")
     click_sector(m, "#rg-0 .sector[data-idx='1']")   # Analyser
-    m.wait_for_timeout(300)
+    m.wait_for_timeout(1800)
     s = m.evaluate(JS_CROWNS)
     check("390: Analyse crown 3 items in viewport",
           len(s["sectors"][1]["items"]) == 3
