@@ -181,13 +181,15 @@ with sync_playwright() as p:
     check("geometry: L0 Évaluer ≈ [-150°,-30°] (top sector)",
           l0e and l0e[0] <= -148 and l0e[1] >= -32 and l0e[1] <= -28, l0e)
 
-    # --- click Préparer → its L1 crown (Classe/Sujet) ---
+    # --- click Préparer → its L1 crown (Classe/Sujet); NO item pre-selected ---
     click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Préparer (bottom-left)
     pg.wait_for_timeout(1500)
     s = pg.evaluate(JS_CROWNS)
-    check("Préparer selected: L1 = 2 items (Classe / Sujet)",
+    check("Préparer selected: L1 = 2 items (Classe / Sujet), none pre-selected",
           [i["t"] for i in s["sectors"][1]["items"]] ==
-          ["Classe / élèves", "Sujet"], s["sectors"])
+          ["Classe / élèves", "Sujet"]
+          and not any(i["sel"] for i in s["sectors"][1]["items"]),
+          s["sectors"])
     check("centre shows 📚 when Préparer selected", s["center"] == "📚", s["center"])
     ang = angles(pg)
     l0p = ang.get("rg-0", [None])[2]
@@ -198,12 +200,19 @@ with sync_playwright() as p:
           all(a[0] >= l0p[0] - 4 and a[1] <= l0p[1] + 4 for a in l1),
           {"l0": l0p, "l1": l1})
 
-    # --- wheel cycles the open outer crown (L1); Enter executes ---
+    # --- wheel: first press SELECTS the first item (was unselected); ---
+    # --- next press cycles to 'Sujet'; Enter executes ---
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
-    check("wheel: L1 selection moves to 'Sujet'",
+    check("wheel: L1 selection moves to 'Classe / élèves' (from unselected)",
+          s["sectors"][1]["items"][0]["sel"]
+          and not s["sectors"][1]["items"][1]["sel"], s["sectors"])
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    check("wheel: L1 selection cycles to 'Sujet'",
           s["sectors"][1]["items"][1]["sel"], s["sectors"])
     pg.keyboard.press("Enter")
     pg.wait_for_timeout(500)
@@ -263,10 +272,17 @@ with sync_playwright() as p:
     check("Esc closes the menu", not s["open"], s["open"])
 
     # --- wheel cycles the OPEN outer crown; at boot the outermost open crown
-    #     is Évaluer's L1 (Sur sujet / Directe) — wheel cycles it, Enter runs
-    #     the selected leaf ---
+    #     is Évaluer's L1 (Sur sujet / Directe), NOTHING pre-selected — first
+    #     press selects 'Sur sujet', second 'Directe'; Enter runs the leaf ---
     pg.click("#home-reopen"); pg.wait_for_timeout(250)
     pg.mouse.move(640, 450)
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    check("wheel: L1 (Évaluer) selection = 'Sur sujet' (from unselected)",
+          s["sectors"][1]["items"][0]["sel"]
+          and not s["sectors"][1]["items"][1]["sel"],
+          [i["t"] for i in s["sectors"][1]["items"]])
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)

@@ -2740,10 +2740,13 @@ function rChain(){
     const lvl=out.length;
     const parent=out[lvl-1];
     const raw=RST.sel[lvl];
-    const sel=Math.min(Number.isFinite(raw)?raw:0,cur.sub.length-1);
+    /* Aucun pré-selection à l'ouverture d'un sous-menu (tibo 2026-10-28) :
+       sel=null tant que l'utilisateur ne choisit rien (clic ou molette).
+       La chaîne s'arrête là — pas de couronne plus profonde sans sélection. */
+    const sel=Number.isFinite(raw)?Math.min(raw,cur.sub.length-1):null;
     out.push({level:lvl,items:cur.sub,sel,
       span:rSplitSpan(parent.span[0],parent.span[1],parent.items.length)[parent.sel]});
-    cur=cur.sub[sel];
+    cur=sel==null?null:cur.sub[sel];
   }
   out.forEach(L=>{L.mid=(L.span[0]+L.span[1])/2;});
   RST.sel=out.map(L=>L.sel);   /* rewrites normalised state (undefined → valid values) */
@@ -2965,7 +2968,10 @@ function rCycle(d){
   const levels=rChain();
   const active=levels.length-1;
   const n=levels[active].items.length;
-  RST.sel[active]=(RST.sel[active]+d+n)%n;
+  const cur=RST.sel[active];
+  /* rien de sélectionné (sous-menu fraîchement ouvert) → la molette SÉLECTIONNE
+     l'item 0 (sens ↓) ou N-1 (sens ↑) ; sinon on cycle normalement. */
+  RST.sel[active]=(cur==null)?((d>=0)?0:n-1):(cur+d+n)%n;
   rRender();
 }
 function rPick(level,i){
@@ -2977,7 +2983,9 @@ function rPick(level,i){
 }
 function rExecute(){
   const levels=rChain();
-  const it=levels[levels.length-1].items[levels[levels.length-1].sel];
+  const A=levels[levels.length-1];
+  if(A.sel==null)return;   /* rien de sélectionné sur le niveau actif : Enter est inerte */
+  const it=A.items[A.sel];
   pieClose();
   it.go();
 }
