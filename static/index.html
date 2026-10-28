@@ -18,7 +18,11 @@
 *{box-sizing:border-box}
 body{margin:0;font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
   background:var(--bg);color:var(--ink)}
-header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:10}
+header{background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:74}
+/* z-74: above the home radial menu's full-viewport backdrop (#pie-wrap z-70)
+   so the header controls (user chip, language flag, …) stay clickable/undimmed
+   on the simplified home screen; still below modals (z-80) and sheets (z-92+).
+   Harmless elsewhere — the radial menu only exists on home. */
 .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
 header .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;min-height:58px}
 .logo{font-weight:800;font-size:17px;letter-spacing:.2px}
@@ -1144,6 +1148,14 @@ table.conv-tab thead td.conv-bd{font-weight:700}
 .home-reopen:hover{border-color:var(--acc);border-style:solid;color:var(--acc)}
 .home-reopen.hide{display:none}
 .home-adv-wrap{text-align:center;margin-bottom:34px;position:relative;z-index:71}
+/* simplified home only: the radial menu already exposes "Évaluer" (top
+   sector), so drop the redundant header "✍️ Evaluate" button; and the ⚙ Data
+   menu is a power-user control that has no place on the minimal start screen.
+   The rest of the header stays ACTIVE (user chip + language flag stay
+   clickable — the header z-74 sits above the radial backdrop z-70).
+   Driven by body.home-active (navApplyView), so it only applies on home. */
+body.home-active #hdr-evaluate,
+body.home-active #menu-data-wrap{display:none}
 @media(max-width:480px){
   #view-home .home-hero{margin:18px 0 6px}
   #view-home .home-hero h1{font-size:21px}
@@ -1287,7 +1299,7 @@ g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .
           <button id="user-logout" data-i18n="auth.logout">Log out</button>
         </div>
       </div>
-      <div class="menu">
+      <div class="menu" id="menu-data-wrap">
         <button id="menu-data-btn">⚙ <span data-i18n="nav.data">Data</span></button>
         <div class="menu-list hide" id="menu-data">
           <button data-act="export" data-i18n="menu.export">Export students CSV</button>
@@ -3232,6 +3244,7 @@ let _navReconcilePending=false; // set by back/forward so loadHistory reconciles
 
 function navApplyView(view,sub,opts){
   opts=opts||{};
+  document.body.classList.remove('home-active');   /* home-only header trims; home branch re-adds */
   pieClose();   /* radial v3: the home radial menu never overlays another view
                     (the home branch below re-opens it via rAF after layout). */
   if(view==='home'){
@@ -3243,6 +3256,7 @@ function navApplyView(view,sub,opts){
     pieClose();
     $$('.wrap > section').forEach(v=>v.classList.add('hide'));
     $('#view-home').classList.remove('hide');
+    document.body.classList.add('home-active');   /* header trims (no Evaluate / no Data) — home only */
     $$('#nav button').forEach(x=>x.classList.remove('on'));
     $('#nav').classList.add('hide');
     $('#hdr-home').classList.add('hide');   /* the "◂ Simplified" button is meaningless ON home */

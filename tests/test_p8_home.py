@@ -152,6 +152,14 @@ with sync_playwright() as p:
     check("boot: hero title not dimmed (z-71, above the menu backdrop)",
           pg.evaluate("getComputedStyle(document.querySelector('#view-home .home-hero')).zIndex") == "71")
     check("boot: centre shows the selected verb emoji (✍️)", s["center"] == "✍️", s["center"])
+    check("boot: header trimmed on home — 'Évaluer' button + Data menu hidden",
+          pg.evaluate("getComputedStyle(document.querySelector('#hdr-evaluate')).display") == "none"
+          and pg.evaluate("getComputedStyle(document.querySelector('#menu-data-wrap')).display") == "none")
+    check("boot: header ACTIVE on home (user chip + language flag reachable, above the backdrop)",
+          pg.evaluate("getComputedStyle(document.querySelector('header')).zIndex") == "74"
+          and pg.evaluate("!!document.querySelector('#user-chip-wrap') && "
+                         "!document.querySelector('#user-chip-wrap').classList.contains('hide')")
+          and pg.evaluate("getComputedStyle(document.querySelector('#lang-tgl')).display") == "flex")
     check("boot: no #pie-path description pill (removed 2026-10-28)",
           not s["hasPathPill"], s["hasPathPill"])
     pg.screenshot(path="tests/home_radial_boot.png")
@@ -277,6 +285,9 @@ with sync_playwright() as p:
           pg.evaluate("location.hash") == "#assignments"
           and not pg.evaluate("document.querySelector('#nav').classList.contains('hide')")
           and not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
+    check("'Mode avancé': header restored — 'Évaluer' + Data menu back on the advanced screen",
+          pg.evaluate("getComputedStyle(document.querySelector('#hdr-evaluate')).display") != "none"
+          and pg.evaluate("getComputedStyle(document.querySelector('#menu-data-wrap')).display") != "none")
     pg.click("#hdr-home")
     pg.wait_for_timeout(400)
     s = pg.evaluate(JS_CROWNS)

@@ -134,8 +134,11 @@ def main():
         check(pg.evaluate("localStorage.getItem('elt-lang')") == "fr",
               "boot in FR")
 
-        # 1) AI-first #run
-        pg.click("#hdr-evaluate")
+        # 1) AI-first #run — enter the evaluator via goEvaluate() (same entry the
+        #    radial "Évaluer" sector uses). The header "✍️ Evaluate" button is
+        #    hidden on the simplified home screen (2026-10-28), so it can't be
+        #    the entry point here.
+        pg.evaluate("goEvaluate()")
         pg.fill("#written-text", "It was a nice day and we went to the park.")
         pg.select_option("#rubric", "att-exp-ecrite")
         pg.click("#run")
