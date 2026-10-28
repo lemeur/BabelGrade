@@ -1199,9 +1199,10 @@ body.home-active #menu-data-wrap{display:none}
    balayement en sens inverse, les cartes retournent sous le 1er. */
 g.g-enter .sector{transform-box:view-box;transform-origin:center;
   animation:secIn .5s cubic-bezier(.2,.75,.25,1) both;
-  /* +290ms par niveau : la couronne N+1 ne se déploie que QUAND la N s'est
-     posée (pas de chevauchement de piles au boot L0+L1). */
-  animation-delay:calc((40ms + var(--i,0)*190ms) + var(--lvl,0)*290ms)}
+  /* Stagger par carte (--i*190ms) ; le sous-menu ne se replie QUE si L0 n'est
+     pas encore posé (cas boot) — au clic sur un verbe déjà posé, L1 démarre
+     à ~60ms. (2026-10-28 : +290ms/niveau supprimé → L1 trop lent à ouvrir.) */
+  animation-delay:calc(60ms + var(--i,0)*190ms)}
 @keyframes secIn{0%{opacity:0;transform:rotate(var(--fan,0deg))}
   45%{opacity:1}100%{opacity:1;transform:rotate(0deg)}}
 g.g-exit .sector{transform-box:view-box;transform-origin:center;
