@@ -1188,10 +1188,18 @@ body.home-active #menu-data-wrap{display:none}
 .rsvg .center:hover circle{fill:var(--acc-soft)}
 .rsvg .center:focus{outline:none}
 .rsvg .center text{pointer-events:none}
-g.g-enter{animation:gIn .3s ease-out both}
-@keyframes gIn{from{opacity:0;transform:scale(.88)}}
-g.g-exit{opacity:0;transform:scale(1.05);transition:opacity .2s ease,transform .2s ease;
-  pointer-events:none}
+/* Fan-out (éventail, 2026-10-28): when a crown appears/disappears, each
+   sector sweeps in/out around the wheel centre from its closed position
+   (toward the parent's sector mid-angle — --fan, set in rBuildLevel) with a
+   per-index stagger (--i), like a hand fan opening; exit closes in reverse. */
+g.g-enter .sector{animation:secIn .34s cubic-bezier(.22,.9,.32,1.12) both;
+  animation-delay:calc(var(--i,0)*45ms)}
+@keyframes secIn{0%{opacity:0;transform:rotate(var(--fan,0deg)) scale(.85)}
+  100%{opacity:1;transform:none}}
+g.g-exit .sector{animation:secOut .2s ease-in both;
+  animation-delay:calc(var(--i,0)*18ms);pointer-events:none}
+@keyframes secOut{0%{opacity:1}100%{opacity:0;transform:rotate(var(--fan,0deg)) scale(.9)}}
+g.g-exit{pointer-events:none}
 #pie-stage g{transform-box:view-box;transform-origin:50% 50%}
 </style>
 </head>
@@ -2795,12 +2803,17 @@ function rBuildLevel(L,active){
   const {C,T}=RST;
   const ri=C+L.level*T,ro=C+(L.level+1)*T,rm=(ri+ro)/2;
   const g=document.createElementNS(RNS,'g');
-  g.setAttribute('id','rg-'+L.level);
+  g.classList.add('crown');
+  g.dataset.lv=L.level;
   g.dataset.key=rKey(L);
   const spans=rSplitSpan(L.span[0],L.span[1],L.items.length);
   L.items.forEach((it,i)=>{
     const [a0,a1]=spans[i];
     const grp=document.createElementNS(RNS,'g');
+    grp.style.setProperty('--i',i);
+    /* Fan (éventail): closed pose = this sector rotated toward the crown's
+       overall mid-angle, so the whole crown sweeps open from a bundle. */
+    grp.style.setProperty('--fan',(((L.span[0]+L.span[1])/2)-((a0+a1)/2))+'deg');
     grp.setAttribute('class','sector'+(i===L.sel?(active?' selected':' sel-inner'):''));
     grp.setAttribute('role','menuitem');
     grp.setAttribute('aria-label',t(it.i18n));
@@ -2852,37 +2865,50 @@ function rUpdateCenter(L0){
   tx.textContent=L0.items[L0.sel].ico;
   c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
 }
-function rKey(L){return L.items.map(i=>i.id).join('|')+':'+L.sel+':'+L.span.map(n=>n.toFixed(1)).join(',');}
+function rKey(L){return L.items.map(i=>i.id).join('|')+':'+L.span.map(n=>n.toFixed(1)).join(',');}
 function rRender(){
   const levels=rChain();
   const svg=rEnsureSvg();
   const active=levels.length-1;
-  svg.querySelectorAll('g[id^="rg-"]').forEach(gel=>{
-    const lv=+gel.id.slice(3);
-    if(!levels.some(L=>L.level===lv)&&!gel.classList.contains('g-exit')){
-      gel.classList.add('g-exit');
-      gel.querySelectorAll('.sector').forEach(s=>s.tabIndex=-1);
-      setTimeout(()=>gel.remove(),230);
-    }
-  });
+  const live=[...svg.querySelectorAll('g.crown:not([data-exit])')];
+  let activeG=null;
   levels.forEach(L=>{
-    let g=document.getElementById('rg-'+L.level);
-    if(g&&g.classList.contains('g-exit'))g.remove();
-    if(g&&g.dataset.key===rKey(L)){
-      g.querySelectorAll('.sector').forEach((sec,i)=>{
+    const key=rKey(L);
+    /* Cycle de la MÊME couronne (molette sur le niveau actif, bascule de
+       verbe à même items) : mise à jour EN PLACE, pas de reconstruction,
+       pas de re-déclenchement de l'animation d'entrée. */
+    const existing=live.find(gel=>gel.dataset.key===key&&+gel.dataset.lv===L.level);
+    if(existing){
+      existing.querySelectorAll('.sector').forEach((sec,i)=>{
         sec.classList.toggle('selected',active===L.level&&i===L.sel);
         sec.classList.toggle('sel-inner',active!==L.level&&i===L.sel);
         sec.tabIndex=(active===L.level&&i===L.sel)?0:-1;
       });
-    }else{
-      if(g)g.remove();
-      g=rBuildLevel(L,active===L.level);
-      g.classList.add('g-enter');
-      svg.appendChild(g);
+      if(L.level===active)activeG=existing;
+      return;
     }
+    /* Changement de sous-menu : l'ancienne couronne de ce niveau se referme
+       en éventail (g-exit), la nouvelle s'ouvre (g-enter), en parallèle.
+       L'ID stable rg-N reste sur la couronne ACTIVE (l'ancienne perd le
+       sien) : #rg-N pointe toujours sur la couronne courante. */
+    const old=live.find(gel=>+gel.dataset.lv===L.level);
+    if(old){
+      old.dataset.exit='1';
+      old.removeAttribute('id');
+      old.classList.remove('g-enter');
+      old.classList.add('g-exit');
+      old.querySelectorAll('.sector').forEach(s=>s.tabIndex=-1);
+      /* retrait immédiat (pas de fuite si aucun rRender ne suit) */
+      setTimeout(()=>old.remove(),360);
+    }
+    const g=rBuildLevel(L,active===L.level);
+    g.setAttribute('id','rg-'+L.level);
+    g.classList.add('g-enter');
+    svg.appendChild(g);
+    if(L.level===active)activeG=g;
   });
   rUpdateCenter(levels[0]);
-  svg.querySelector(`#rg-${active} .sector.selected`)?.focus({preventScroll:true});
+  activeG?.querySelector('.sector.selected')?.focus({preventScroll:true});
 }
 function openMenu(){
   /* home opens the radial menu by default (2026-10-27) */
@@ -2950,8 +2976,8 @@ $('#pie-stage').addEventListener('click',e=>{
   if(!RST.open)return;
   const sec=e.target.closest('.sector');
   if(sec){
-    const g=sec.closest('g[id^="rg-"]');
-    rPick(+g.id.slice(3),+sec.dataset.idx);
+    const g=sec.closest('g.crown');
+    rPick(+g.dataset.lv,+sec.dataset.idx);
     return;
   }
   if(e.target.closest('#pie-center'))pieClose();
