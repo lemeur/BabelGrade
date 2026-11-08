@@ -135,6 +135,21 @@ def build_stats_response() -> dict:
     }
 
 
+def build_roster_response() -> dict:
+    """Deterministic roster-extraction reply for the roster_import job
+    (2026-11-08): class identity + 3 students + 1 warning."""
+    return {
+        "class_name": "2G1",
+        "school_name": "Lycée Mock Jean-Jaurès",
+        "students": [
+            {"first_name": "Léa", "last_name": "Martin"},
+            {"first_name": "Noah", "last_name": "Bernard"},
+            {"first_name": "Chloé", "last_name": "DUPONT"},
+        ],
+        "warnings": ["Ligne 3: lettre illisible (corrigée « DUPONT »)"],
+    }
+
+
 # Levels to assign per criterion name (default B1). The test overrides a few to
 # exercise a non-default attestation path.
 DEFAULT_LEVELS = {}
@@ -146,6 +161,11 @@ DEFAULT_LEVELS = {}
 # (meta -> phase* -> token* -> result -> done) rather than the late-subscriber
 # DB-rebuild path (meta -> result -> done).
 STREAM_PRE_DELAY = 0.0
+
+# Seconds the mock holds a roster-extraction reply (2026-11-08): set by the
+# roster test so the job stays in-flight long enough to make the 409
+# in-flight guard + the early-commit 409 deterministic.
+ROSTER_DELAY = 0.0
 
 
 class _Handler(BaseHTTPRequestHandler):
@@ -214,11 +234,16 @@ class _Handler(BaseHTTPRequestHandler):
         stream = bool(body.get("stream"))
 
         # decide what to return from the prompt content
+        roster_req = "student-roster sheet" in text
         stats_req = "CLASS'S LEVEL" in text or "WHOLE CLASS" in text
         # fall back: if no criteria were parsed, still answer with a JSON
         # object that will NOT satisfy the analyze schema (raw-raw path).
         crits = criteria_from_prompt(text)
-        if stats_req:
+        if roster_req:
+            if ROSTER_DELAY > 0:
+                time.sleep(ROSTER_DELAY)
+            full = json.dumps(build_roster_response(), ensure_ascii=False)
+        elif stats_req:
             full = json.dumps(build_stats_response(), ensure_ascii=False)
         elif crits:
             full = json.dumps(build_analyze_response(text, DEFAULT_LEVELS),

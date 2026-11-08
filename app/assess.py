@@ -652,6 +652,69 @@ def build_class_insight_messages(*, assignment: dict, stats: dict,
 REQUIRED_KEYS = {"executive_summary", "overall_level", "rubric_mapping", "student_feedback"}
 
 
+# ------------------------------------------------- roster import prompt (2026-11-08)
+ROSTER_IMPORT_SYSTEM_PROMPT = """You are an OCR assistant for a language teacher.
+The user gives you one or several photos of the class's STUDENT ROSTER sheet
+(liste des élèves) — the page(s) where the school wrote the class name, the
+school name, and the students' first and last names, usually in a numbered
+list or a table.
+
+Your task: read every photo and produce ONE JSON object with the class
+identity and every student you can find, exactly in the sheet's order.
+
+Rules:
+- First name and last name go in SEPARATE fields. A typical French-style
+  sheet lists "Prénom NOM" — the last word is the surname.
+- Transcribe names exactly as written, keeping accents and apostrophes
+  (Éléonore, O'Brien, N'Guyen). Do NOT invent, complete or correct names:
+  if a name is partly illegible, keep what is readable and note it in
+  "warnings".
+- One JSON object per student. If two photos show the same student twice,
+  list them twice (the teacher will deduplicate).
+- "class_name": the class designation visible on the sheet (e.g. "2G1",
+  "L3", "Terminale STMG"). null when not visible.
+- "school_name": the school / établissement name visible on the sheet.
+  null when not visible.
+- Do not include teachers, absentees marked "absent(e)", or header words in
+  the student list.
+- "warnings": short notes in the UI language for anything ambiguous
+  (illegible letters, possible misreadings). Empty array when everything is
+  clear.
+
+Respond with ONLY a valid JSON object. No markdown fences, no prose
+before/after.
+
+JSON SCHEMA:
+{
+  "class_name": "string|null",
+  "school_name": "string|null",
+  "students": [
+    { "first_name": "string", "last_name": "string" }
+  ],
+  "warnings": [ "string" ]
+}
+"""
+
+
+def build_roster_import_messages(*, image_data_urls: list,
+                                 ui_language: Optional[str] = None) -> list[dict]:
+    """Prompt for the class-roster import: one LLM vision call over ALL the
+    roster photos, returning class identity + student names as strict JSON."""
+    lang_block = language_instruction(ui_language or "")
+    user_text = ("These are photos of the class student-roster sheet "
+                 f"({len(image_data_urls)} photo(s)). Extract the class "
+                 "identity and every student name, in the sheet's order.")
+    content: list = [{"type": "text", "text": user_text}]
+    content += [{"type": "image_url", "image_url": {"url": url}}
+                for url in image_data_urls]
+    return [
+        {"role": "system",
+         "content": ROSTER_IMPORT_SYSTEM_PROMPT +
+                    (("\n\n" + lang_block) if lang_block else "")},
+        {"role": "user", "content": content},
+    ]
+
+
 def parse_result(text: str) -> dict:
     """Parse the model reply into a structured dict.
 

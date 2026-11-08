@@ -814,6 +814,82 @@ def _finalize(job_id: int, js: JobStream, status: str,
 
 
 # --------------------------------------------------------------------- dispatch
+async def _run_roster_import(job_id: int, js: JobStream, payload: dict) -> None:
+    """Class-roster photo import (2026-11-08): ONE LLM vision call over ALL
+    the roster photos -> strict JSON {class_name, school_name, students,
+    warnings}. The draft is persisted on the job row (jobs.result_json);
+    NOTHING is created until the teacher commits it
+    (POST /api/students/import-photos/{id}/commit). No submission/analysis
+    rows involved — the job row alone carries the payload, like stats_ai.
+
+    tibo note (2026-11-08): the LLM is slow — the chat call gets an extended
+    timeout (1200 s, 3 retries on transient errors) instead of the 600 s
+    default, so a 30–60 s reasoning+generation over several photos cannot
+    time out mid-stream."""
+    p = payload or {}
+    names = p.get("photo_names") or []
+    if not names:
+        raise ValueError("no roster photos in the job payload")
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    image_data_urls = await asyncio.to_thread(_data_urls_from_names, names)
+
+    _set_phase(job_id, PHASE_ANALYZING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    messages = assess.build_roster_import_messages(
+        image_data_urls=image_data_urls,
+        ui_language=p.get("ui_language") or None)
+    resp = await asyncio.to_thread(
+        llm_client.chat, messages, temperature=0.0,
+        max_tokens=4000, thinking_budget=2000, timeout=1200)
+    full = resp.get("content") or ""
+    truncated = bool(resp.get("truncated"))
+
+    parsed = llm_client.extract_json(full)
+    if not isinstance(parsed, dict) or not isinstance(parsed.get("students"), list):
+        raise ValueError("the model reply is not a valid roster JSON "
+                         "(students list missing)")
+
+    warnings: list[str] = []
+    students: list[dict] = []
+    for s in parsed.get("students") or []:
+        if not isinstance(s, dict):
+            continue
+        first = str(s.get("first_name") or s.get("prenom") or "").strip()
+        last = str(s.get("last_name") or s.get("nom") or "").strip()
+        if not first and not last:
+            whole = str(s.get("name") or s.get("full_name") or "").strip()
+            parts = whole.split()
+            first = whole if len(parts) <= 1 else " ".join(parts[:-1])
+            last = parts[-1] if len(parts) > 1 else ""
+        if not (first or last):
+            warnings.append("Une ligne de la liste n'a pas de nom lisible.")
+            continue
+        students.append({"first_name": first, "last_name": last})
+    draft = {
+        "school_name": (str(parsed.get("school_name") or "").strip() or None),
+        "class_name": (str(parsed.get("class_name") or "").strip() or None),
+        "class_code_hint": (p.get("class_code_hint") or "").strip() or None,
+        "students": students,
+        "warnings": [str(w) for w in (parsed.get("warnings") or [])
+                     if str(w).strip()] + warnings,
+    }
+    if not students:
+        warnings.append("Aucun élève n'a pu être extrait — vérifiez la "
+                        "lisibilité des photos.")
+    if truncated:
+        warnings.append("Le modèle a atteint sa limite de tokens avant de "
+                        "terminer : la liste peut être incomplète.")
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    _finalize(job_id, js, "done", report={
+        "roster": draft, "photo_names": names,
+        "raw": full, "warnings": warnings})
+
+
 async def _run_ocr(job_id: int, js: JobStream, payload: dict) -> None:
     """LLM-direct OCR job for a written submission's page photos (the LLM
     vision engine transcribes each page directly, with per-line bounding
@@ -849,6 +925,7 @@ _RUNNERS = {
     "run_ai": _stage_and_run_runai,
     "ocr": _run_ocr,
     "stats_ai": _stage_and_run_statsai,
+    "roster_import": _run_roster_import,
 }
 
 

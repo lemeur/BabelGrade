@@ -19,7 +19,7 @@ from . import auth, db, jobs
 from . import (routes_admin, routes_analyses, routes_analyze,
                routes_annotate, routes_assignments, routes_auth, routes_docs,
                routes_files, routes_health, routes_jobs, routes_rubrics,
-               routes_students)
+               routes_roster, routes_students)
 from .config import STATIC_DIR
 from .docs_catalog import DOCS_DIR
 from .media import _migrate_default_titles, seed_rubrics
@@ -66,6 +66,7 @@ def create_app() -> FastAPI:
     app.include_router(routes_health.router)
     app.include_router(routes_auth.router)
     app.include_router(routes_rubrics.router)
+    app.include_router(routes_roster.router)
     app.include_router(routes_students.router)
     app.include_router(routes_assignments.router)
     app.include_router(routes_admin.router)
