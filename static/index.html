@@ -186,6 +186,26 @@ button.btn:disabled{opacity:.5;cursor:wait}
    the box's min-content and push the × past the 390px viewport. */
 .tfr-cur span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hide{display:none!important}
+/* Roster photo import (2026-11-08): photo thumbnails in the modal dropzone
+   + the editable review rows (compact inputs, first/last split). */
+#roster-overlay .r-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+#roster-overlay .r-photo{position:relative;width:84px;border:1px solid var(--line);
+  border-radius:8px;overflow:hidden;background:#fff}
+#roster-overlay .r-photo img{display:block;width:100%;height:64px;object-fit:cover}
+#roster-overlay .r-photo-x{position:absolute;top:2px;right:2px;width:18px;height:18px;
+  border:0;border-radius:50%;background:rgba(15,23,42,.7);color:#fff;font-size:11px;
+  line-height:18px;padding:0;cursor:pointer}
+#roster-overlay .r-photo-x:hover{background:var(--err)}
+#roster-overlay .roster-rows{border:1px solid var(--line);border-radius:10px;
+  max-height:320px;overflow:auto;margin-top:8px}
+#roster-overlay .roster-rows table{margin:0}
+#roster-overlay .roster-rows th{position:sticky;top:0;background:#f8fafc;z-index:1}
+#roster-overlay .roster-rows input[type=text]{width:100%;min-width:60px;padding:5px 8px;
+  font-size:13.5px;border:1px solid transparent;border-radius:6px;background:transparent}
+#roster-overlay .roster-rows input[type=text]:hover{border-color:var(--line)}
+#roster-overlay .roster-rows input[type=text]:focus{outline:none;border-color:var(--acc);
+  background:#fff}
+#roster-overlay .roster-rows tr.off{opacity:.45}
 /* AI banner (dual-mode: run the AI before or after the teacher's evaluation).
    Rendered dynamically inside #report / #hist-report, so scope by class not id. */
 .ai-banner-card{--ai:#7c3aed;background:#f5f3ff;border:1px solid #ddd6fe;border-radius:10px;padding:14px;margin-bottom:14px}
@@ -244,14 +264,6 @@ button.btn.ai:disabled{opacity:.55;cursor:default}
 .ai-cell{font-size:12.5px;white-space:nowrap}
 .hist-badge-teacher{display:inline-block;font-size:11px;font-weight:700;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;padding:1px 8px;margin-left:6px}
 .hist-badge-ai{display:inline-block;font-size:11px;font-weight:700;border:1px solid #ddd6fe;background:#f5f3ff;color:#7c3aed;border-radius:999px;padding:1px 8px;margin-left:6px}
-/* dual-mode entry row: the two flow LABELS at the top of the Analyze view.
-   pt.2 (2026-10-03): these no longer contain action buttons — the only CTAs
-   are in the bottom action bar, so the cards are compact labels. */
-.entry-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-.entry-row .card{flex:1 1 280px;margin-bottom:0;border-left:4px solid var(--acc);padding:12px 14px}
-.entry-row .card.flow-teacher{border-left-color:#1d4ed8}
-.entry-row h3{margin:0 0 4px;font-size:14.5px}
-.entry-row p{font-size:12.5px;color:var(--muted);margin:0}
 /* P1.1 4-step wizard stepper */
 .wiz-card{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px}
 .wiz-title{font-size:14px;font-weight:700}
@@ -292,7 +304,6 @@ button.btn.ai:disabled{opacity:.55;cursor:default}
 @media (max-width:760px){
   .ai-cell .ai-pill{display:block;margin:2px 0}
   .ai-recap .meta{margin-left:0;width:100%}
-  .entry-row .card{flex:1 1 100%}
 }
 .hist-hint-mobile{display:none;margin-bottom:10px}
 /* tables: horizontal scroll + JS box-shadow edge fade when more columns are off-screen.
@@ -1364,20 +1375,6 @@ g.g-exit{pointer-events:none}
   </section>
   <!-- ================= ANALYZE ================= -->
   <section id="view-analyze" class="hide">
-    <!-- 0 · FLOW: two ways to evaluate (UX audit 2026-10-03 pt.2): these cards
-         are plain labels describing the two flows — the ONLY action buttons
-         are in the bottom action bar ("Analyze with the AI" / "Evaluate first"),
-         which is sticky on mobile. -->
-    <div class="entry-row">
-      <div class="card flow-ai">
-        <h3>🤖 <span data-i18n="ai.entryAi">Analyze with AI</span></h3>
-        <p data-i18n="ai.entryAiDesc">The AI reads the work and proposes levels + feedback; you then correct in the report.</p>
-      </div>
-      <div class="card flow-teacher">
-        <h3>✍️ <span data-i18n="ai.entryTeacher">Evaluate first</span></h3>
-        <p data-i18n="ai.entryTeacherDesc">You grade criterion by criterion (score starts at 0). The AI can follow, blind or confirming your levels.</p>
-      </div>
-    </div>
     <!-- P1.1 · 4-STEP WIZARD STEPPER: one chip per step; click jumps to that
          step, Next/Back validate. Steps are a GUIDANCE layer — the run guards
          (P0.5) stay authoritative, so direct #run / #run-eval always work. -->
@@ -1657,6 +1654,7 @@ g.g-exit{pointer-events:none}
         <div style="flex:0 0 auto"><button class="btn ghost" id="s-purge-tgl" data-stttl="purge" data-stlbl="lblPurge" title="Purge by classroom prefix" style="padding:4px 10px">🧹<span class="st-lbl">Purger</span></button></div>
         <div style="flex:0 0 auto"><button class="btn ghost" id="s-export" data-stttl="export" data-stlbl="lblExport" title="Export CSV" style="padding:4px 10px">📤<span class="st-lbl">Exporter</span></button></div>
         <div style="flex:0 0 auto"><button class="btn ghost" id="s-import" data-stttl="import" data-stlbl="lblImport" title="Import CSV" style="padding:4px 10px">📥<span class="st-lbl">Importer</span></button></div>
+        <div style="flex:0 0 auto"><button class="btn ghost" id="s-import-photos" data-stttl="importPhotosTtl" data-stlbl="importPhotos" title="Import a class from roster photos" style="padding:4px 10px">📷<span class="st-lbl">Importer classe</span></button></div>
         <input type="file" id="s-import-file" accept=".csv,text/csv" style="display:none">
       </div>
       <div id="s-add-form" class="hide">
@@ -1758,6 +1756,56 @@ g.g-exit{pointer-events:none}
         <button class="btn sm ghost x" id="job-json-close" data-i18n="jobs.close">✕ Close</button>
       </div>
       <pre id="job-json-pre" style="max-height:64vh;overflow:auto;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;font-size:12.5px;line-height:1.5;white-space:pre-wrap;word-break:break-word;margin:0"></pre>
+    </div>
+  </div>
+
+  <!-- Roster photo import modal (2026-11-08): one modal, 3 states
+       (upload -> extracting -> review), like the evaluator modals. -->
+  <div id="roster-overlay" class="modal-overlay hide">
+    <div class="modal-box" role="dialog" aria-modal="true" style="max-width:680px">
+      <!-- STEP 1 · upload -->
+      <div id="roster-step-upload">
+        <h3 data-i18n="roster.title">Import a class from photos</h3>
+        <p class="muted" data-i18n="roster.help" style="margin:0 0 10px">Photo(s) of the school's student list — the class name, the school and the students' names are read automatically, then checked before anything is created.</p>
+        <div class="drop" id="roster-drop">
+          <b data-i18n="roster.dropTitle">Drop the roster photo(s)</b>
+          <span data-i18n="roster.dropSub">png / jpg / webp / heic · up to 10 photos · or click to browse</span>
+        </div>
+        <input type="file" id="roster-file" class="hide" accept="image/*" multiple>
+        <div class="r-photos" id="roster-thumbs"></div>
+        <div class="row" style="margin-top:12px">
+          <div style="flex:1"><label data-i18n="roster.classCode">Class code (optional)</label>
+            <input type="text" id="roster-classcode" placeholder="26/27-LMY-2G1" data-i18n-ph="ph.histClass"></div>
+          <div style="flex:0 0 auto;align-self:flex-end"><button class="btn" id="roster-go" data-i18n="roster.extract">Read the list</button></div>
+        </div>
+      </div>
+      <!-- STEP 2 · extracting -->
+      <div id="roster-step-run" class="hide">
+        <h3 data-i18n="roster.running">Reading the list…</h3>
+        <div class="streambox" id="roster-runbox"></div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn ghost sm" id="roster-cancel" data-i18n="stat.ai.cancel">Cancel</button>
+        </div>
+      </div>
+      <!-- STEP 3 · review -->
+      <div id="roster-step-review" class="hide">
+        <h3 data-i18n="roster.reviewTitle">Check the extracted list</h3>
+        <p class="muted" id="roster-warns" style="margin:0 0 8px"></p>
+        <div class="row" style="margin-bottom:10px">
+          <div style="flex:1"><label data-i18n="roster.school">School</label>
+            <input type="text" id="roster-school"></div>
+          <div style="flex:1"><label data-i18n="st.classroom">Classroom</label>
+            <input type="text" id="roster-classroom" placeholder="26/27-LMY-2G1"></div>
+        </div>
+        <div class="muted" data-i18n="roster.reviewNote" style="font-size:12.5px">Edit any name, untick a row to skip it. Existing students with the same name + class code are updated, not duplicated.</div>
+        <div class="roster-rows"><table id="roster-table"><thead>
+          <tr><th style="width:34px"></th><th data-i18n="roster.firstName">First name</th><th data-i18n="roster.lastName">Last name</th></tr>
+        </thead><tbody id="roster-tbody"></tbody></table></div>
+        <div style="display:flex;gap:8px;margin-top:12px;align-items:center">
+          <button class="btn" id="roster-commit"></button>
+          <button class="btn ghost" id="roster-close2" data-i18n="conf.cancel">Cancel</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2127,7 +2175,7 @@ function wireAuth(){
 const I18N={
  en:{
   'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.jobs':'Jobs',
-  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct',
+  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
   'an.assignment':'Assignment (instruction + source document)','an.adhoc':'— ad-hoc (define the context below) —',
@@ -2157,7 +2205,7 @@ const I18N={
   'lvl.clear':'Clear',
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
   'ai.run':'Run AI analysis','ai.rerun':'Re-run AI (replaces this opinion)','ai.rerunHint':'New analysis: the opinion below will be replaced by the next one (only the last one is kept).',
-  'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.','ai.entryAi':'Analyze with AI','ai.entryAiDesc':'The AI reads the work and proposes levels + feedback; you then correct in the report.','ai.entryTeacher':'Evaluate first','ai.entryTeacherDesc':'You grade criterion by criterion (score starts at 0). The AI can follow, blind or confirming your levels.',
+  'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.',
   'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.title':'New evaluation','wiz.s1':'Assignment','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.advOpts':'Advanced options','wiz.evalNotes':'Evaluation instructions (optional)',
 'tip.att':'Attests a CEFR level (A1\u2013C2) from the official /120 grid (B.O. LVA/LVB). It is a recommendation \u2014 the teacher makes the final call.','tip.modalite':'Modality = whether the assessment covers comprehension or expression. The official point thresholds differ between the two.','tip.note20':'Hand-entered /20 mark. Reference only \u2014 the attested level is never computed from the /20.','tip.vsTarget':'Compares the attested level with the target level of the assignment.','tip.aiCol':'AI opinion per criterion: \u2713 if it matches your level, \u2260 if it differs.','tip.just':'AI justification + verbatim quotes from the production (evidence).','tip.points':'Points out of 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Overall level computed from the /120 grid (official thresholds).','tip.critGrid':'The six official sub-scores (comprehension or expression) make up the /120 total; the level is read from the official B.O. grid.',
   'an.tInherit':'Stored assignment materials are used for this analysis (photos, PDFs and audio included).',
@@ -2210,11 +2258,12 @@ const I18N={
    'ph.instr':'e.g. Write a 250-word review of the documentary ’The Last Horizon’. Include a recommendation.','ph.docText':'Paste the text / questions the student’s work is based on (or upload photos / PDF / audio below).','ph.accom':'e.g. The student is dyslexic — do not count spelling mistakes as harshly.','ph.title':'e.g. Mock BAC 2026 – dossier','ph.written':'Paste the student’s written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly.','ph.evalNotes':'e.g. The student must have understood the ironic tone of the text. The closing must be polite.','ph.histClass':'e.g. 26/27-LMY','ph.asgnInstr':'e.g. Write a 250-word review of the documentary ’The Last Horizon’.','ph.asgnDoc':'Paste the document / questions… (or attach a file below)','ph.asgnEval':'What to check in this work…','ph.purge':'e.g. 25/26 — deletes every student whose code starts with this','ph.satName':'e.g. Mock BAC 2026 — review','ph.fullName':'Full name','st.noPhoto':'No photo attached (text only)','st.photosN':'photo(s), in reading order','st.noLabelPhotos':'No {label} photo(s) (use the text / PDF above instead)','st.removePhoto':'Remove photo','st.removePage':'Remove page','st.noDocAudio':'No document audio (use the text box above instead)','st.noDocPdf':'No source-document PDF attached','st.photosImages':'Photos must be images (png/jpg/webp/heic)','st.filesN':'file(s)','st.noInstrPdf':'No instruction PDF attached','st.noEvalPdf':'No evaluation-instructions PDF attached','st.removePdf':'Remove {label} PDF','st.removeBtn':'Remove','st.noAudio':'No audio (paste the text above instead)','st.removeDocAudio':'Remove audio','st.audioPriority':'audio takes priority over this PDF','lbl.instr':'instruction','lbl.doc':'source document','lbl.eval':'evaluation instructions','an.chooseRubric':'Choose a rubric first','lang.en':'English','lang.fr':'French','lang.es':'Spanish','lang.de':'German','lang.label':'Language',
   'jobs.title':'Processing queue','jobs.help':'Long processing (Whisper transcription, document extraction, AI analysis) runs as background jobs. Click a running or queued job to follow its live progress.','jobs.workers':'Simultaneous jobs','jobs.queued':'Queued','jobs.running':'Running','jobs.all':'All','jobs.refresh':'Refresh','jobs.type':'Type','jobs.status':'Status','jobs.phase':'Phase','jobs.submission':'Submission','jobs.queuedAt':'Queued','jobs.duration':'Duration','jobs.error':'Error','jobs.follow':'Live job','jobs.keepWorking':'The job continues in the background — you can navigate away.','jobs.empty':'No jobs for this filter.','jobs.cancel':'Cancel','jobs.open':'▶ Follow','jobs.close':'✕ Close','jobs.phase.preparing':'Preparing','jobs.phase.transcribing':'Transcribing audio (Whisper)','jobs.phase.analyzing':'AI analysis','jobs.phase.persisting':'Saving results','jobs.k.analyze':'AI analysis','jobs.k.evaluate':'Evaluate first','jobs.k.run_ai':'AI re-run','jobs.k.stats_ai':'AI insight (stats)','jobs.st.queued':'⏳ Queued','jobs.st.running':'▶ Running','jobs.st.done':'✓ Done','jobs.st.error':'✕ Error','jobs.st.cancelled':'◌ Cancelled','jobs.cancelledToast':'Job cancelled','jobs.enqueued':'Queued','jobs.result':'Result',
 'jobs.started':'Started','jobs.finished':'Finished','jobs.elapsed':'elapsed','jobs.metaAnalysis':'analysis','jobs.jsonBtn':'Output (JSON)','jobs.jsonEmpty':'No result yet — the job is still running.','nav.docs':'Docs','docs.title':'Documentation','docs.help':'App documentation: user guide, technical docs, README.','docs.loading':'Loading…','docs.tab.user':'User guide','docs.tab.dev':'Developer','docs.tab.userguide':'User guide','docs.tab.asyncjobs':'Async jobs (tech)','docs.tab.readme':'README','docs.tab.uxaudit':'UX audit','docs.tab.architecture':'Architecture',
-  'auth.sub':'Multi-user assessment · CEFR Proof Matrix','auth.username':'Username','auth.password':'Password','auth.login':'Log in','auth.register':'Create account','auth.logout':'Log out','auth.invalid':'Invalid credentials','auth.closed':'Account creation is closed — the first account already exists.','auth.hint':'Only teachers: your students, assignments and evaluations stay private to you.','auth.setupNote':'First account on this server — the username becomes the operator name.'
+  'auth.sub':'Multi-user assessment · CEFR Proof Matrix','auth.username':'Username','auth.password':'Password','auth.login':'Log in','auth.register':'Create account','auth.logout':'Log out','auth.invalid':'Invalid credentials','auth.closed':'Account creation is closed — the first account already exists.','auth.hint':'Only teachers: your students, assignments and evaluations stay private to you.','auth.setupNote':'First account on this server — the username becomes the operator name.',
+  'roster.title':'Import a class from photos','roster.help':'Photo(s) of the school’s student list — the class name, the school and the students’ names are read automatically, then checked before anything is created.','roster.dropTitle':'Drop the roster photo(s)','roster.dropSub':'png / jpg / webp / heic · up to 10 photos · or click to browse','roster.classCode':'Class code (optional)','roster.extract':'Read the list','roster.running':'Reading the list…','roster.reviewTitle':'Check the extracted list','roster.reviewNote':'Edit any name, untick a row to skip it. Existing students with the same name + class code are updated, not duplicated.','roster.firstName':'First name','roster.lastName':'Last name','roster.school':'School','roster.commit':'Create {n} students','roster.done':'{created} created, {updated} updated{skipped}. The class is ready.','roster.doneSkipped':' and {n} skipped','roster.error':'Extraction failed — retry, or use the CSV import.','roster.cancelled':'Import cancelled','roster.noPhotos':'No photo selected yet','roster.tooMany':'Up to 10 photos — remove some','roster.badType':'Unsupported image type','roster.runningHint':'The AI reads every photo — this can take a minute.','roster.stStudents':'student(s)','st.importPhotos':'Import class','st.importPhotosTtl':'Import a class from the roster photos — the AI reads the student list, you check it, then the students are created',
  },
  fr:{
   'nav.analyze':'Analyser','nav.history':'Évaluations','nav.assignments':'Sujets','nav.rubrics':'Grilles','hdr.evaluate':'✍️ Évaluer','nav.students':'Élèves','nav.data':'Données',
-  'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique','home.evOnSubject':'Sur sujet','home.evDirect':'Directe',
+  'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique','home.evOnSubject':'Sur sujet','home.evDirect':'Directe','home.prepImportClass':'Importer une classe (photos)',
   'menu.export':'Exporter les élèves (CSV)','menu.import':'Importer les élèves (CSV)','menu.reset':'Réinitialiser la base','menu.wipe':'Réinit. + effacer les fichiers','menu.confirmWipe':'RÉINITIALISER la base ET supprimer tous les fichiers stockés (photos, audio, PDFs) dans data/uploads/ ?\n\nTous les élèves, productions et analyses seront effacés. Irréversible.','menu.confirmReset':'RÉINITIALISER la base ?\n\nTous les élèves, productions et analyses seront effacés (fichiers stockés conservés sur disque). Irréversible.',
   'an.1':'Qu’est-ce qu’on évalue ?','an.2':'Élève & niveau cible','an.3':'Le travail de l’élève','an.4':'Paramètres d’évaluation','an.otherFormats':'Autres formats d’entrée (photos / PDF / audio)','an.rubricNote':'La grille définit les critères notés par l’IA (et le rapport que vous relirez).',
   'an.assignment':'Sujet (la consigne + le document source)','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
@@ -2244,7 +2293,7 @@ const I18N={
   'lvl.clear':'Effacer',
   'ai.blind':'IA en aveugle','ai.aware':'IA avec vos niveaux','ai.blindHint':'L’IA évalue indépendamment, sans voir vos niveaux.','ai.awareHint':'L’IA voit vos niveaux et doit les confirmer ou les infirmer, critère par critère, avec des preuves.',
   'ai.run':'Lancer l’analyse IA','ai.rerun':'↻ Relancer l’IA (remplace cet avis)','ai.rerunHint':'Nouvelle analyse : l’avis ci-dessous sera remplacé par le prochain (le seul conservé).',
-  'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.','ai.entryAi':"Analyser avec l'IA",'ai.entryAiDesc':"L'IA lit le devoir et propose des niveaux + feedback ; vous corrigez ensuite dans le rapport.",'ai.entryTeacher':'Évaluer d’abord','ai.entryTeacherDesc':'Vous corrigez critère par critère (score à 0 au départ). L’IA peut suivre, en aveugle ou en confirmant vos niveaux.',
+  'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.',
   'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.title':'Nouvelle évaluation','wiz.s1':'Sujet','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.advOpts':'Options avancées','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
 'tip.att':'Atteste un niveau CECRL (A1\u2013C2) à partir de la grille officielle /120 (B.O. LVA/LVB). C’est une recommandation \u2014 l’enseignant tranche en dernier.','tip.modalite':'Modalité = la compétence évaluée : réception (compréhension) ou production (expression). Les seuils de points officiels diffèrent selon la modalité.','tip.note20':'Note /20 saisie à la main. À titre de référence uniquement \u2014 le niveau attesté ne se calcule jamais à partir du /20.','tip.vsTarget':'Compare le niveau attesté avec le niveau cible du sujet.','tip.aiCol':'Avis IA par critère : \u2713 s’il coïncide avec votre niveau, \u2260 s’il diffère.','tip.just':'Justification de l’IA + citations littérales de la production (preuves).','tip.points':'Points sur 120 : A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Niveau global calculé sur la grille /120 (seuils officiels).','tip.critGrid':'Les six sous-critères officiels (réception ou production) composent le /120 ; le niveau se lit sur la grille B.O. officielle.',
   'an.tInherit':'Les ressources stockées du sujet sont utilisées pour cette analyse (photos, PDF et audio inclus).',
@@ -2297,11 +2346,12 @@ const I18N={
   'ph.instr':'ex. Écrire une critique de 250 mots du documentaire ’The Last Horizon’. Incluez une recommandation.','ph.docText':'Collez le texte / les questions sur lesquelles se base la production de l’élève (ou joignez photos / PDF / audio ci-dessous).','ph.accom':'ex. L’élève est dyslexique — ne pas compter les fautes d’orthographe aussi lourdement.','ph.title':'ex. Bac blanc 2026 – dossier','ph.written':'Collez ici la production écrite de l’élève. Si la copie est manuscrite, vous pouvez à la place joindre les photos des pages ci-contre — le modèle les lit directement.','ph.evalNotes':'ex. L’élève a dû comprendre le ton ironique du texte. La conclusion doit être polie.','ph.histClass':'ex. 26/27-LMY','ph.asgnInstr':'ex. Écrire une critique de 250 mots du documentaire ’The Last Horizon’.','ph.asgnDoc':'Collez le document / les questions… (ou joignez un fichier ci-dessous)','ph.asgnEval':'Ce qu’il faut vérifier dans ce travail…','ph.purge':'ex. 25/26 — supprime tout élève dont le code commence par ceci','ph.satName':'ex. Bac blanc 2026 — révisé','ph.fullName':'Nom complet','st.noPhoto':'Aucune photo jointe (texte seul)','st.photosN':'photo(s), dans l’ordre de lecture','st.noLabelPhotos':'Aucune photo de {label} (utilisez le texte / PDF ci-dessus à la place)','st.removePhoto':'Retirer la photo','st.removePage':'Retirer la page','st.noDocAudio':'Aucun audio du document (utilisez la boîte de texte ci-dessus à la place)','st.noDocPdf':'Aucun PDF du document source joint','st.photosImages':'Les photos doivent être des images (png/jpg/webp/heic)','st.filesN':'fichier(s)','st.noInstrPdf':'Aucun PDF de consigne joint','st.noEvalPdf':'Aucun PDF de consignes d’évaluation joint','st.removePdf':'Retirer le PDF ({label})','st.removeBtn':'Retirer','st.noAudio':'Aucun audio (collez le texte ci-dessus à la place)','st.removeDocAudio':'Retirer l’audio','st.audioPriority':'l’audio a priorité sur ce PDF','lbl.instr':'la consigne','lbl.doc':'le document source','lbl.eval':'les consignes d’évaluation','an.chooseRubric':'Choisissez d’abord une grille','lang.en':'Anglais','lang.fr':'Français','lang.es':'Espagnol','lang.de':'Allemand','lang.label':'Langue',
   'nav.jobs':'Tâches','jobs.title':'File de traitement','jobs.help':'Les traitements longs (transcription Whisper, extraction de documents, analyse IA) s’exécutent en arrière-plan comme des tâches. Cliquez sur une tâche en cours ou en attente pour suivre sa progression en direct.','jobs.workers':'Tâches simultanées','jobs.queued':'En attente','jobs.running':'En cours','jobs.all':'Toutes','jobs.refresh':'Actualiser','jobs.type':'Type','jobs.status':'Statut','jobs.phase':'Phase','jobs.submission':'Production','jobs.queuedAt':'Mise en file','jobs.duration':'Durée','jobs.error':'Erreur','jobs.follow':'Tâche en direct','jobs.keepWorking':'La tâche continue en arrière-plan — vous pouvez naviguer.','jobs.empty':'Aucune tâche pour ce filtre.','jobs.cancel':'Annuler','jobs.open':'▶ Suivre','jobs.close':'✕ Fermer','jobs.phase.preparing':'Préparation','jobs.phase.transcribing':'Transcription audio (Whisper)','jobs.phase.analyzing':'Analyse IA','jobs.phase.persisting':'Enregistrement des résultats','jobs.k.analyze':'Analyse IA','jobs.k.evaluate':'Évaluer d’abord','jobs.k.run_ai':'Relance IA','jobs.k.stats_ai':'Avis IA (stats)','jobs.st.queued':'⏳ En attente','jobs.st.running':'▶ En cours','jobs.st.done':'✓ Terminé','jobs.st.error':'✕ Erreur','jobs.st.cancelled':'◌ Annulé','jobs.cancelledToast':'Tâche annulée','jobs.enqueued':'En file','jobs.result':'Résultat',
 'jobs.started':'Démarrée à','jobs.finished':'Terminée à','jobs.elapsed':'durée','jobs.metaAnalysis':'analyse','jobs.jsonBtn':'Résultat (JSON)','jobs.jsonEmpty':'Pas encore de résultat — la tâche est en cours.','nav.docs':'Docs','docs.title':'Documentation','docs.help':'Documentation de l’application : guide utilisateur, doc technique, README.','docs.loading':'Chargement…','docs.tab.user':'Guide utilisateur','docs.tab.dev':'Développeur','docs.tab.userguide':'Guide utilisateur','docs.tab.asyncjobs':'Tâches asynchrones (tech)','docs.tab.readme':'README','docs.tab.uxaudit':'Audit UX','docs.tab.architecture':'Architecture',
-  'auth.sub':'Évaluation multi-utilisateurs · Proof Matrix CEFR','auth.username':'Nom d’utilisateur','auth.password':'Mot de passe','auth.login':'Se connecter','auth.register':'Créer un compte','auth.logout':'Se déconnecter','auth.invalid':'Identifiants invalides','auth.closed':'La création de comptes est fermée — un premier compte existe déjà.','auth.hint':'Enseignants uniquement : vos étudiants, sujets et évaluations restent privés.','auth.setupNote':'Premier compte de ce serveur — le nom d’utilisateur devient l’identité de l’opérateur.'
+  'auth.sub':'Évaluation multi-utilisateurs · Proof Matrix CEFR','auth.username':'Nom d’utilisateur','auth.password':'Mot de passe','auth.login':'Se connecter','auth.register':'Créer un compte','auth.logout':'Se déconnecter','auth.invalid':'Identifiants invalides','auth.closed':'La création de comptes est fermée — un premier compte existe déjà.','auth.hint':'Enseignants uniquement : vos étudiants, sujets et évaluations restent privés.','auth.setupNote':'Premier compte de ce serveur — le nom d’utilisateur devient l’identité de l’opérateur.',
+  'roster.title':'Importer une classe depuis des photos','roster.help':'Photo(s) de la liste des élèves de l’établissement — nom de la classe, école et noms des élèves sont lus automatiquement, puis relus avant toute création.','roster.dropTitle':'Déposez la liste des élèves (photos)','roster.dropSub':'png / jpg / webp / heic · 10 photos max · ou cliquez pour parcourir','roster.classCode':'Code de classe (optionnel)','roster.extract':'Lire la liste','roster.running':'Lecture de la liste…','roster.reviewTitle':'Vérifiez la liste extraite','roster.reviewNote':'Modifiez les noms, décochez une ligne pour l’ignorer. Les élèves déjà connus (même nom + code de classe) sont mis à jour, pas dupliqués.','roster.firstName':'Prénom','roster.lastName':'Nom','roster.school':'École / établissement','roster.commit':'Créer {n} élèves','roster.done':'{created} créés, {updated} mis à jour{skipped}. La classe est prête.','roster.doneSkipped':' et {n} ignorés','roster.error':'Échec de l’extraction — réessayez, ou utilisez l’import CSV.','roster.cancelled':'Import annulé','roster.noPhotos':'Aucune photo sélectionnée pour l’instant','roster.tooMany':'10 photos maximum — retirez-en quelques-unes','roster.badType':'Type d’image non pris en charge','roster.runningHint':'L’IA lit chaque photo — ça peut prendre une minute.','roster.stStudents':'élève(s)','st.importPhotos':'Importer classe','st.importPhotosTtl':'Importer une classe depuis les photos de la liste des élèves — l’IA lit la liste, vous vérifiez, puis les élèves sont créés',
  },
  es:{
   'nav.analyze':'Analizar','nav.history':'Evaluaciones','nav.assignments':'Tareas','nav.rubrics':'Rúbricas','hdr.evaluate':'✍️ Evaluar','nav.students':'Estudiantes','nav.data':'Datos',
-  'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial','home.evOnSubject':'Sobre una tarea','home.evDirect':'Directa',
+  'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial','home.evOnSubject':'Sobre una tarea','home.evDirect':'Directa','home.prepImportClass':'Importar clase (fotos)',
   'menu.export':'Exportar estudiantes (CSV)','menu.import':'Importar estudiantes (CSV)','menu.reset':'Reiniciar la base de datos','menu.wipe':'Reiniciar + borrar archivos','menu.confirmWipe':'¿REINICIAR la base de datos Y borrar todos los archivos guardados (fotos, audio, PDFs) en data/uploads/?\n\nSe borrarán todos los estudiantes, producciones y análisis. No se puede deshacer.','menu.confirmReset':'¿REINICIAR la base de datos?\n\nSe borrarán todos los estudiantes, producciones y análisis (los archivos guardados se conservan en disco). No se puede deshacer.',
   'an.1':'¿Qué estamos evaluando?','an.2':'Estudiante y nivel objetivo','an.3':'El trabajo del estudiante','an.4':'Ajustes de evaluación','an.otherFormats':'Otros formatos de entrada (fotos / PDF / audio)','an.rubricNote':'La rúbrica define los criterios que la IA puntuará (y el informe que revisarás).',
   'an.assignment':'Tarea (consigna + documento fuente)','an.adhoc':'— ad hoc (definir el contexto abajo) —',
@@ -2331,7 +2381,7 @@ const I18N={
   'lvl.clear':'Borrar',
   'ai.blind':'IA a ciegas','ai.aware':'IA con tus niveles','ai.blindHint':'La IA evalúa de forma independiente, sin ver tus niveles.','ai.awareHint':'La IA ve tus niveles y debe confirmarlos o refutarlos, criterio a criterio, con evidencia.',
   'ai.run':'Ejecutar análisis IA','ai.rerun':'↻ Relanzar IA (reemplaza esta opinión)','ai.rerunHint':'Nuevo análisis: la opinión de abajo será reemplazada por la siguiente (solo se conserva la última).',
-  'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.','ai.entryAi':'Analizar con IA','ai.entryAiDesc':'La IA lee el trabajo y propone niveles + comentario; luego lo corriges en el informe.','ai.entryTeacher':'Evaluar primero','ai.entryTeacherDesc':'Tú corriges criterio a criterio (score 0 al inicio). La IA puede seguir, a ciegas o confirmando tus niveles.',
+  'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.',
   'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.title':'Nueva evaluación','wiz.s1':'Tarea','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.advOpts':'Opciones avanzadas','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
 'tip.att':'Certifica un nivel MCER (A1–C2) a partir de la cuadrícula oficial /120 (B.O. LVA/LVB). Es una recomendación: el docente toma la decisión final.','tip.modalite':'Modalidad = si la evaluación cubre comprensión o expresión. Los umbrales de puntos oficiales difieren entre ambas.','tip.note20':'Nota /20 introducida a mano. Solo como referencia: el nivel certificado nunca se calcula a partir del /20.','tip.vsTarget':'Compara el nivel certificado con el nivel objetivo de la tarea.','tip.aiCol':'Opinión IA por criterio: ✓ si coincide con su nivel, ≠ si difiere.','tip.just':'Justificación de la IA + citas literales de la producción (pruebas).','tip.points':'Puntos sobre 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Nivel global calculado sobre la cuadrícula /120 (umbrales oficiales).','tip.critGrid':'Los seis subcriterios oficiales (comprensión o expresión) componen el /120; el nivel se lee en la rejilla oficial B.O.',
   'an.tInherit':'Se usan los materiales guardados de la tarea para esta evaluación (fotos, PDFs y audio incluidos).',
@@ -2384,11 +2434,12 @@ const I18N={
   'ph.instr':'p. ej. Escribe una reseña de 250 palabras del documental ’The Last Horizon’. Incluye una recomendación.','ph.docText':'Pega el texto / las preguntas en las que se basa el trabajo del estudiante (o sube fotos / PDF / audio abajo).','ph.accom':'p. ej. El estudiante es disléxico: no castigues demasiado las erratas.','ph.title':'p. ej. Bachillerato 2026 – dossier','ph.written':'Pega aquí el trabajo escrito del estudiante. Si la copia es manuscrita, puedes adjuntar las fotos de las páginas abajo — el modelo las lee directamente.','ph.evalNotes':'p. ej. El estudiante debe haber captado el tono irónico del texto. El cierre debe ser cortés.','ph.histClass':'p. ej. 26/27-LMY','ph.asgnInstr':'p. ej. Escribe una reseña de 250 palabras del documental ’The Last Horizon’.','ph.asgnDoc':'Pega el documento / las preguntas… (o adjunta un archivo abajo)','ph.asgnEval':'Qué comprobar en este trabajo…','ph.purge':'p. ej. 25/26 — borra todo estudiante cuyo código empiece por esto','ph.satName':'p. ej. Bachillerato 2026 — revisado','ph.fullName':'Nombre completo','st.noPhoto':'Sin foto adjunta (solo texto)','st.photosN':'foto(s), en orden de lectura','st.noLabelPhotos':'Sin foto(s) de {label} (usa el texto / PDF de arriba en su lugar)','st.removePhoto':'Quitar la foto','st.removePage':'Quitar la página','st.noDocAudio':'Sin audio del documento (usa el cuadro de texto de arriba en su lugar)','st.noDocPdf':'Sin PDF del documento fuente adjunto','st.photosImages':'Las fotos deben ser imágenes (png/jpg/webp/heic)','st.filesN':'archivo(s)','st.noInstrPdf':'Sin PDF de la consigna adjunto','st.noEvalPdf':'Sin PDF de las consignas de evaluación adjunto','st.removePdf':'Quitar el PDF ({label})','st.removeBtn':'Quitar','st.noAudio':'Sin audio (pega el texto de arriba en su lugar)','st.removeDocAudio':'Quitar el audio','st.audioPriority':'el audio tiene prioridad sobre este PDF','lbl.instr':'la consigna','lbl.doc':'el documento fuente','lbl.eval':'las consignas de evaluación','an.chooseRubric':'Elige primero una rúbrica','lang.en':'Inglés','lang.fr':'Francés','lang.es':'Español','lang.de':'Alemán','lang.label':'Idioma',
   'nav.jobs':'Tareas','jobs.title':'Cola de procesamiento','jobs.help':'Los procesos largos (transcripción Whisper, extracción de documentos, análisis IA) se ejecutan en segundo plano como tareas. Haz clic en una tarea en curso o en cola para seguir su progreso en directo.','jobs.workers':'Tareas simultáneas','jobs.queued':'En cola','jobs.running':'En curso','jobs.all':'Todas','jobs.refresh':'Actualizar','jobs.type':'Tipo','jobs.status':'Estado','jobs.phase':'Fase','jobs.submission':'Producción','jobs.queuedAt':'En cola desde','jobs.duration':'Duración','jobs.error':'Error','jobs.follow':'Tarea en directo','jobs.keepWorking':'La tarea continúa en segundo plano — puedes navegar.','jobs.empty':'No hay tareas para este filtro.','jobs.cancel':'Cancelar','jobs.open':'▶ Seguir','jobs.close':'✕ Cerrar','jobs.phase.preparing':'Preparando','jobs.phase.transcribing':'Transcribiendo audio (Whisper)','jobs.phase.analyzing':'Análisis IA','jobs.phase.persisting':'Guardando resultados','jobs.k.analyze':'Análisis IA','jobs.k.evaluate':'Evaluar antes','jobs.k.run_ai':'Repetir IA','jobs.k.stats_ai':'Aviso IA (estadísticas)','jobs.st.queued':'⏳ En cola','jobs.st.running':'▶ En curso','jobs.st.done':'✓ Hecho','jobs.st.error':'✕ Error','jobs.st.cancelled':'◌ Cancelada','jobs.cancelledToast':'Tarea cancelada','jobs.enqueued':'En cola','jobs.result':'Resultado',
 'jobs.started':'Iniciada a las','jobs.finished':'Terminada a las','jobs.elapsed':'duración','jobs.metaAnalysis':'análisis','jobs.jsonBtn':'Resultado (JSON)','jobs.jsonEmpty':'Aún no hay resultado: la tarea sigue en curso.','nav.docs':'Docs','docs.title':'Documentación','docs.help':'Documentación de la aplicación: guía de usuario, doc técnica, README.','docs.loading':'Cargando…','docs.tab.user':'Guía de usuario','docs.tab.dev':'Desarrollador','docs.tab.userguide':'Guía de usuario','docs.tab.asyncjobs':'Tareas asíncronas (tech)','docs.tab.readme':'README','docs.tab.uxaudit':'Auditoría UX','docs.tab.architecture':'Arquitectura',
-  'auth.sub':'Evaluación multiusuario · Proof Matrix CMC','auth.username':'Nombre de usuario','auth.password':'Contraseña','auth.login':'Iniciar sesión','auth.register':'Crear cuenta','auth.logout':'Cerrar sesión','auth.invalid':'Credenciales no válidas','auth.closed':'La creación de cuentas está cerrada — ya existe una cuenta principal.','auth.hint':'Solo docentes: tus estudiantes, tareas y evaluaciones siguen siendo privadas.','auth.setupNote':'Primera cuenta de este servidor — el nombre de usuario será la identidad del operador.'
+  'auth.sub':'Evaluación multiusuario · Proof Matrix CMC','auth.username':'Nombre de usuario','auth.password':'Contraseña','auth.login':'Iniciar sesión','auth.register':'Crear cuenta','auth.logout':'Cerrar sesión','auth.invalid':'Credenciales no válidas','auth.closed':'La creación de cuentas está cerrada — ya existe una cuenta principal.','auth.hint':'Solo docentes: tus estudiantes, tareas y evaluaciones siguen siendo privadas.','auth.setupNote':'Primera cuenta de este servidor — el nombre de usuario será la identidad del operador.',
+  'roster.title':'Importa una clase desde fotos','roster.help':'Foto(s) de la lista de estudiantes — el nombre de la clase, el centro y los nombres se leen automáticamente y se comprueban antes de crear nada.','roster.dropTitle':'Suelta las fotos de la lista','roster.dropSub':'png / jpg / webp / heic · máx. 10 fotos · o haz clic para explorar','roster.classCode':'Código de clase (opcional)','roster.extract':'Leer la lista','roster.running':'Leyendo la lista…','roster.reviewTitle':'Comprueba la lista extraída','roster.reviewNote':'Edita cualquier nombre, desmarca una fila para saltarla. Los estudiantes existentes con el mismo nombre + código se actualizan, no se duplican.','roster.firstName':'Nombre','roster.lastName':'Apellidos','roster.school':'Centro','roster.commit':'Crear {n} estudiantes','roster.done':'{created} creados, {updated} actualizados{skipped}. La clase está lista.','roster.doneSkipped':' y {n} omitidos','roster.error':'Error al extraer — reintenta o usa la importación CSV.','roster.cancelled':'Importación cancelada','roster.noPhotos':'Aún no hay ninguna foto','roster.tooMany':'Máximo 10 fotos — elimina algunas','roster.badType':'Tipo de imagen no compatible','roster.runningHint':'La IA lee cada foto — puede tardar un minuto.','roster.stStudents':'estudiante(s)','st.importPhotos':'Importar clase','st.importPhotosTtl':'Importa una clase desde las fotos de la lista de estudiantes — la IA lee la lista, tú compruebas y luego se crean los estudiantes',
  },
  de:{
   'nav.analyze':'Analysieren','nav.history':'Bewertungen','nav.assignments':'Aufgaben','nav.rubrics':'Rubriken','hdr.evaluate':'✍️ Bewerten','nav.students':'Schüler','nav.data':'Daten',
-  'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf','home.evOnSubject':'Zu einer Aufgabe','home.evDirect':'Direkt',
+  'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf','home.evOnSubject':'Zu einer Aufgabe','home.evDirect':'Direkt','home.prepImportClass':'Klasse importieren (Fotos)',
   'menu.export':'Schüler:innen CSV exportieren','menu.import':'Schüler:innen CSV importieren','menu.reset':'Datenbank zurücksetzen','menu.wipe':'Zurücksetzen + Dateien löschen','menu.confirmWipe':'DATENBANK ZURÜCKSETZEN und alle gespeicherten Dateien (Fotos, Audio, PDFs) in data/uploads/ löschen?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht. Das kann nicht rückgängig gemacht werden.','menu.confirmReset':'DATENBANK ZURÜCKSETZEN?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht (gespeicherte Dateien bleiben auf der Platte). Das kann nicht rückgängig gemacht werden.',
   'an.1':'Was bewerten wir?','an.2':'Schüler:in & Zielstufe','an.3':'Die Arbeit der Schüler:in','an.4':'Bewertungseinstellungen','an.otherFormats':'Weitere Eingabeformate (Fotos / PDF / Audio)','an.rubricNote':'Die Rubrik bestimmt die Kriterien, die die KI bewertet (und den Bericht, den Sie prüfen werden).',
   'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
@@ -2418,7 +2469,7 @@ const I18N={
   'lvl.clear':'Leeren',
   'ai.blind':'KI blind','ai.aware':'KI mit Ihren Stufen','ai.blindHint':'Die KI bewertet unabhängig, ohne Ihre Stufen zu sehen.','ai.awareHint':'Die KI sieht Ihre Stufen und muss jede bestätigen oder widerlegen, mit Belegen.',
   'ai.run':'KI-Analyse starten','ai.rerun':'↻ KI erneut ausführen (ersetzt diese Meinung)','ai.rerunHint':'Neue Analyse: die Meinung unten wird durch die nächste ersetzt (nur die letzte wird behalten).',
-  'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.','ai.entryAi':'Mit KI analysieren','ai.entryAiDesc':'Die KI liest die Arbeit und schlägt Stufen + Feedback vor; Sie korrigieren danach im Bericht.','ai.entryTeacher':'Erst bewerten','ai.entryTeacherDesc':'Sie bewerten Kriterium für Kriterium (Score beginnt bei 0). Die KI kann folgen, blind oder mit Bestätigung Ihrer Stufen.',
+  'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.',
   'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.title':'Neue Bewertung','wiz.s1':'Aufgabe','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.advOpts':'Erweiterte Optionen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
 'tip.att':'Attestiert ein GER-Niveau (A1–C2) aus dem offiziellen /120-Raster (B.O. LVA/LVB). Es ist eine Empfehlung — die Lehrkraft entscheidet letztinstanzlich.','tip.modalite':'Modalität = ob die Bewertung Rezeption (Verstehen) oder Produktion (Ausdrücken) betrifft. Die offiziellen Punkteschwellen unterscheiden sich.','tip.note20':'Von Hand eingetragene Note von 20. Nur als Referenz — das attestierte Niveau wird niemals aus der /20 berechnet.','tip.vsTarget':'Vergleicht das attestierte Niveau mit dem Zielniveau der Aufgabe.','tip.aiCol':'KI-Meinung pro Kriterium: ✓ bei Übereinstimmung mit Ihrer Stufe, ≠ bei Abweichung.','tip.just':'KI-Begründung + wörtliche Zitate aus der Produktion (Belege).','tip.points':'Punkte von 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Gesamtstufe, berechnet aus dem /120-Raster (offizielle Schwellen).','tip.critGrid':'Die sechs offiziellen Teilpunkte (Rezeption oder Produktion) ergeben die 120; die Stufe wird aus dem offiziellen B.O.-Raster abgelesen.',
   'an.tInherit':'Die gespeicherten Materialien der Aufgabe werden für diese Bewertung verwendet (Fotos, PDFs und Audio eingeschlossen).',
@@ -2471,7 +2522,8 @@ const I18N={
   'ph.instr':'z. B. Schreibe eine Rezension (250 Wörter) zum Dokumentarfilm ’The Last Horizon’. Füge eine Empfehlung hinzu.','ph.docText':'Füge den Text / die Fragen ein, auf denen die Arbeit der Schüler:in basiert (oder lade Fotos / PDF / Audio unten hoch).','ph.accom':'z. B. Die Schüler:in hat Lese-Rechtschreib-Schwäche — Rechtschreibfehler nicht zu streng werten.','ph.title':'z. B. Mock-BAC 2026 – Dossier','ph.written':'Füge hier die schriftliche Arbeit der Schüler:in ein. Wenn das Blatt handschriftlich ist, kannst du stattdessen die Seitenfotos unten anhängen — das Modell liest sie direkt.','ph.evalNotes':'z. B. Die Schüler:in muss den ironischen Ton des Textes verstanden haben. Der Schluss muss höflich sein.','ph.histClass':'z. B. 26/27-LMY','ph.asgnInstr':'z. B. Schreibe eine Rezension (250 Wörter) zum Dokumentarfilm ’The Last Horizon’.','ph.asgnDoc':'Füge das Dokument / die Fragen ein… (oder hänge unten eine Datei an)','ph.asgnEval':'Was in dieser Arbeit zu prüfen ist…','ph.purge':'z. B. 25/26 — löscht jede Schüler:in, deren Code damit beginnt','ph.satName':'z. B. Mock-BAC 2026 — überarbeitet','ph.fullName':'Vollständiger Name','st.noPhoto':'Kein Foto angehängt (nur Text)','st.photosN':'Foto(s), in Leseordnung','st.noLabelPhotos':'Keine {label}-Foto(s) (stattdessen den Text / PDF oben verwenden)','st.removePhoto':'Foto entfernen','st.removePage':'Seite entfernen','st.noDocAudio':'Kein Dokument-Audio (stattdessen das Textfeld oben verwenden)','st.noDocPdf':'Kein Quelldokument-PDF angehängt','st.photosImages':'Fotos müssen Bilder sein (png/jpg/webp/heic)','st.filesN':'Datei(en)','st.noInstrPdf':'Kein Auftrags-PDF angehängt','st.noEvalPdf':'Kein Prüfungsanweisungs-PDF angehängt','st.removePdf':'{label}-PDF entfernen','st.removeBtn':'Entfernen','st.noAudio':'Kein Audio (stattdessen den Text oben einfügen)','st.removeDocAudio':'Audio entfernen','st.audioPriority':'Audio hat Vorrang vor diesem PDF','lbl.instr':'Auftrag','lbl.doc':'Quelldokument','lbl.eval':'Prüfungsanweisungen','an.chooseRubric':'Zuerst eine Rubrik wählen','lang.en':'Englisch','lang.fr':'Französisch','lang.es':'Spanisch','lang.de':'Deutsch','lang.label':'Sprache',
   'nav.jobs':'Jobs','jobs.title':'Verarbeitungs-Warteschlange','jobs.help':'Lange Verarbeitungen (Whisper-Transkription, Dokumentextraktion, KI-Analyse) laufen im Hintergrund als Jobs. Klicke auf einen laufenden oder wartenden Job, um seinen Fortschritt live zu verfolgen.','jobs.workers':'Gleichzeitige Jobs','jobs.queued':'Wartend','jobs.running':'Läuft','jobs.all':'Alle','jobs.refresh':'Aktualisieren','jobs.type':'Typ','jobs.status':'Status','jobs.phase':'Phase','jobs.submission':'Leistung','jobs.queuedAt':'Gestartet am','jobs.duration':'Dauer','jobs.error':'Fehler','jobs.follow':'Live-Job','jobs.keepWorking':'Der Job läuft im Hintergrund weiter — du kannst weiter navigieren.','jobs.empty':'Keine Jobs für diesen Filter.','jobs.cancel':'Abbrechen','jobs.open':'▶ Folgen','jobs.close':'✕ Schließen','jobs.phase.preparing':'Vorbereitung','jobs.phase.transcribing':'Audio transkribieren (Whisper)','jobs.phase.analyzing':'KI-Analyse','jobs.phase.persisting':'Ergebnisse speichern','jobs.k.analyze':'KI-Analyse','jobs.k.evaluate':'Zuerst bewerten','jobs.k.run_ai':'KI-Wiederholung','jobs.k.stats_ai':'KI-Einschätzung (Statistik)','jobs.st.queued':'⏳ Wartend','jobs.st.running':'▶ Läuft','jobs.st.done':'✓ Fertig','jobs.st.error':'✕ Fehler','jobs.st.cancelled':'◌ Abgebroschen','jobs.cancelledToast':'Job abgebrochen','jobs.enqueued':'In Warteschlange','jobs.result':'Ergebnis',
 'jobs.started':'Gestartet um','jobs.finished':'Beendet um','jobs.elapsed':'Dauer','jobs.metaAnalysis':'Analyse','jobs.jsonBtn':'Ausgabe (JSON)','jobs.jsonEmpty':'Noch kein Ergebnis — der Job läuft noch.','nav.docs':'Docs','docs.title':'Dokumentation','docs.help':'App-Dokumentation: Benutzerhandbuch, technische Doku, README.','docs.loading':'Wird geladen…','docs.tab.user':'Benutzerhandbuch','docs.tab.dev':'Entwickler','docs.tab.userguide':'Benutzerhandbuch','docs.tab.asyncjobs':'Async-Jobs (Tech)','docs.tab.readme':'README','docs.tab.uxaudit':'UX-Audit','docs.tab.architecture':'Architektur',
-  'auth.sub':'Mehrfachnutzer · CEFR Proof Matrix','auth.username':'Benutzername','auth.password':'Passwort','auth.login':'Anmelden','auth.register':'Konto erstellen','auth.setupNote':'Erstes Konto auf diesem Server — der Benutzername wird zur Betreiber-Identität.','auth.logout':'Abmelden','auth.invalid':'Ungültige Zugangsdaten','auth.closed':'Kontovergabe ist geschlossen — ein Erst-Konto existiert bereits.','auth.hint':'Nur Lehrkräfte: Ihre Schüler, Aufgaben und Bewertungen bleiben privat.'
+  'auth.sub':'Mehrfachnutzer · CEFR Proof Matrix','auth.username':'Benutzername','auth.password':'Passwort','auth.login':'Anmelden','auth.register':'Konto erstellen','auth.setupNote':'Erstes Konto auf diesem Server — der Benutzername wird zur Betreiber-Identität.','auth.logout':'Abmelden','auth.invalid':'Ungültige Zugangsdaten','auth.closed':'Kontovergabe ist geschlossen — ein Erst-Konto existiert bereits.','auth.hint':'Nur Lehrkräfte: Ihre Schüler, Aufgaben und Bewertungen bleiben privat.',
+  'roster.title':'Klasse aus Fotos importieren','roster.help':'Foto(s) der Schülerliste — Klassenname, Schule und Namen werden automatisch gelesen und vor der Erstellung geprüft.','roster.dropTitle':'Schülerliste ablegen (Fotos)','roster.dropSub':'png / jpg / webp / heic · max. 10 Fotos · oder klicken zum Durchsuchen','roster.classCode':'Klassencode (optional)','roster.extract':'Liste lesen','roster.running':'Liste wird gelesen…','roster.reviewTitle':'Extrahierte Liste prüfen','roster.reviewNote':'Namen bearbeiten, eine Zeile abhaken, um sie zu überspringen. Bestehende Schüler:innen mit gleichem Namen + Code werden aktualisiert, nicht dupliziert.','roster.firstName':'Vorname','roster.lastName':'Nachname','roster.school':'Schule','roster.commit':'{n} Schüler:innen anlegen','roster.done':'{created} angelegt, {updated} aktualisiert{skipped}. Die Klasse ist bereit.','roster.doneSkipped':' und {n} übergangen','roster.error':'Extraktion fehlgeschlagen — erneut versuchen oder CSV-Import nutzen.','roster.cancelled':'Import abgebrochen','roster.noPhotos':'Noch kein Foto gewählt','roster.tooMany':'Maximal 10 Fotos — einige entfernen','roster.badType':'Bildtyp nicht unterstützt','roster.runningHint':'Die KI liest jedes Foto — das kann eine Minute dauern.','roster.stStudents':'Schüler:innen','st.importPhotos':'Klasse importieren','st.importPhotosTtl':'Eine Klasse aus Fotos der Schülerliste importieren — die KI liest die Liste, Sie prüfen, dann werden die Schüler:innen angelegt',
  }
 };
 let LANG=(localStorage.getItem('elt-lang')||'en').toLowerCase();
@@ -2700,14 +2752,16 @@ const RADIAL_MENU=[
   {id:'evaluate',ico:'✍️',i18n:'home.evaluate',sub:[
     {id:'subject',ico:'📋',i18n:'home.evOnSubject',go:()=>goEvaluateSub('subject')},
     {id:'direct',ico:'✏️',i18n:'home.evDirect',go:()=>goEvaluateSub('direct')},
+    {id:'history',ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
   ]},
   {id:'analyze',ico:'📊',i18n:'home.analyze',sub:[
     {id:'student',ico:'📈',i18n:'home.anStudent',go:()=>navGo('students',null,{scroll:true})},
     {id:'assignment',ico:'📊',i18n:'home.anAssignment',go:()=>navGo('assignments',null,{scroll:true})},
-    {id:'history',ico:'🗂️',i18n:'home.anHistory',go:()=>navGo('history',null,{scroll:true})},
+    {id:'rubrics',ico:'📐',i18n:'nav.rubrics',go:()=>navGo('rubrics',null,{scroll:true})},
   ]},
   {id:'prepare',ico:'📚',i18n:'home.prepare',sub:[
     {id:'class',ico:'🏫',i18n:'home.prepClass',go:()=>navGo('students',null,{scroll:true})},
+    {id:'importclass',ico:'📷',i18n:'home.prepImportClass',go:()=>openRosterImport()},
     {id:'subject',ico:'📚',i18n:'home.prepSubject',go:()=>navGo('assignments',null,{scroll:true})},
   ]},
   /* "Mode avancé" n'est PAS un secteur (tibo, 2026-10-27) : le bouton
@@ -2734,8 +2788,13 @@ function rChain(){
      item 0 TOP, item 1 bottom-right, item 2 bottom-left — order in
      RADIAL_MENU: Évaluer / Analyser / Préparer, tibo 2026-10-28); each
      deeper level is confined to the span of its selected parent. */
-  const out=[{level:0,items:RADIAL_MENU,sel:Math.min(RST.sel[0]??0,RADIAL_MENU.length-1),span:[-150,210]}];
-  let cur=RADIAL_MENU[out[0].sel];
+  /* 2026-10-29 (tibo): no pre-selection at level 0 either — the menu opens with
+     NO verb highlighted, matching the sub-menus (sel=null until a pick). The
+     chain stops at level 0, so no sub-crown appears until a verb is chosen. */
+  const raw0=RST.sel[0];
+  const sel0=(raw0==null)?null:Math.min(Math.max(raw0,0),RADIAL_MENU.length-1);
+  const out=[{level:0,items:RADIAL_MENU,sel:sel0,span:[-150,210]}];
+  let cur=sel0==null?null:RADIAL_MENU[sel0];
   while(cur&&cur.sub){
     const lvl=out.length;
     const parent=out[lvl-1];
@@ -2889,8 +2948,15 @@ function rUpdateCenter(L0){
   const tx=c.querySelector('text');
   tx.setAttribute('y',RST.C*0.3);
   tx.style.fontSize=Math.round(RST.C*0.78)+'px';
-  tx.textContent=L0.items[L0.sel].ico;
-  c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
+  /* 2026-10-29: no pre-selected verb → empty centre icon (the circle is still
+     the "close menu" control); a selected verb shows its glyph as before. */
+  if(L0.sel!=null){
+    tx.textContent=L0.items[L0.sel].ico;
+    c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
+  }else{
+    tx.textContent='';
+    c.setAttribute('aria-label',t('home.closeMenu'));
+  }
 }
 function rKey(L){return L.items.map(i=>i.id).join('|')+':'+L.span.map(n=>n.toFixed(1)).join(',');}
 function rRender(){
@@ -2947,7 +3013,7 @@ function openMenu(){
   const a=$('#home-anchor');if(!a)return;
   const r=a.getBoundingClientRect();
   RST.cx=r.left+r.width/2;RST.cy=r.top+r.height/2;
-  RST.open=true;RST.sel=[0];
+  RST.open=true;RST.sel=[null];   /* 2026-10-29: no pre-selected verb */
   rEnsureSvg();
   const w=$('#pie-wrap');
   w.classList.add('open');w.setAttribute('aria-hidden','false');
@@ -2959,7 +3025,7 @@ function pieClose(){
   RST.open=false;
   const svg=RST.svg;
   if(svg){svg.classList.add('closing');setTimeout(()=>svg.remove(),190);}
-  RST.svg=null;RST.sel=[0];
+  RST.svg=null;RST.sel=[null];
   const w=$('#pie-wrap');
   w.classList.remove('open');w.setAttribute('aria-hidden','true');
   $('#home-reopen').classList.remove('hide');
@@ -3959,6 +4025,164 @@ $('#s-import-file').onchange=async()=>{
   const r=await api('/api/students/csv',{method:'POST',body:fd});
   loadStudents();
   if(r.skipped.length)console.warn('CSV import skipped rows:',r.skipped);
+};
+/* ---- Roster photo import (2026-11-08): one modal, 3 steps
+   (upload -> extracting (SSE follow of the roster_import job) -> review ->
+   commit). Mirrors the stat-ai follow pattern: POST enqueues, then
+   GET /api/jobs/{id}/events until done; the DRAFT is re-fetched from
+   GET /api/students/import-photos/{id} (single source of truth: the job
+   row's result). NOTHING is created until the teacher commits. */
+const ROSTER={files:[],jobId:null,ctrl:null,draft:null};
+function rosterSetStep(n){
+  ['roster-step-upload','roster-step-run','roster-step-review'].forEach((id,i)=>{
+    $('#'+id).classList.toggle('hide',i+1!==n);});
+}
+function openRosterImport(){
+  ROSTER.files=[];ROSTER.jobId=null;ROSTER.draft=null;ROSTER.ctrl=null;
+  $('#roster-thumbs').innerHTML='';$('#roster-classcode').value='';
+  $('#roster-runbox').textContent='';
+  rosterSetStep(1);
+  $('#roster-overlay').classList.remove('hide');
+}
+function closeRosterImport(){
+  if(ROSTER.ctrl){try{ROSTER.ctrl.abort()}catch(_){}}
+  if(ROSTER.jobId!=null&&ROSTER.draft==null)
+    api('/api/jobs/'+ROSTER.jobId+'/cancel',{method:'POST'}).catch(()=>{});
+  ROSTER.jobId=null;ROSTER.ctrl=null;
+  $('#roster-overlay').classList.add('hide');
+}
+$('#s-import-photos').onclick=()=>openRosterImport();
+$('#roster-close2').onclick=()=>closeRosterImport();
+$('#roster-overlay').addEventListener('click',e=>{if(e.target===e.currentTarget)closeRosterImport();});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&!$('#roster-overlay').classList.contains('hide'))closeRosterImport();});
+/* photo picker + drag&drop */
+$('#roster-drop').onclick=()=>$('#roster-file').click();
+['dragover','dragenter'].forEach(ev=>$('#roster-drop').addEventListener(ev,e=>{
+  e.preventDefault();$('#roster-drop').classList.add('over');}));
+['dragleave','drop'].forEach(ev=>$('#roster-drop').addEventListener(ev,e=>{
+  e.preventDefault();$('#roster-drop').classList.remove('over');}));
+$('#roster-drop').addEventListener('drop',e=>{
+  rosterAddFiles([...(e.dataTransfer?.files||[])].filter(f=>f.type.startsWith('image/')));});
+$('#roster-file').onchange=()=>{
+  rosterAddFiles([...$('#roster-file').files]);$('#roster-file').value='';};
+function rosterAddFiles(files){
+  for(const f of files){
+    if(ROSTER.files.length>=10){toast('⚠ '+t('roster.tooMany'));break;}
+    ROSTER.files.push(f);
+  }
+  renderRosterThumbs();
+}
+function renderRosterThumbs(){
+  const box=$('#roster-thumbs');box.innerHTML='';
+  ROSTER.files.forEach((f,i)=>{
+    const d=document.createElement('div');d.className='r-photo';
+    d.innerHTML=`<img alt="" src="${URL.createObjectURL(f)}"><button type="button" class="r-photo-x" title="✕">×</button>`;
+    d.querySelector('.r-photo-x').onclick=()=>{ROSTER.files.splice(i,1);renderRosterThumbs();};
+    box.appendChild(d);
+  });
+}
+/* step 1 -> 2: enqueue the extraction job, then follow its SSE */
+$('#roster-go').onclick=async()=>{
+  if(!ROSTER.files.length){toast('⚠ '+t('roster.noPhotos'));return;}
+  const fd=new FormData();
+  ROSTER.files.forEach(f=>fd.append('photos',f));
+  fd.append('class_code',$('#roster-classcode').value.trim());
+  fd.append('ui_language',LANG);
+  try{
+    const h=await api('/api/students/import-photos',{method:'POST',body:fd});
+    ROSTER.jobId=h.job_id;rosterSetStep(2);rosterFollow(h.job_id);
+  }catch(e){toast('⚠ '+e.message);}
+};
+function rosterFollow(jobId){
+  const ctrl=new AbortController();ROSTER.ctrl=ctrl;
+  const box=$('#roster-runbox');
+  box.textContent='… ';
+  fetch(`/api/jobs/${jobId}/events`,{signal:ctrl.signal})
+    .then(res=>res.body.getReader())
+    .then(reader=>{
+      const dec=new TextDecoder();let buf='';
+      return (function step(){reader.read().then(({value,done:dn})=>{
+        if(dn)return;
+        buf+=dec.decode(value,{stream:true});
+        let i;
+        while((i=buf.indexOf('\n\n'))>=0){
+          const chunk=buf.slice(0,i);buf=buf.slice(i+2);
+          const lines=chunk.split('\n');
+          const ev=lines.find(l=>l.startsWith('event:'))?.slice(6).trim()||'message';
+          const data=lines.filter(l=>l.startsWith('data:')).map(l=>l.slice(5)).join('\n');
+          let d;try{d=JSON.parse(data)}catch(e){continue}
+          if(ev==='token'){box.textContent+=d.t;box.scrollTop=box.scrollHeight;}
+          else if(ev==='done'||ev==='cancelled'||ev==='error'){
+            ROSTER.ctrl=null;
+            if(ev==='done')rosterLoadDraft(jobId);
+            else if(ev==='cancelled'){rosterSetStep(1);toast(t('roster.cancelled'));}
+            else{rosterSetStep(1);toast('⚠ '+(d.error||t('roster.error')));}
+            return;
+          }
+        }
+        step();}).catch(e=>{
+          if(e.name!=='AbortError'){box.textContent='✕ '+e.message;}
+        });})();
+    })
+    .catch(e=>{if(e.name!=='AbortError')box.textContent='✕ '+e.message;});
+}
+$('#roster-cancel').onclick=()=>{
+  if(ROSTER.jobId!=null)api('/api/jobs/'+ROSTER.jobId+'/cancel',{method:'POST'}).catch(()=>{});};
+/* step 2 -> 3: fetch the draft (job result) and render the editable table */
+async function rosterLoadDraft(jobId){
+  try{
+    const r=await api('/api/students/import-photos/'+jobId);
+    if(!r.draft){toast('⚠ '+t('roster.error'));rosterSetStep(1);return;}
+    ROSTER.draft=r.draft;
+    const d=r.draft;
+    $('#roster-school').value=d.school_name||'';
+    $('#roster-classroom').value=d.class_code_hint||'';
+    const tb=$('#roster-tbody');tb.innerHTML='';
+    d.students.forEach((s,i)=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td><input type="checkbox" checked data-ri="${i}"></td>
+        <td><input type="text" data-rf="${i}" value=""></td>
+        <td><input type="text" data-rl="${i}" value=""></td>`;
+      tr.querySelector('[data-rf]').value=s.first_name||'';
+      tr.querySelector('[data-rl]').value=s.last_name||'';
+      tr.querySelector('input[type=checkbox]').onchange=e=>tr.classList.toggle('off',!e.target.checked);
+      tb.appendChild(tr);
+    });
+    const w=d.warnings||[];
+    $('#roster-warns').innerHTML=w.length
+      ? w.map(x=>`⚠ ${esc(x)}`).join('<br>') : '';
+    rosterUpdateCommit();
+    rosterSetStep(3);
+  }catch(e){toast('⚠ '+e.message);rosterSetStep(1);}
+}
+function rosterUpdateCommit(){
+  const n=[...$('#roster-tbody').querySelectorAll('input[type=checkbox]')]
+    .filter(c=>c.checked).length;
+  $('#roster-commit').textContent=t('roster.commit').replace('{n}',n);
+  $('#roster-commit').disabled=n===0;
+}
+$('#roster-tbody').addEventListener('input',rosterUpdateCommit);
+$('#roster-tbody').addEventListener('change',rosterUpdateCommit);
+/* step 3 -> commit: upsert the reviewed roster, then back to the list */
+$('#roster-commit').onclick=async()=>{
+  const rows=[...$('#roster-tbody').querySelectorAll('tr')].map(tr=>({
+    first_name:tr.querySelector('[data-rf]').value.trim(),
+    last_name:tr.querySelector('[data-rl]').value.trim(),
+    include:tr.querySelector('input[type=checkbox]').checked}));
+  const body={school_name:$('#roster-school').value.trim(),
+    classroom:$('#roster-classroom').value.trim(),students:rows};
+  $('#roster-commit').disabled=true;
+  try{
+    const r=await api(`/api/students/import-photos/${ROSTER.jobId}/commit`,
+      {method:'POST',body:JSON.stringify(body)});
+    const sk=r.skipped&&r.skipped.length
+      ? t('roster.doneSkipped').replace('{n}',r.skipped.length):'';
+    toast('✓ '+t('roster.done').replace('{created}',r.created)
+      .replace('{updated}',r.updated).replace('{skipped}',sk),6000);
+    ROSTER.jobId=null;closeRosterImport();
+    loadStudents();
+  }catch(e){toast('⚠ '+e.message);$('#roster-commit').disabled=false;}
 };
 
 

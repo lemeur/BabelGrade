@@ -11,17 +11,18 @@ the selected parent's angular sector. Wheel/arrows cycle the outermost
 level, Enter executes, Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
-- boot: #home hash, home view visible, menu OPEN with L0 (3 verbs FR:
-  Évaluer top / Analyser right / Préparer left; Évaluer selected → its L1
-  sub-crown open = "Sur sujet" / "Directe", 2026-10-28), hero title not
+- boot: #home hash, home view visible, menu OPEN with L0 only (3 verbs FR:
+  Évaluer top / Analyser right / Préparer left; NO pre-selected verb since
+  2026-10-29 → no L1 sub-crown at boot, empty centre icon), hero title not
   dimmed, no JS errors, no rectangular .home-btn left, no #pie-path
   description pill (removed 2026-10-28: redundant, covered the "Mode avancé"
   button)
 - crowns geometry: L0 Évaluer ≈ [-150°,-30°] (top sector); Analyse L1 inside
   its L0 sector
-- navigation: wheel cycles L1 (Classe/Sujet), Enter executes → view + hash,
-  menu closed; click Analyse inner sector → its 3-item crown; click
-  Historique → history; re-open via #home-reopen pill
+- navigation: wheel cycles L1 (Classe/Importer classe/Sujet), Enter executes
+  → view + hash, menu closed; click Analyse inner sector → its 3-item crown
+  (progression/results/Grilles — Historique moved under Évaluer 2026-10-29);
+  click Grilles → rubrics; re-open via #home-reopen pill
 - "Mode avancé" rectangular button (ACTIVE while menu open) → assignments
   view; "◂ Simplified" header → back to home (menu re-opens)
 - Évaluateur verb → its sub-crown (Sur sujet / Directe): "Sur sujet"
@@ -141,7 +142,9 @@ with sync_playwright() as p:
     login(pg)
     pg.wait_for_timeout(1300)   # laisse finir le fan-out L0 (+L1 retardé)
 
-    # --- boot state: menu open by default ---
+    # --- boot state: menu open by default, NO pre-selected verb
+    #     (2026-10-29): L0 only, empty centre icon, sub-crown appears when a
+    #     verb is picked (click or wheel) ---
     s = pg.evaluate(JS_CROWNS)
     check("boot: hash #home", pg.evaluate("location.hash") == "#home")
     check("boot: home view visible",
@@ -153,15 +156,13 @@ with sync_playwright() as p:
     check("boot: L0 = 3 verbs FR: Évaluer top / Analyser right / Préparer left",
           [i["t"] for i in s["sectors"][0]["items"]] ==
           ["Évaluer", "Analyser", "Préparer"], s["sectors"])
-    check("boot: Évaluer is a verb (sub-crown open) → L1 = 2 items (Sur sujet / Directe)",
-          len(s["sectors"]) == 2
-          and [i["t"] for i in s["sectors"][1]["items"]] ==
-          ["Sur sujet", "Directe"], s["sectors"])
+    check("boot: no L1 sub-crown at boot (no pre-selected verb, 2026-10-29)",
+          len(s["sectors"]) == 1, s["sectors"])
     check("boot: all sectors in viewport, svg in viewport",
           all(i["inVp"] for c in s["sectors"] for i in c["items"]) and s["svgIn"], s)
     check("boot: hero title not dimmed (z-71, above the menu backdrop)",
           pg.evaluate("getComputedStyle(document.querySelector('#view-home .home-hero')).zIndex") == "71")
-    check("boot: centre shows the selected verb emoji (✍️)", s["center"] == "✍️", s["center"])
+    check("boot: centre empty at boot (no pre-selected verb, 2026-10-29)", s["center"] == "", s["center"])
     check("boot: header trimmed on home — 'Évaluer' button + Data menu hidden",
           pg.evaluate("getComputedStyle(document.querySelector('#hdr-evaluate')).display") == "none"
           and pg.evaluate("getComputedStyle(document.querySelector('#menu-data-wrap')).display") == "none")
@@ -185,9 +186,9 @@ with sync_playwright() as p:
     click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Préparer (bottom-left)
     pg.wait_for_timeout(1500)
     s = pg.evaluate(JS_CROWNS)
-    check("Préparer selected: L1 = 2 items (Classe / Sujet), none pre-selected",
+    check("Préparer selected: L1 = 3 items (Classe / Importer classe / Sujet), none pre-selected",
           [i["t"] for i in s["sectors"][1]["items"]] ==
-          ["Classe / élèves", "Sujet"]
+          ["Classe / élèves", "Importer une classe (photos)", "Sujet"]
           and not any(i["sel"] for i in s["sectors"][1]["items"]),
           s["sectors"])
     check("centre shows 📚 when Préparer selected", s["center"] == "📚", s["center"])
@@ -201,19 +202,26 @@ with sync_playwright() as p:
           {"l0": l0p, "l1": l1})
 
     # --- wheel: first press SELECTS the first item (was unselected); ---
-    # --- next press cycles to 'Sujet'; Enter executes ---
+    # --- next presses cycle 'Importer une classe (photos)' then 'Sujet';
+    # --- Enter executes the 'Sujet' leaf ---
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
     check("wheel: L1 selection moves to 'Classe / élèves' (from unselected)",
           s["sectors"][1]["items"][0]["sel"]
-          and not s["sectors"][1]["items"][1]["sel"], s["sectors"])
+          and not s["sectors"][1]["items"][1]["sel"]
+          and not s["sectors"][1]["items"][2]["sel"], s["sectors"])
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    check("wheel: L1 selection cycles to 'Importer une classe (photos)'",
+          s["sectors"][1]["items"][1]["sel"], s["sectors"])
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
     check("wheel: L1 selection cycles to 'Sujet'",
-          s["sectors"][1]["items"][1]["sel"], s["sectors"])
+          s["sectors"][1]["items"][2]["sel"], s["sectors"])
     pg.keyboard.press("Enter")
     pg.wait_for_timeout(500)
     check("Enter on 'Sujet': assignments view + hash",
@@ -232,9 +240,9 @@ with sync_playwright() as p:
     click_sector(pg, "#rg-0 .sector[data-idx='1']")   # Analyser (bottom-right)
     pg.wait_for_timeout(1500)
     s = pg.evaluate(JS_CROWNS)
-    check("Analyse selected: L1 = 3 items (progression/results/history)",
+    check("Analyse selected: L1 = 3 items (progression/results/grilles)",
           [i["t"] for i in s["sectors"][1]["items"]] ==
-          ["Progression d’un élève", "Résultats sur un sujet", "Historique"],
+          ["Progression d’un élève", "Résultats sur un sujet", "Grilles"],
           s["sectors"][1]["items"])
     check("centre shows 📊 when Analyse selected", s["center"] == "📊", s["center"])
     pg.screenshot(path="tests/home_radial_analyze.png")
@@ -248,11 +256,12 @@ with sync_playwright() as p:
     check("geometry: Analyse L1 inside its L0 sector (±GAP)",
           l0a and all(a[0] >= l0a[0] - 4 and a[1] <= l0a[1] + 4 for a in l1a),
           {"l0": l0a, "l1": l1a})
-    click_sector(pg, "#rg-1 .sector[data-idx='2']")   # Historique (leaf)
+    click_sector(pg, "#rg-1 .sector[data-idx='2']")   # Grilles (leaf; Historique
+                                                      # moved under Évaluer 2026-10-29)
     pg.wait_for_timeout(600)
-    check("'Historique' → history view + hash",
-          pg.evaluate("location.hash") == "#history"
-          and not pg.evaluate("document.querySelector('#view-history').classList.contains('hide')"))
+    check("'Grilles' → rubrics view + hash",
+          pg.evaluate("location.hash") == "#rubrics"
+          and not pg.evaluate("document.querySelector('#view-rubrics').classList.contains('hide')"))
 
     # --- re-open pill → menu opens ---
     pg.evaluate("navGo('home')")
@@ -262,8 +271,9 @@ with sync_playwright() as p:
     pg.click("#home-reopen")
     pg.wait_for_timeout(300)
     s = pg.evaluate(JS_CROWNS)
-    check("re-open pill: clicking re-opens the menu at L0",
-          s["open"] and s["sectors"][0]["items"][0]["sel"], s)
+    check("re-open pill: clicking re-opens the menu at L0 (nothing pre-selected)",
+          s["open"] and len(s["sectors"]) == 1
+          and not any(i["sel"] for i in s["sectors"][0]["items"]), s)
 
     # --- Esc closes ---
     pg.keyboard.press("Escape")
@@ -271,22 +281,32 @@ with sync_playwright() as p:
     s = pg.evaluate(JS_CROWNS)
     check("Esc closes the menu", not s["open"], s["open"])
 
-    # --- wheel cycles the OPEN outer crown; at boot the outermost open crown
-    #     is Évaluer's L1 (Sur sujet / Directe), NOTHING pre-selected — first
-    #     press selects 'Sur sujet', second 'Directe'; Enter runs the leaf ---
+    # --- wheel at boot (nothing pre-selected, 2026-10-29): first press
+    #     SELECTS the L0 verb 'Évaluer' (which opens its sub-crown); further
+    #     presses cycle the L1 crown 'Sur sujet' → 'Directe' → 'Historique';
+    #     Enter runs the selected leaf ---
     pg.click("#home-reopen"); pg.wait_for_timeout(250)
     pg.mouse.move(640, 450)
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
-    check("wheel: L1 (Évaluer) selection = 'Sur sujet' (from unselected)",
+    check("wheel: 1st press selects L0 'Évaluer' + opens its L1 crown",
+          s["sectors"][0]["items"][0]["sel"]
+          and not any(i["sel"] for i in s["sectors"][1]["items"])
+          and [i["t"] for i in s["sectors"][1]["items"]] ==
+              ["Sur sujet", "Directe", "Historique"],
+          s["sectors"])
+    pg.mouse.wheel(0, 120)
+    pg.wait_for_timeout(250)
+    s = pg.evaluate(JS_CROWNS)
+    check("wheel: L1 selection moves to 'Sur sujet' (from unselected)",
           s["sectors"][1]["items"][0]["sel"]
           and not s["sectors"][1]["items"][1]["sel"],
           [i["t"] for i in s["sectors"][1]["items"]])
     pg.mouse.wheel(0, 120)
     pg.wait_for_timeout(250)
     s = pg.evaluate(JS_CROWNS)
-    check("wheel: L1 (Évaluer) selection moves to 'Directe'",
+    check("wheel: L1 selection moves to 'Directe'",
           s["sectors"][1]["items"][1]["sel"] and s["center"] == "✍️",
           [i["t"] for i in s["sectors"][1]["items"]])
     pg.keyboard.press("Enter")
@@ -329,9 +349,10 @@ with sync_playwright() as p:
     click_sector(pg, "#rg-0 .sector[data-idx='0']")          # Évaluer (top, verb)
     pg.wait_for_timeout(400)
     s = pg.evaluate(JS_CROWNS)
-    check("Évaluateur sub-crown open: L1 = Sur sujet / Directe",
+    check("Évaluateur sub-crown open: L1 = Sur sujet / Directe / Historique",
           len(s["sectors"]) == 2
-          and [i["t"] for i in s["sectors"][1]["items"]] == ["Sur sujet", "Directe"],
+          and [i["t"] for i in s["sectors"][1]["items"]] ==
+              ["Sur sujet", "Directe", "Historique"],
           s["sectors"])
     click_sector(pg, "#rg-1 .sector[data-idx='0']")          # Sur sujet (leaf)
     pg.wait_for_timeout(400)
@@ -387,9 +408,8 @@ with sync_playwright() as p:
     login(m)
     m.wait_for_timeout(1900)   # laisse finir le fan-out L0 + L1 retardé
     s = m.evaluate(JS_CROWNS)
-    check("390: menu open at boot, L0 = 3 verbs + L1 = 2 (Évaluer sub-crown)",
-          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 2
-          and len(s["sectors"][1]["items"]) == 2,
+    check("390: menu open at boot, L0 = 3 verbs, no L1 (no pre-selected verb)",
+          s["open"] and len(s["sectors"][0]["items"]) == 3 and len(s["sectors"]) == 1,
           {k: s[k] for k in ("open", "sectors")})
     check("390: no page-level overflow",
           m.evaluate("document.documentElement.scrollWidth") <= 391,
@@ -404,10 +424,11 @@ with sync_playwright() as p:
           len(s["sectors"][1]["items"]) == 3
           and all(i["inVp"] for i in s["sectors"][1]["items"]), s["sectors"][1])
     m.screenshot(path="tests/home_390_pie.png")
-    click_sector(m, "#rg-1 .sector[data-idx='2']")   # Historique
+    click_sector(m, "#rg-1 .sector[data-idx='2']")   # Grilles (Historique moved
+                                                     # under Évaluer 2026-10-29)
     m.wait_for_timeout(600)
-    check("390: 'Historique' → history view",
-          m.evaluate("location.hash") == "#history")
+    check("390: 'Grilles' → rubrics view",
+          m.evaluate("location.hash") == "#rubrics")
     check("390: no JS errors", not merr, merr[:3])
     mctx.close()
     ctx.close()
