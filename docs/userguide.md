@@ -1,4 +1,4 @@
-# Guide utilisateur — ELT Assessor
+# Guide utilisateur — BabelGrade
 
 > Guide de l'enseignant : évaluer des productions écrites/orales selon le CEFR
 > (grilles LVA/LVB /120 et Bac/BTS), avec l'aide optionnelle de l'IA.

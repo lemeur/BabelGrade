@@ -1,4 +1,4 @@
-# Ruff config — ELT Assessor
+# Ruff config — BabelGrade
 # app/ = strict (default rule set: E4, E7, E9, F).
 # tests/ + scripts/ = relaxed: test files use compact one-liners and
 # convenience multi-imports that would be noise to reformat here.

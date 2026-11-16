@@ -1,4 +1,4 @@
-"""Mock OpenAI-compatible LLM server for the ELT Assessor E2E test (P2.9).
+"""Mock OpenAI-compatible LLM server for the BabelGrade E2E test (P2.9).
 
 A tiny stdlib HTTP server that mimics just enough of the SGLang OpenAI
 endpoint that ``app/llm_client.py`` talks to:
@@ -278,7 +278,7 @@ class _Handler(BaseHTTPRequestHandler):
 
 class MockLLMServer:
     """In-process mock LLM. ``.base_url`` is the OpenAI base to point
-    ``ELT_LLM_BASE`` at (ends in ``/v1``)."""
+    ``BABELGRADE_LLM_BASE`` at (ends in ``/v1``)."""
 
     def __init__(self):
         self._httpd = ThreadingHTTPServer(("127.0.0.1", 0), _Handler)

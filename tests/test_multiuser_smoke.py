@@ -1,4 +1,4 @@
-"""Multi-user smoke test for the ELT Assessor (in-process, temp DB).
+"""Multi-user smoke test for the BabelGrade (in-process, temp DB).
 
 Runs the real FastAPI app via TestClient against a throwaway sqlite file and
 verifies: 401 gate, register-first-only, login/logout, me, set-password,
@@ -6,7 +6,7 @@ owner scoping of students/assignments, and cross-user isolation.
 """
 import json, sys, tempfile
 
-sys.path.insert(0, "/home/tibo/elt-assessor")
+sys.path.insert(0, "/home/tibo/babelgrade")
 
 from pathlib import Path
 import app.db as db

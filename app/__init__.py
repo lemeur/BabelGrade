@@ -1,1 +1,1 @@
-"""ELT Assessor application package."""
+"""BabelGrade application package."""

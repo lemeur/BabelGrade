@@ -23,7 +23,7 @@ import sys
 import tempfile
 import time
 
-PROJ = "/home/tibo/elt-assessor"
+PROJ = "/home/tibo/babelgrade"
 sys.path.insert(0, PROJ)
 sys.path.insert(0, PROJ + "/tests")
 
@@ -35,8 +35,8 @@ mock = mms.MockLLMServer().start()
 # Hold every roster reply open 1.5 s so the job stays in-flight long enough
 # to make the 409 guards deterministic (the mock LLM is near-instant).
 mms.ROSTER_DELAY = 1.5
-os.environ["ELT_LLM_BASE"] = mock.base_url
-os.environ["ELT_LLM_MODEL"] = "mock-llm"
+os.environ["BABELGRADE_LLM_BASE"] = mock.base_url
+os.environ["BABELGRADE_LLM_MODEL"] = "mock-llm"
 
 TMP = Path(tempfile.mkdtemp(prefix="elt_roster_"))
 import app.db as db

@@ -2,7 +2,7 @@
 """P0.6 state-check: i18n 4x4 balance + node --check on extracted inline JS."""
 import re, subprocess, sys, os
 
-html = open('/home/tibo/elt-assessor/static/index.html').read()
+html = open('/home/tibo/babelgrade/static/index.html').read()
 
 # --- i18n balance: keys in the I18N{...} slice must appear exactly 4x in definitions
 i18n_start = html.index('I18N={')

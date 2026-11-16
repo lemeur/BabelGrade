@@ -1,4 +1,4 @@
-"""Shared paths + limits for the ELT Assessor app.
+"""Shared paths + limits for the BabelGrade app.
 
 Single home for the filesystem paths and upload limits that were module-level
 constants in main.py (2026-10-16 split). Import from here, never re-define.

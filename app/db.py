@@ -7,10 +7,10 @@ import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
-# ELT_DB_PATH (test env override): point the app at a throwaway DB without
+# BABELGRADE_DB_PATH (test env override): point the app at a throwaway DB without
 # touching the real data/ (used by isolated test servers + in-process tests).
-DB_PATH = Path(os.environ.get("ELT_DB_PATH",
-                             Path(__file__).resolve().parent.parent / "data" / "elt_assessor.db"))
+DB_PATH = Path(os.environ.get("BABELGRADE_DB_PATH",
+                             Path(__file__).resolve().parent.parent / "data" / "babelgrade.db"))
 _LOCK = threading.RLock()
 _local = threading.local()
 

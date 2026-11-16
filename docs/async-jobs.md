@@ -1,6 +1,6 @@
 # Tâches asynchrones (job queue) — Architecture, états et flux
 
-> ELT Assessor · `app/jobs.py` + `app/main.py` + `static/index.html`
+> BabelGrade · `app/jobs.py` + `app/main.py` + `static/index.html`
 > Mise à jour : 2026-10-07 — feature **terminé + E2E-verified** (voir `references/async-jobs.md` du skill).
 
 Les traitements longs (transcription Whisper, extraction de documents, analyse IA,

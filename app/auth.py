@@ -43,7 +43,7 @@ def current_owner() -> int | None:
 def _pepper() -> str:
     # Static application pepper layered on top of the per-password salt so a
     # DB leak alone is not enough to replay the hash parameters.
-    return "elt-assessor-2026"
+    return "babelgrade-2026"
 
 
 def hash_password(password: str) -> str:
@@ -174,8 +174,8 @@ def first_user() -> dict | None:
 def bootstrap_admin() -> bool:
     """First-boot helper: create the initial account when no user exists.
 
-    Login comes from the ``ELT_INITIAL_LOGIN`` env var (default "tibo");
-    password from ``ELT_INITIAL_PASSWORD``. Without a password the account is
+    Login comes from the ``BABELGRADE_INITIAL_LOGIN`` env var (default "tibo");
+    password from ``BABELGRADE_INITIAL_PASSWORD``. Without a password the account is
     NOT created (create_user rejects it) — the operator instead creates the
     first account through the in-app "Create account" gate, which runs the
     same owner backfill. We never invent credentials silently.
@@ -183,8 +183,8 @@ def bootstrap_admin() -> bool:
     """
     if count_users() > 0:
         return False
-    username = os.environ.get("ELT_INITIAL_LOGIN", "tibo")
-    password = os.environ.get("ELT_INITIAL_PASSWORD", "")
+    username = os.environ.get("BABELGRADE_INITIAL_LOGIN", "tibo")
+    password = os.environ.get("BABELGRADE_INITIAL_PASSWORD", "")
     try:
         create_user(username, password)
     except ValueError:

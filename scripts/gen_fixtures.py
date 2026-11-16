@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Seed realistic test fixtures for the ELT Assessor stats view.
+"""Seed realistic test fixtures for the BabelGrade stats view.
 
 - 40 fictional students in 2 classes
 - 4 subjects (compréhension orale/écrite, production orale/écrite)
@@ -14,7 +14,7 @@ import random
 from datetime import datetime, timedelta
 
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DB = os.path.join(BASE, "data", "elt_assessor.db")
+DB = os.path.join(BASE, "data", "babelgrade.db")
 
 # ---- verbatim from app/rubrics.py (keep in sync) ----
 LEVEL_POINTS = {"A1": 1, "A2": 3, "B1": 5, "B2": 10, "C1": 20, "C2": 30}

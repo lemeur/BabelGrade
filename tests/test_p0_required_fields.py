@@ -107,7 +107,7 @@ with sync_playwright() as pw:
     b.close()
 
 # ---------- i18n balance: new keys appear 4x each ----------
-html = open('/home/tibo/elt-assessor/static/index.html').read()
+html = open('/home/tibo/babelgrade/static/index.html').read()
 for key in ["an.reqNote", "an.missingWorkWritten", "an.missingAudio"]:
     n = len(re.findall(re.escape(key) + "':'", html))
     check(f"i18n key '{key}' defined 4x", n == 4, n)

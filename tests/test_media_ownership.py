@@ -7,7 +7,7 @@ In-process TestClient against a throwaway DB.
 """
 import sys, tempfile
 
-sys.path.insert(0, "/home/tibo/elt-assessor")
+sys.path.insert(0, "/home/tibo/babelgrade")
 from pathlib import Path as P
 import app.db as db
 

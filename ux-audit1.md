@@ -1,4 +1,4 @@
-# Revue d'ergonomie — ELT Assessor
+# Revue d'ergonomie — BabelGrade
 
 > **Date :** 03/10/2026
 > **Périmètre :** application CEFR d'évaluation (grille LVA/LVB « Proof Matrix »)

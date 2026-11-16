@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch the ELT Assessor web app.
+# Launch the BabelGrade web app.
 set -euo pipefail
 cd "$(dirname "$0")"
 export PYTHONPATH="$PWD${PYTHONPATH:+:$PYTHONPATH}"

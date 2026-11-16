@@ -1,6 +1,6 @@
 """P2.9 — E2E test of the async job queue with a MOCK LLM (no real model).
 
-Points ``ELT_LLM_BASE`` at an in-process OpenAI-compatible mock
+Points ``BABELGRADE_LLM_BASE`` at an in-process OpenAI-compatible mock
 (``tests/mock_llm_server.py``) and drives the three long endpoints that the
 real qwen38-27b would serve (~100-130 s each, manual-only before this):
 
@@ -22,7 +22,7 @@ import sys
 import tempfile
 import time
 
-PROJ = "/home/tibo/elt-assessor"
+PROJ = "/home/tibo/babelgrade"
 sys.path.insert(0, PROJ)
 sys.path.insert(0, PROJ + "/tests")
 
@@ -31,7 +31,7 @@ import mock_llm_server as mms
 
 # ---------------------------------------------------------------------------
 # Point the LLM client at the mock BEFORE the app imports it (llm_client reads
-# ELT_LLM_BASE/MODEL at import time). Start the mock, grab its real port.
+# BABELGRADE_LLM_BASE/MODEL at import time). Start the mock, grab its real port.
 mock = mms.MockLLMServer().start()
 # Hold each streamed LLM reply open a beat longer than the scheduler's claim
 # window, so the SSE subscriber deterministically attaches to the LIVE job
@@ -39,8 +39,8 @@ mock = mms.MockLLMServer().start()
 # late-subscriber DB-rebuild path. Mirrors production where the real LLM keeps
 # the stream open for ~100 s.
 mms.STREAM_PRE_DELAY = 1.0
-os.environ["ELT_LLM_BASE"] = mock.base_url
-os.environ["ELT_LLM_MODEL"] = "mock-llm"
+os.environ["BABELGRADE_LLM_BASE"] = mock.base_url
+os.environ["BABELGRADE_LLM_MODEL"] = "mock-llm"
 
 TMP = Path(tempfile.mkdtemp(prefix="elt_p2_mock_"))
 import app.db as db

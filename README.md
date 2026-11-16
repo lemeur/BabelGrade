@@ -1,4 +1,4 @@
-# ELT Assessor
+# BabelGrade
 
 Web app that turns a student submission (written copy or oral recording) into a
 **CEFR rubric mapping with verbatim evidence** — an objective evidence extractor
@@ -6,9 +6,9 @@ that lowers the teacher's cognitive load without replacing their judgment.
 
 ## Architecture
 
-- **Backend**: FastAPI (`app/`), SQLite persistence (`data/elt_assessor.db`).
+- **Backend**: FastAPI (`app/`), SQLite persistence (`data/babelgrade.db`).
 - **LLM**: the local SGLang OpenAI-compatible endpoint serving `qwen38-27b`
-  (text + vision). Configured via env `ELT_LLM_BASE` / `ELT_LLM_MODEL`
+  (text + vision). Configured via env `BABELGRADE_LLM_BASE` / `BABELGRADE_LLM_MODEL`
   (defaults `http://127.0.0.1:8078/v1` / `qwen38-27b`).
 - **Oral pipeline**: audio → local offline Whisper (faster-whisper `base`,
   cached) → timestamped transcript + word timings → fluency metrics
@@ -37,7 +37,7 @@ HOST=0.0.0.0 PORT=8090 ./run.sh
 
 The app is **multi-user** (2026-10-14): PBKDF2 logins, every owned table is
 scoped to its owner. On first boot the very first account is created from
-`ELT_INITIAL_LOGIN` / `ELT_INITIAL_PASSWORD` (open registration is closed
+`BABELGRADE_INITIAL_LOGIN` / `BABELGRADE_INITIAL_PASSWORD` (open registration is closed
 after that). Log in from the app; data ownership is enforced on every
 endpoint and on the media file server.
 

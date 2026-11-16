@@ -1,4 +1,4 @@
-"""LLM client for the ELT assessor.
+"""LLM client for the BabelGrade.
 
 Targets the SGLang OpenAI-compatible endpoint that serves qwen38-27b.
 - chat_json: non-streaming call, best-effort JSON extraction
@@ -11,9 +11,9 @@ import time
 import urllib.error
 import urllib.request
 
-BASE_URL = os.environ.get("ELT_LLM_BASE", "http://127.0.0.1:8078/v1")
-MODEL = os.environ.get("ELT_LLM_MODEL", "qwen38-27b")
-API_KEY = os.environ.get("ELT_LLM_API_KEY", "")
+BASE_URL = os.environ.get("BABELGRADE_LLM_BASE", "http://127.0.0.1:8078/v1")
+MODEL = os.environ.get("BABELGRADE_LLM_MODEL", "qwen38-27b")
+API_KEY = os.environ.get("BABELGRADE_LLM_API_KEY", "")
 
 _TIMEOUT = 600
 _MAX_RETRIES = 3

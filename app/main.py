@@ -1,4 +1,4 @@
-"""ELT Assessor - FastAPI application.
+"""BabelGrade - FastAPI application.
 
 Run:  uvicorn app.main:app --host 0.0.0.0 --port 8090
 
@@ -29,8 +29,8 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         # First-boot: create the initial account when no user exists yet
-        # (login from ELT_INITIAL_LOGIN env, password from
-        # ELT_INITIAL_PASSWORD; without a password the account has none and
+        # (login from BABELGRADE_INITIAL_LOGIN env, password from
+        # BABELGRADE_INITIAL_PASSWORD; without a password the account has none and
         # login stays 401 — the operator sets it via the in-app flow or by
         # re-running with the env var). The owner backfill in
         # db._migrate_multiuser already ran in init_db; it attaches legacy
@@ -39,7 +39,7 @@ def create_app() -> FastAPI:
         if auth.bootstrap_admin():
             logging.getLogger("elt.auth").info(
                 "first boot: created initial account (%s)",
-                os.environ.get("ELT_INITIAL_LOGIN", "tibo"))
+                os.environ.get("BABELGRADE_INITIAL_LOGIN", "tibo"))
             # The owner backfill already ran once at init_db time — but on a
             # true first boot there was no account yet, so it was a no-op.
             # Re-run it now that the initial account exists: attach every
@@ -50,7 +50,7 @@ def create_app() -> FastAPI:
         yield
         jobs.stop_workers()
 
-    app = FastAPI(title="ELT Assessor", version="1.0",
+    app = FastAPI(title="BabelGrade", version="1.0",
                  lifespan=lifespan,
                  # Global auth gate: every /api/* route (except PUBLIC_PATHS
                  # + static) requires the session cookie. Runs in the

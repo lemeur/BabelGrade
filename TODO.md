@@ -80,7 +80,7 @@ git — décision tibo : où pousser)** et P2.8 (systemd/s6 supervisor).
    `GET /v1/models` ; il **construit** une réponse conforme au schéma exact de
    l'app en repérant les critères dans le prompt (« Criteria:\n- <c> : … »), avec
    verbatim quote + un marqueur (FRESH-B1 vs CONFIRMED-B1) pour distinguer blind
-   vs aware. `tests/test_p2_mock_llm_e2e.py` (in-process, temp DB, `ELT_LLM_BASE`
+   vs aware. `tests/test_p2_mock_llm_e2e.py` (in-process, temp DB, `BABELGRADE_LLM_BASE`
    pointé vers le mock AVANT import de l'app, lifespan via `TestClient` context
    manager) : 37 checks — enqueue→claim→run→finalize→done, matrice persistée
    (1 entry/critère, ordre exact, evidence partout), attestation déterministe

@@ -5,7 +5,7 @@ and the LLM "polished" it. On real handwritten photos the polish silently
 failed (model over-thought the "correct this garbage, keep line count"
 prompt → empty content → the Tesseract junk was stored as if it were the
 final text). See `references/ocr-findings-real-copies.md` in the
-`elt-assessor-app` skill for the benchmark.
+`babelgrade` skill for the benchmark.
 
 New pipeline (this file): the LLM vision engine reads the page photo
 DIRECTLY and returns:
