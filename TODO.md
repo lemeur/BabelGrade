@@ -3,7 +3,7 @@
 Contexte : revue code + split de `create_app()` terminés (commits `98810d2` →
 `60653ef`). `app/` ruff-clean, 65 routes, tests live verts. Ce qui reste,
 classé par priorité. Détail technique : `references/git-and-hygiene.md` du skill
-`elt-assessor-app` (Hermes).
+`babelgrade-app` (Hermes).
 
 **État 2026-10-18 (après Annoter word-selection) :** P0, P1.5 + P1.6, P2.7,
 P2.9 + P2.10 terminés ; **OCR LLM-direct (2026-10-17) livré et commité**

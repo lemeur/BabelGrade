@@ -6,7 +6,7 @@ from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-MOCK = Path("/home/tibo/elt-assessor/mock-hybrid")
+MOCK = Path("/home/tibo/babelgrade/mock-hybrid")
 PORT = 8077
 
 
