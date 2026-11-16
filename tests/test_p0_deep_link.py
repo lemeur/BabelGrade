@@ -11,7 +11,7 @@ def check(name, cond, extra=""):
     print(("PASS " if cond else "FAIL ") + name + (" | " + str(extra) if extra else ""))
 
 def login(pg):
-    pg.add_init_script("localStorage.setItem('elt-lang','fr')")
+    pg.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo")
@@ -76,7 +76,7 @@ with sync_playwright() as pw:
     pg = ctx.new_page()
     errs=[]
     pg.on("pageerror", lambda e: errs.append(str(e)))
-    pg.add_init_script("localStorage.setItem('elt-lang','fr')")
+    pg.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
     pg.goto(BASE + "#history/553", wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo")

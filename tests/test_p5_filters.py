@@ -27,7 +27,7 @@ def check(name, cond, extra=""):
     print(("PASS " if cond else "FAIL ") + name + (" | " + str(extra) if extra else ""))
 
 def login(pg, lang="fr"):
-    pg.add_init_script(f"localStorage.setItem('elt-lang','{lang}')")
+    pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
@@ -233,7 +233,7 @@ with sync_playwright() as p:
     ctx2 = b.new_context(viewport={"width": 390, "height": 844})
     m = ctx2.new_page()
     m.on("pageerror", lambda e: errors.append("390:" + str(e)))
-    m.add_init_script("localStorage.setItem('elt-lang','fr')")
+    m.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
     m.goto(BASE, wait_until="networkidle")
     try:
         m.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=15000)

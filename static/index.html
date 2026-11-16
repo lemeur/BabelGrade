@@ -2526,7 +2526,7 @@ const I18N={
   'roster.title':'Klasse aus Fotos importieren','roster.help':'Foto(s) der Schülerliste — Klassenname, Schule und Namen werden automatisch gelesen und vor der Erstellung geprüft.','roster.dropTitle':'Schülerliste ablegen (Fotos)','roster.dropSub':'png / jpg / webp / heic · max. 10 Fotos · oder klicken zum Durchsuchen','roster.classCode':'Klassencode (optional)','roster.extract':'Liste lesen','roster.running':'Liste wird gelesen…','roster.reviewTitle':'Extrahierte Liste prüfen','roster.reviewNote':'Namen bearbeiten, eine Zeile abhaken, um sie zu überspringen. Bestehende Schüler:innen mit gleichem Namen + Code werden aktualisiert, nicht dupliziert.','roster.firstName':'Vorname','roster.lastName':'Nachname','roster.school':'Schule','roster.commit':'{n} Schüler:innen anlegen','roster.done':'{created} angelegt, {updated} aktualisiert{skipped}. Die Klasse ist bereit.','roster.doneSkipped':' und {n} übergangen','roster.error':'Extraktion fehlgeschlagen — erneut versuchen oder CSV-Import nutzen.','roster.cancelled':'Import abgebrochen','roster.noPhotos':'Noch kein Foto gewählt','roster.tooMany':'Maximal 10 Fotos — einige entfernen','roster.badType':'Bildtyp nicht unterstützt','roster.runningHint':'Die KI liest jedes Foto — das kann eine Minute dauern.','roster.stStudents':'Schüler:innen','st.importPhotos':'Klasse importieren','st.importPhotosTtl':'Eine Klasse aus Fotos der Schülerliste importieren — die KI liest die Liste, Sie prüfen, dann werden die Schüler:innen angelegt',
  }
 };
-let LANG=(localStorage.getItem('elt-lang')||'en').toLowerCase();
+let LANG=(localStorage.getItem('babelgrade-lang')||'en').toLowerCase();
 if(!I18N[LANG])LANG='en';
 const LANG_FLAG={en:'🇬🇧',fr:'🇫🇷',es:'🇪🇸',de:'🇩🇪'};
 const LANGS=['en','fr','es','de'];
@@ -2650,7 +2650,7 @@ function refreshUploadStatuses(){
     ()=>{currentAudio=null;$('#audio-file').value='';paintFstat(an,'');});
 }
 function setLang(l){
-  LANG=l;localStorage.setItem('elt-lang',l);applyI18n();
+  LANG=l;localStorage.setItem('babelgrade-lang',l);applyI18n();
 }
 /* flag menu: shows the ACTIVE language's flag; click to pick another */
 const menuLang=$('#menu-lang');

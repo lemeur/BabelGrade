@@ -106,7 +106,7 @@ def main():
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--no-sandbox"])
         ctx = b.new_context(viewport={"width": 1280, "height": 900})
-        ctx.add_init_script("localStorage.setItem('elt-lang','fr')")
+        ctx.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
         pg = ctx.new_page()
         errs = []
         pg.on("pageerror", lambda e: errs.append(str(e)))
@@ -131,7 +131,7 @@ def main():
         pg.wait_for_timeout(800)
         pg.evaluate("pieClose()")   # 2026-10-27: home radial menu opens by default —
                                     # close it so the header buttons are clickable
-        check(pg.evaluate("localStorage.getItem('elt-lang')") == "fr",
+        check(pg.evaluate("localStorage.getItem('babelgrade-lang')") == "fr",
               "boot in FR")
 
         # 1) AI-first #run — enter the evaluator via goEvaluate() (same entry the

@@ -12,7 +12,7 @@ def check(name, cond, extra=""):
     print(("PASS " if cond else "FAIL ") + name + (" | " + str(extra) if extra else ""))
 
 def login(pg):
-    pg.add_init_script("localStorage.setItem('elt-lang','fr')")
+    pg.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
