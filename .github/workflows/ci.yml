@@ -1,0 +1,63 @@
+# BabelGrade CI — lint, compile, and the hermetic (in-process) test suites.
+#
+# What runs here:
+#   * ruff check  (full repo, ruff.toml)
+#   * py_compile  of app/, tests/, scripts/
+#   * the in-process suites (throwaway DB + mocked LLM — no live server,
+#     no LLM, no Whisper model download):
+#       tests/test_multiuser_smoke.py
+#       tests/test_media_ownership.py
+#       tests/test_p2_mock_llm_e2e.py
+#       tests/test_roster_import.py
+#       tests/test_ui_language_prompt.py
+#       tests/test_p0_state_i18n_js.py   (needs node for `node --check`)
+#   * pytest on the pure unit tests: tests/test_ocr_resnap.py
+#
+# What is NOT in CI:
+#   * the Playwright suites (tests/test_p0_*, test_p1_*, test_p2_*,
+#     test_p3_*, test_p4_*, test_p5_*, test_p6_*, test_p7_*, test_p8_*)
+#     — they drive a live server on 127.0.0.1:8090 with real login
+#     credentials (tests/.credentials, gitignored) and are run locally.
+#   * anything that calls a real LLM or downloads a Whisper model.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt ruff pytest
+
+      - name: Lint (ruff)
+        run: ruff check .
+
+      - name: Byte-compile (app + tests + scripts)
+        run: python -m compileall -q app tests/mock_llm_server.py tests/test_*.py scripts
+
+      - name: In-process suites (no server, no LLM, no Whisper)
+        run: |
+          set -e
+          for t in test_multiuser_smoke test_media_ownership \
+                   test_p2_mock_llm_e2e test_roster_import \
+                   test_ui_language_prompt test_p0_state_i18n_js; do
+            echo "=== $t ==="
+            python tests/$t.py
+          done
+
+      - name: Unit tests (pytest)
+        run: python -m pytest tests/test_ocr_resnap.py -q
