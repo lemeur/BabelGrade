@@ -15,7 +15,7 @@ out = ROOT / "mock-hybrid"
 out.mkdir(exist_ok=True)
 
 # ---- oral ----
-tr = whisper.transcribe(str(ROOT / "test_oral.ogg"), language="en")
+tr = whisper.transcribe(str(ROOT / "tests" / "fixtures" / "test_oral.ogg"), language="en")
 oral = {
     "text": tr["text"],
     "duration_s": tr["duration_s"],
