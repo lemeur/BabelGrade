@@ -5,8 +5,11 @@ data/
 # Python
 __pycache__/
 *.pyc
+*.egg-info/
 .venv/
 venv/
+.pytest_cache/
+.ruff_cache/
 
 # Local test credentials (live-server login) — NEVER commit
 tests/.credentials

@@ -10,7 +10,13 @@ from pathlib import Path
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
 os.environ.setdefault("HUGGINGFACE_HUB_OFFLINE", "1")
 
-CACHE_DIR = "/home/tibo/.cache/huggingface/hub"
+# Model cache: faster-whisper's download_root. Honours BABELGRADE_WHISPER_CACHE
+# so deployments can point at a pre-seeded offline cache. Default is the
+# standard Hugging Face hub cache location for the current user.
+CACHE_DIR = os.environ.get(
+    "BABELGRADE_WHISPER_CACHE",
+    str(Path.home() / ".cache" / "huggingface" / "hub"),
+)
 MODEL_NAME = "base"
 
 _model = None

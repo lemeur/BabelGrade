@@ -6,9 +6,9 @@ owner scoping of students/assignments, and cross-user isolation.
 """
 import json, sys, tempfile
 
-sys.path.insert(0, "/home/tibo/babelgrade")
-
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import app.db as db
 
 TMP = Path(tempfile.mkdtemp(prefix="elt_mu_test_"))

@@ -6,6 +6,7 @@
 - clicking #run-eval with written + no text/photo -> work card flashes + i18n toast
 - no JS errors; i18n keys balanced (every key 4x)"""
 import os, re
+from pathlib import Path
 import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
@@ -108,7 +109,7 @@ with sync_playwright() as pw:
     b.close()
 
 # ---------- i18n balance: new keys appear 4x each ----------
-html = open('/home/tibo/babelgrade/static/index.html').read()
+html = open(Path(__file__).resolve().parent.parent / 'static' / 'index.html').read()
 for key in ["an.reqNote", "an.missingWorkWritten", "an.missingAudio"]:
     n = len(re.findall(re.escape(key) + "':'", html))
     check(f"i18n key '{key}' defined 4x", n == 4, n)

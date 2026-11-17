@@ -6,12 +6,12 @@ to their owner; foreign, unknown and untracked files all 404 identically.
 In-process TestClient against a throwaway DB.
 """
 import sys, tempfile
+from pathlib import Path
 
-sys.path.insert(0, "/home/tibo/babelgrade")
-from pathlib import Path as P
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import app.db as db
 
-TMP = P(tempfile.mkdtemp(prefix="elt_sec_test_"))
+TMP = Path(tempfile.mkdtemp(prefix="elt_sec_test_"))
 db.DB_PATH = TMP / "test.db"
 db._CONN = None
 

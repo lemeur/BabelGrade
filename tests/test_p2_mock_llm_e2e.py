@@ -21,14 +21,13 @@ import os
 import sys
 import tempfile
 import time
+from pathlib import Path
 
-PROJ = "/home/tibo/babelgrade"
+PROJ = str(Path(__file__).resolve().parent.parent)
 sys.path.insert(0, PROJ)
 sys.path.insert(0, PROJ + "/tests")
 
-from pathlib import Path
 import mock_llm_server as mms
-
 # ---------------------------------------------------------------------------
 # Point the LLM client at the mock BEFORE the app imports it (llm_client reads
 # BABELGRADE_LLM_BASE/MODEL at import time). Start the mock, grab its real port.

@@ -13,7 +13,7 @@ import os
 import sys
 import tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from shot_common import make_page, login, OUT, BASE
+from shot_common import make_page, login, OUT
 
 FRAMES_DIR = tempfile.mkdtemp(prefix="bg_radial_")
 

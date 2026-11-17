@@ -7,10 +7,9 @@ import os
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tests"))
 import _testpw as TESTPW
-import time
 
 BASE = "http://127.0.0.1:8090"
-OUT = "/home/tibo/babelgrade/docs/readme"
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "docs", "readme")
 os.makedirs(OUT, exist_ok=True)
 
 

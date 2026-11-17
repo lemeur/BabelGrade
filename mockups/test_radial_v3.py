@@ -13,10 +13,12 @@ Demo tree:  L0 Préparer/Évaluer/Analyser
             L2 (Classe/élèves, DÉMO) Cours · Devoirs   ← 3rd level, removed at integration
 """
 import sys
+from pathlib import Path
 sys.path.insert(0, "/tmp/elt_dm/venv/lib/python3.11/site-packages")
 from playwright.sync_api import sync_playwright
 
-URL = "file:///home/tibo/babelgrade/mockups/radial_v3.html"
+HERE = Path(__file__).resolve().parent
+URL = (HERE / "radial_v3.html").as_uri()
 PASS, FAIL = [], []
 def check(name, cond, extra=""):
     (PASS if cond else FAIL).append(name)
@@ -106,7 +108,7 @@ with sync_playwright() as p:
     check("geometry: L2 limited to selected L1 sector (Classe ≈ [-150°,-90°], 3° gap)",
           abs(geo["l1"][0][0] - -150) < 5 and abs(geo["l1"][0][1] - -90) < 5 and geo["l2inL1"],
           [geo["l1"][0], [a for a in geo["l2"]]])
-    pg.screenshot(path="/home/tibo/babelgrade/mockups/v3_prepare.png")
+    pg.screenshot(path=str(HERE / "v3_prepare.png"))
 
     # ---- wheel cycles the OUTERMOST crown (L2 demo) ----
     pg.mouse.move(640, 450)
@@ -118,7 +120,7 @@ with sync_playwright() as p:
           not pg.evaluate(open_state_js())
           and "navGo(\"students/homework\") [démo]" in pg.evaluate(log_js()),
           pg.evaluate(log_js())[:80])
-    pg.screenshot(path="/home/tibo/babelgrade/mockups/v3_three_levels.png")
+    pg.screenshot(path=str(HERE / "v3_three_levels.png"))
 
     # ---- click an INNER leaf sector: executes + closes ----
     pg.click("#home-prepare"); pg.wait_for_timeout(450)
@@ -138,7 +140,7 @@ with sync_playwright() as p:
           rings[0]["sel"] == "Analyser"
           and rings[1]["sectors"] == ["Progression d’un élève", "Résultats sur un sujet", "Historique"]
           and [r["lv"] for r in rings] == [0, 1], rings)
-    pg.screenshot(path="/home/tibo/babelgrade/mockups/v3_analyze.png")
+    pg.screenshot(path=str(HERE / "v3_analyze.png"))
     click_sector(pg, "#pie-stage #rg-0 .sector[data-idx='0']")   # L0 -> back to Préparer
     pg.wait_for_timeout(450)
     rings = pg.evaluate(rings_js())
@@ -184,7 +186,7 @@ with sync_playwright() as p:
     }""")
     check("390px: 2 crowns, svg + all sectors inside viewport",
           state["svgIn"] and state["nCrowns"] == 2 and state["allIn"], state)
-    pg2.screenshot(path="/home/tibo/babelgrade/mockups/v3_390.png")
+    pg2.screenshot(path=str(HERE / "v3_390.png"))
     pg2.keyboard.press("Escape"); pg2.wait_for_timeout(300)
     pg2.click("#home-prepare"); pg2.wait_for_timeout(500)
     state = pg2.evaluate("""() => {
@@ -194,7 +196,7 @@ with sync_playwright() as p:
                 svgIn: r.left >= 0 && r.right <= innerWidth + 1 && r.top >= 0 && r.bottom <= innerHeight + 1};
     }""")
     check("390px: 3 crowns (demo) still fit", state["nCrowns"] == 3 and state["svgIn"], state)
-    pg2.screenshot(path="/home/tibo/babelgrade/mockups/v3_390_three.png")
+    pg2.screenshot(path=str(HERE / "v3_390_three.png"))
 
     b.close()
 

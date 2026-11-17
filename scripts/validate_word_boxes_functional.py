@@ -14,7 +14,7 @@ import json
 import statistics
 from pathlib import Path
 
-ROOT = Path("/home/tibo/babelgrade")
+ROOT = Path(__file__).resolve().parent.parent
 report = json.loads(open(ROOT / "data/ocr_test/wordboxes_probe.json").read())
 final = json.loads(open(ROOT / "data/ocr_test/final.json").read())
 page = final["pages"][0]

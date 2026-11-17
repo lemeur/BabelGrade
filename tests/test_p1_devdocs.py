@@ -9,6 +9,7 @@
 - no JS errors
 """
 import re
+from pathlib import Path
 import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
@@ -116,7 +117,7 @@ with sync_playwright() as pw:
     b.close()
 
 # i18n balance: new keys 4x
-html = open('/home/tibo/babelgrade/static/index.html').read()
+html = open(Path(__file__).resolve().parent.parent / 'static' / 'index.html').read()
 for key in ["docs.tab.user", "docs.tab.dev"]:
     n = len(re.findall(re.escape(key) + "':", html))
     check(f"i18n key '{key}' defined 4x", n == 4, n)
