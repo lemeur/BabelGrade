@@ -1,5 +1,9 @@
 # BabelGrade
 
+[![CI](https://github.com/lemeur/BabelGrade/actions/workflows/ci.yml/badge.svg)](https://github.com/lemeur/BabelGrade/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](requirements.txt)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 **Turn a student's written copy or oral recording into a CEFR attestation with
 verbatim evidence.** BabelGrade is a teacher-facing web app that maps every
 criterion of the official French LVA/LVB attestation grids to a recommended
@@ -41,6 +45,8 @@ stays editable and recomputes instantly.
 6. **Dual AI loop** — "AI first" (grade from the AI report) or "teacher
    first" (grade yourself, then ask the AI for a blind or *aware* second
    opinion that confirms or refutes each criterion with evidence).
+7. **Roster photo import** — import a class + its students from roster
+   photos, with a review step before anything is committed.
 
 ### Screenshots
 
@@ -87,6 +93,7 @@ stays editable and recomputes instantly.
 ## Quick start
 
 ```bash
+pip install -r requirements.txt
 ./run.sh                 # http://<host>:8090
 HOST=0.0.0.0 PORT=8090 ./run.sh
 ```
@@ -101,45 +108,92 @@ Configuration (env vars, all optional):
 | `BABELGRADE_INITIAL_LOGIN` | `tibo` | first-boot account (registration stays open only for this) |
 | `BABELGRADE_INITIAL_PASSWORD` | *(empty)* | first-boot password |
 | `BABELGRADE_DB_PATH` | `data/babelgrade.db` | SQLite path (tests use a throwaway DB) |
+| `BABELGRADE_WHISPER_CACHE` | `~/.cache/huggingface/hub` | faster-whisper model cache (`download_root`) |
 
 Requires Python 3.11+, uvicorn, faster-whisper, PyMuPDF. The Whisper model is
-cached locally and runs fully offline.
+cached locally and the app runs fully offline (all Hugging Face downloads are
+disabled at import time). The LLM endpoint must be reachable — BabelGrade has
+no LLM fallback.
 
-## Safety rails
+## Security model
 
-- No level is suggested without at least one verbatim quote / timestamp
-  (the backend warns when a criterion mapping lacks evidence).
-- All levels are *recommendations*; the attestation score/level are editable
-  by the teacher and recompute instantly.
-- Recurrent errors are flagged; isolated slips are not over-penalised.
-- Per-student **accommodations** (e.g. "dyslexia: weight spelling lightly")
-  affect content/feedback, never the demonstrated level — and the model must
-  state which were applied.
-- Reasoning budget is capped (`thinking_budget`) so the structured JSON reply
-  is never truncated.
+- **Multi-user, per-owner scoping.** PBKDF2-HMAC-SHA256 (per-user salt +
+  application pepper) password hashes; session cookie auth. Every owned
+  table (students, assignments, submissions, analyses, annotations, jobs,
+  custom rubrics) is scoped to its owner on every read and write, enforced
+  by a FastAPI dependency that injects the current owner.
+- **Media ownership.** `/api/files` serves a file *only* to its owner;
+  foreign, unknown, and untracked files all 404 identically so no filename
+  enumeration is possible.
+- **Registration is closed by default.** Accounts can only be registered at
+  first boot (via the initial-login env vars); the app refuses to stay in
+  "registration open" afterwards.
+- **Nothing leaves the machine.** No external API calls at all: the LLM is a
+  local OpenAI-compatible endpoint and the ASR model runs offline.
+- **Evidence before level.** The backend warns when a criterion mapping
+  lacks a verbatim quote; recurring errors are flagged, isolated slips are
+  not over-penalised; per-student accommodations may change content and
+  feedback but never the demonstrated level.
+
+## Testing
+
+The suite is split into two classes:
+
+**Hermetic, in-process suites** (throwaway SQLite DB, in-process OpenAI
+mock server, no live server, no LLM, no Whisper model) — these run in CI
+and can be run anywhere the dependencies install:
+
+```bash
+python tests/test_multiuser_smoke.py     # auth gate, owner scoping, isolation
+python tests/test_media_ownership.py     # media-ownership 404 matrix
+python tests/test_p2_mock_llm_e2e.py    # full job pipeline against a mocked LLM
+python tests/test_roster_import.py      # roster photo import E2E (mocked LLM)
+python tests/test_ui_language_prompt.py # prompt-builder unit checks
+python tests/test_p0_state_i18n_js.py   # i18n 4-lang balance + node --check
+python -m pytest tests/test_ocr_resnap.py -q   # OCR resnap alignment units
+```
+
+**Live Playwright suites** drive the real UI against a running server on
+`127.0.0.1:8090` (they read the live-server credentials from
+`tests/.credentials`, which is gitignored by design). See
+[CONTRIBUTING.md](CONTRIBUTING.md#running-tests) for the local recipe.
+
+CI: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs ruff,
+byte-compilation and every hermetic suite on Python 3.11 and 3.13.
 
 ## Repository layout
 
 ```
-app/main.py        FastAPI factory + auth gate + include_router (no routes)
-app/routes_*.py    12 route modules
-app/assess.py      prompts, fluency metrics, JSON parse/validate
-app/llm_client.py  OpenAI-compatible client (stream + JSON extract)
-app/whisper.py     offline faster-whisper wrapper (cached model)
-app/db.py          SQLite + forward migration
-app/stats.py       assignment + per-student stats
-app/rubrics.py     LVA/LVB attestation presets + /20 conversion tables
-app/auth.py        multi-user auth (PBKDF2, owner scoping)
-app/jobs.py        async job queue (scheduler, workers, SSE)
-app/media.py       upload staging + PDF/scan/doc-audio extraction
-app/ocr.py         LLM-direct OCR for the annoter (per-line boxes 0..1000)
-app/imaging.py     image enhancement for copy-photo OCR
-app/config.py      paths + upload limits
-static/index.html  single-page UI (FR/EN/ES/DE)
-docs/              user guide, architecture, async-jobs (in-app Docs view)
-tests/             Playwright + API E2E suites
-run.sh             launcher
+app/main.py            FastAPI factory + auth gate + include_router (no routes)
+app/routes_*.py        route modules (auth, rubrics, students, assignments,
+                       analyze, evaluate, jobs, analyses, annotate, files,
+                       docs, admin, health, roster)
+app/assess.py          prompts, fluency metrics, JSON parse/validate
+app/llm_client.py      OpenAI-compatible client (stream + JSON extract)
+app/whisper.py         offline faster-whisper wrapper (cached model)
+app/db.py              SQLite + forward migration
+app/stats.py           assignment + per-student stats
+app/rubrics.py         LVA/LVB attestation presets + /20 conversion tables
+app/auth.py            multi-user auth (PBKDF2, owner scoping)
+app/jobs.py            async job queue (scheduler, workers, SSE)
+app/media.py           upload staging + PDF/scan/doc-audio extraction
+app/ocr.py             LLM-direct OCR for the annoter (per-line boxes 0..1000)
+app/imaging.py         image enhancement for copy-photo OCR
+app/config.py          paths + upload limits
+static/index.html      single-page UI (FR/EN/ES/DE)
+docs/                  user guide, architecture, async-jobs (in-app Docs view)
+tests/                 hermetic + Playwright E2E suites, mock LLM server
+scripts/               dev probes and screenshot generators
+mockups/               standalone UI prototypes (radial menu, hybrid annoter)
+.github/workflows/     CI (lint + hermetic suites, Python 3.11/3.13)
+run.sh                 launcher
 ```
+
+## Development
+
+Short guide: see [CONTRIBUTING.md](CONTRIBUTING.md). Module map, import
+direction rules and the "add an endpoint" recipe:
+[docs/architecture.md](docs/architecture.md). Outstanding work: [TODO.md](TODO.md).
 
 ## Built with AI
 
