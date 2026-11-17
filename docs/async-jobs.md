@@ -46,7 +46,7 @@ flowchart LR
     B2 -->|subscribe / replay| C4
     C5 -->|re-queue running| C1
     C2 -->|claim next| C1
-    C2 -->|create_task(run_job)| C3
+    C2 -->|"create_task(run_job)"| C3
     C3 --> C4
     C3 --> D1
     D1 -->|push meta/phase/<br/>token/result/done<br/>AVANT done| C4
