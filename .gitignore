@@ -16,5 +16,9 @@ logs/
 .DS_Store
 *.swp
 
+# Real student copy photo (local test material — scrubbed from git history,
+# kept on disk for the word-box / OCR probes; never commit)
+mock-hybrid/page1.jpg
+
 # Stray literal-tilde cache dir created 2026-09-19 (~ not expanded)
 /~
