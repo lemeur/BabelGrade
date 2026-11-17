@@ -3,7 +3,7 @@
 
 Re-creation of the pre-auth-gate /tmp/elt_asgn/smoke.py (stale since the
 2026-10-13 login gate; /tmp is lost on reboot). Follows the repo test
-conventions: login(tibo/****) helper, own teardown of seeded rows.
+conventions: login(tibo/<tests/.credentials>) helper, own teardown of seeded rows.
 
 Covers (desktop 1280, FR):
 - boot: no JS errors, default view = assignments, evaluator hidden until asked
@@ -16,6 +16,7 @@ Covers (desktop 1280, FR):
 Teardown: any leftover 'Smoke probe' rows are deleted at the end."""
 import sys
 sys.path.insert(0, "/tmp/elt_dm/venv/lib/python3.11/site-packages")
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8090"
@@ -30,7 +31,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(800)

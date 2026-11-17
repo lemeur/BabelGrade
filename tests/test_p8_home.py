@@ -32,11 +32,12 @@ Covers (desktop 1280, FR; then 390px mobile):
 - typed #home from another view
 - 390px: menu opens, crowns in viewport, leaf click navigates
 
-Follows the repo test conventions: login(tibo/****), lang forced via
+Follows the repo test conventions: login(tibo/<tests/.credentials>), lang forced via
 add_init_script, own checks + exit(1) on failure. No API writes → no
 teardown needed."""
 import sys
 sys.path.insert(0, "/tmp/elt_dm/venv/lib/python3.11/site-packages")
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8090"
@@ -50,7 +51,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
 

@@ -6,6 +6,7 @@
 - clicking #run-eval with written + no text/photo -> work card flashes + i18n toast
 - no JS errors; i18n keys balanced (every key 4x)"""
 import os, re
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))
@@ -19,7 +20,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1500)

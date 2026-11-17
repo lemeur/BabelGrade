@@ -4,6 +4,9 @@ Run with: /tmp/bg_venv/bin/python  (chromium headless)
 Server must be running on http://127.0.0.1:8090
 """
 import os
+import sys
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "tests"))
+import _testpw as TESTPW
 import time
 
 BASE = "http://127.0.0.1:8090"
@@ -30,7 +33,7 @@ def make_page(lang="fr", width=1280, height=860):
 def login(pg):
     pg.goto(BASE, wait_until="networkidle")
     pg.fill("#auth-username", "tibo")
-    pg.fill("#auth-password", "****")
+    pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_timeout(1200)
     # Confirm we are in

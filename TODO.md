@@ -51,7 +51,7 @@ P1.4 terminé — GitHub privé `lemeur/BabelGrade` via deploy key.** Il reste
    commits (HEAD `4e589e5`), tracking `main → origin/main`.
 5. **Smoke suite dans le repo** ✅ `tests/test_smoke_assignments.py` (25
    checks, re-création de l'ancien `/tmp/elt_asgn/smoke.py` périmé par le
-   gate d'auth) : login helper `tibo`/`****`, create via modal
+   gate d'auth) : login helper `tibo`/`BABELGRADE_TEST_PASSWORD` (in `tests/.credentials`), create via modal
    (champ `#asg-target` caché derrière le lvl carousel → set via JS,
    pills `data-pv`), edit prefill, delete UI (confirm auto-accept),
    ad-hoc entry, 390px overflow, teardown propre. Commit `78a1253`.
@@ -110,7 +110,7 @@ P1.4 terminé — GitHub privé `lemeur/BabelGrade` via deploy key.** Il reste
 - `python3 -m py_compile app/*.py`
 - serveur : `curl -s localhost:8090/api/health`
 - suites (Playwright via `/tmp/elt_dm/venv/bin/python3`, serveur live :8090,
-  login `tibo`/`****`) : `tests/test_smoke_assignments.py`,
+  login `tibo`/`BABELGRADE_TEST_PASSWORD` (in `tests/.credentials`)) : `tests/test_smoke_assignments.py`,
   `tests/test_p4_filters.py`, `tests/test_p5_filters.py`,
   `tests/test_p7_eval_exit.py`
 - suites in-process (venv hermes, temp DB) : `tests/test_multiuser_smoke.py`,

@@ -16,6 +16,7 @@ Checks (1280px + 390px unless noted):
 
 Seeding: one assignment named 'P4 toggle check' via FormData POST
 /api/assignments (the real Form contract). Teardown: DELETE it at the end."""
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []
@@ -28,7 +29,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(800)
@@ -50,7 +51,7 @@ def ensure_app(pg):
         pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=15000)
     except Exception:
         pg.wait_for_selector("#auth-username", state="visible", timeout=15000)
-        pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+        pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
         pg.click("#auth-login-btn")
         pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
 

@@ -153,7 +153,7 @@ sequenceDiagram
 - In-process suites (hermes venv, temp DB): `tests/test_multiuser_smoke.py`,
   `tests/test_media_ownership.py`, `tests/test_ui_language_prompt.py`.
 - Playwright suites (`/tmp/elt_dm/venv`, live server on :8090, login
-  `tibo`/`****`): `tests/test_smoke_assignments.py`,
+  `tibo`/`BABELGRADE_TEST_PASSWORD` (in `tests/.credentials`)): `tests/test_smoke_assignments.py`,
   `tests/test_p4_filters.py`, `tests/test_p5_filters.py`,
   `tests/test_p6_ststats.py`, `tests/test_p7_eval_exit.py`,
   `tests/test_ui_language_frontend.py`.

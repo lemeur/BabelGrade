@@ -17,6 +17,7 @@ Covers (desktop 1280):
 Teardown: the seeded assignment is deleted at the end."""
 import sys
 sys.path.insert(0, "/tmp/elt_dm/venv/lib/python3.11/site-packages")
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8090"
@@ -30,7 +31,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(800)
@@ -54,7 +55,7 @@ def ensure_app(pg):
         pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=15000)
     except Exception:
         pg.wait_for_selector("#auth-username", state="visible", timeout=15000)
-        pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+        pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
         pg.click("#auth-login-btn")
         pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
 
@@ -239,7 +240,7 @@ with sync_playwright() as p:
         m.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=15000)
     except Exception:
         m.wait_for_selector("#auth-username", state="visible")
-        m.fill("#auth-username", "tibo"); m.fill("#auth-password", "****")
+        m.fill("#auth-username", "tibo"); m.fill("#auth-password", TESTPW.pw())
         m.click("#auth-login-btn")
         m.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     m.wait_for_timeout(500)

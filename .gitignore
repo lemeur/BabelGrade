@@ -8,6 +8,9 @@ __pycache__/
 .venv/
 venv/
 
+# Local test credentials (live-server login) — NEVER commit
+tests/.credentials
+
 # server logs
 server.log*
 logs/

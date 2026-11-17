@@ -15,6 +15,7 @@ Uses analysis 592 (written sub 602) and one oral analysis. Teardown deletes
 the annotation created."""
 import sys
 sys.path.insert(0, "/tmp/elt_dm/venv/lib/python3.11/site-packages")
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 import json, urllib.request, urllib.error
 
@@ -38,9 +39,9 @@ def api(method, path, body=None, cookie=None):
         return e.code, e.read().decode()
 
 def login_cookie():
-    s, _ = api("POST", "/api/auth/login", {"username": "tibo", "password": "****"})
+    s, _ = api("POST", "/api/auth/login", {"username": "tibo", "password": TESTPW.pw()})
     r = urllib.request.Request(BASE + "/api/auth/login",
-        data=json.dumps({"username": "tibo", "password": "****"}).encode(), method="POST")
+        data=json.dumps({"username": "tibo", "password": TESTPW.pw()}).encode(), method="POST")
     r.add_header("Content-Type", "application/json")
     with urllib.request.urlopen(r) as resp:
         sc = resp.headers.get("Set-Cookie", "")
@@ -50,7 +51,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(700)

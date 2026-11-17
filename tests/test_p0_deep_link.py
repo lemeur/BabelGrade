@@ -2,6 +2,7 @@
 """P0.1 E2E: address-bar deep links (#history/<id>, #ststats/<id>, #evaluator, #view).
 Scenarios: client-side typed hash from another view, fresh boot deep link,
 back-button semantics, unknown-id fallback, in-app nav regression."""
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []
@@ -15,7 +16,7 @@ def login(pg):
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo")
-    pg.fill("#auth-password", "****")
+    pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1200)
@@ -80,7 +81,7 @@ with sync_playwright() as pw:
     pg.goto(BASE + "#history/553", wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
     pg.fill("#auth-username", "tibo")
-    pg.fill("#auth-password", "****")
+    pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(3000)

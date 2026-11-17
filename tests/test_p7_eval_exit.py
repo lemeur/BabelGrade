@@ -11,7 +11,7 @@ Root causes fixed here:
   navigates the app underneath: clean session → overlay closes (it was the
   top step); dirty session → exit bar shown.
 
-Checks (Playwright, live server on :8090, login tibo/****):
+Checks (Playwright, live server on :8090, login tibo/<tests/.credentials>):
 PORT 390x844 coarse+touch (iPhone UA):
   P1 rotate hint shown in portrait while eval open
   P2 hint ✕ topmost at its center (elementFromPoint)
@@ -33,6 +33,7 @@ DESK 1280:
   D2 dirty + Esc → exit bar (unchanged)
   D3 no JS errors
 """
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 PASS, FAIL = [], []
@@ -45,7 +46,7 @@ def login(pg, lang="fr"):
     pg.add_init_script(f"localStorage.setItem('babelgrade-lang','{lang}')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(400)

@@ -4,7 +4,7 @@
    - /api/analyses/{id}/run-ai  (re-run AI, banner — JSON job handle)
 
 Run: /tmp/elt_dm/venv/bin/python3 /tmp/elt_uilang/ui_lang_send_test.py
-Live server on :8090 required; login tibo/****; lang forced FR.
+Live server on :8090 required; login tibo/<tests/.credentials>; lang forced FR.
 """
 import json
 import re
@@ -12,6 +12,7 @@ import sys
 import urllib.request
 from http.cookiejar import CookieJar
 
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 
 BASE = "http://127.0.0.1:8090"
@@ -38,7 +39,7 @@ def main():
     op = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(cj))
     op.open(urllib.request.Request(
         "http://127.0.0.1:8090/api/auth/login",
-        data=json.dumps({"username": "tibo", "password": "****"}).encode(),
+        data=json.dumps({"username": "tibo", "password": TESTPW.pw()}).encode(),
         headers={"Content-Type": "application/json"}))
     rub = json.load(op.open("http://127.0.0.1:8090/api/rubrics/att-exp-ecrite"))
     mapping = [{"criterion": c["name"], "suggested_level": "B1",
@@ -125,7 +126,7 @@ def main():
                 "document.querySelector('#auth-login-form') && "
                 "!document.querySelector('#auth-login-form').classList.contains('hide')"):
             pg.fill("#auth-username", "tibo")
-            pg.fill("#auth-password", "****")
+            pg.fill("#auth-password", TESTPW.pw())
             pg.click("#auth-login-btn")
             pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
         pg.wait_for_timeout(800)

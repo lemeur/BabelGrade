@@ -2,6 +2,7 @@
 """P0.2b verify: mobile bottom nav — active indicator not clipped at screen edge,
 top separator visible, no JS errors. Then screenshot for vision check."""
 import os
+import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
 OUT = os.path.dirname(os.path.abspath(__file__))
@@ -15,7 +16,7 @@ def login(pg):
     pg.add_init_script("localStorage.setItem('babelgrade-lang','fr')")
     pg.goto(BASE, wait_until="networkidle")
     pg.wait_for_selector("#auth-username", state="visible")
-    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", "****")
+    pg.fill("#auth-username", "tibo"); pg.fill("#auth-password", TESTPW.pw())
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1200)
