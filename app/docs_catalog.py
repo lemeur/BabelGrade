@@ -12,7 +12,7 @@ DOCS_INDEX = {
     "userguide": {"path": DOCS_DIR / "userguide.md", "category": "user"},
     "architecture": {"path": DOCS_DIR / "architecture.md", "category": "dev"},
     "async-jobs": {"path": DOCS_DIR / "async-jobs.md", "category": "dev"},
-    "ux-audit": {"path": _ROOT / "ux-audit1.md", "category": "dev"},
+    "ux-audit": {"path": DOCS_DIR / "ux-audit1.md", "category": "dev"},
     "readme": {"path": _ROOT / "README.md", "category": "dev"},
 }
 
