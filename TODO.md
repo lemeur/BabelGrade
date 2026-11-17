@@ -21,8 +21,9 @@ de l'ancien wrapper `.an-croph` — bug corrigé 2026-10-18), quote serveur
 écrit/oral (mots avec fallback segments pour les legacy), i18n `annot.cropSel`
 + hint ×4 langues. Tests : `tests/test_word_selection.py` 12/12 (écrit +
 oral fallback + 390px, teardown annotation). Suites live + in-process toutes
-vertes (2026-10-18 : 25 suites, cf. baseline). Le reste : **P1.4 (remote
-git — décision tibo : où pousser)** et P2.8 (systemd/s6 supervisor).
+vertes (2026-10-18 : 25 suites, cf. baseline). **Remote (2026-11-17) :
+P1.4 terminé — GitHub privé `lemeur/BabelGrade` via deploy key.** Il reste
+**P2.8 (systemd/s6 supervisor)**.
 
 ## P0 — ✅ TERMINÉ (2026-10-16)
 
@@ -42,11 +43,12 @@ git — décision tibo : où pousser)** et P2.8 (systemd/s6 supervisor).
 
 ## P1 — robustitude
 
-4. **Remote git + push** : ⏳ EN ATTENTE DE DÉCISION TIBO (choix du 2026-10-16 :
-   « décision plus tard »). Le repo est local-only (`git remote -v` = vide).
-   À décider : GitHub privé vs repo bare sur le NAS Syno (juliesbook).
-   Sans remote, la sécurité du repo ne protège que contre l'erreur de code,
-   pas contre la panne disque.
+4. **Remote git + push** ✅ (2026-11-17, décision tibo) : **GitHub privé**
+   `github.com/lemeur/BabelGrade` (repo `babelgrade`, private, créé vide sans
+   README). Auth = **deploy key avec write access** sur cette VM
+   (`~/.ssh/id_ed25519`, titre `hermes-gx10`), accès restreint à ce repo.
+   `origin` = `git@github.com:lemeur/BabelGrade.git`, push complet des 43
+   commits (HEAD `4e589e5`), tracking `main → origin/main`.
 5. **Smoke suite dans le repo** ✅ `tests/test_smoke_assignments.py` (25
    checks, re-création de l'ancien `/tmp/elt_asgn/smoke.py` périmé par le
    gate d'auth) : login helper `tibo`/`****`, create via modal
