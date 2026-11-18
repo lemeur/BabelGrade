@@ -23,6 +23,24 @@ import app.config as cfg
 cfg.UPLOAD_DIR = TMP / "uploads"
 cfg.UPLOAD_DIR.mkdir(parents=True)
 
+# This test only exercises media OWNERSHIP (who can fetch a file), not the
+# transcript content. The assignment step below posts a `doc_audio` source
+# document, which triggers a real faster-whisper transcription in media.py.
+# When the Whisper model is not cached locally (CI runners), that 500s. Stub
+# the module's transcribe with a deterministic value in that case; with the
+# model present the real one is used, so behaviour is identical locally.
+import app.whisper as _whisper
+try:
+    _whisper.model_status()
+except Exception:
+    pass
+if not _whisper.model_status().get("available"):
+    _whisper.transcribe = lambda p, language="en": {
+        "text": "stub transcript", "language": "en",
+        "language_probability": 0.99, "duration_s": 2.0, "elapsed_s": 0.0,
+        "word_count": 1, "wpm": 0.0, "words": [], "segments": [],
+    }
+
 from fastapi.testclient import TestClient
 from app import auth
 
