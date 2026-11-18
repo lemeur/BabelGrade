@@ -26,13 +26,46 @@ optional items remain. Verification recipe at the bottom.
   (per-line boxes 0..1000, no tesseract pipeline); Annoter v5 selects word
   ranges in the transcript with auto-crop.
 
-## Open (optional / long-term)
+## Open
 
-1. **Process supervisor.** `run.sh` currently runs as a
+### Priority — validate on real student work, then harden the ASR/OCR
+
+1. **Test on real student productions & improve OCR / transcription.** Run the
+   pipeline on genuine copies (handwritten, printed, low-quality scans, blue
+   grid paper, photos with errors in the student's work) and harden both the
+   LLM-direct OCR and the Whisper transcription. **Key constraint:** the
+   student's *own* errors (spelling, grammar, missing words) are signal, not
+   noise — neither OCR nor transcription may "correct" them. The verbatim
+   evidence the Proof Matrix quotes must match what the student actually
+   wrote, so a faithful (if messy) transcript beats a clean (but altered) one.
+   Track regressions with the `scripts/check_word_box_accuracy.py` /
+   `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
+
+### Product features (not yet started)
+
+2. **Share corrections & feedback with students via a secure link.** A
+   read-only, time-limited, token-authenticated URL for a given analysis so a
+   teacher can send a student their report (level, justifications, verbatim
+   evidence, draft feedback) without giving them an app login. Must respect
+   the per-owner scoping and not leak other students' work.
+3. **Group work submissions.** Allow a submission to belong to a *group* of
+   students (not just one); grade the group artifact, and decide how per-member
+   attribution / levels are shown on the attestation.
+4. **Improvement plan with pedagogical resources.** For each student, generate
+   a personalised progression plan that maps weak criteria to concrete
+   activities from a managed resource library, so the student can work on
+   improving specific skills.
+5. **Collaborative correction across teachers.** Split an assignment's copies
+   among several teachers for review, and support cross-evaluation (a second
+   teacher grades the same submission; reconcile the two Proof Matrices).
+
+### Infrastructure (optional / long-term)
+
+6. **Process supervisor.** `run.sh` currently runs as a
    foreground/background task; a `systemd` unit (or `s6` on this host) with
    `Restart=always` + a stable log file would remove the manual-restart step
    and the "stale uvicorn log" pitfall.
-2. **CI for the live Playwright suites.** Today CI runs only the hermetic
+7. **CI for the live Playwright suites.** Today CI runs only the hermetic
    in-process suites (see `.github/workflows/ci.yml`). A headless-Chromium CI
    job that boots the server against the mocked LLM would cover the UI
    E2E without real credentials.
