@@ -9,7 +9,7 @@ from shot_common import make_page, login, OUT, BASE
 
 
 def main():
-    pw, b, ctx, pg = make_page(lang="fr", width=1440, height=900)
+    pw, b, ctx, pg = make_page(lang="en", width=1440, height=900)
     errs = []
     pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     login(pg)

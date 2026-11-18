@@ -20,7 +20,7 @@ def make_page(lang="fr", width=1280, height=860):
     ctx = b.new_context(
         viewport={"width": width, "height": height},
         device_scale_factor=2,
-        locale="fr-FR",
+        locale="en-US",
     )
     ctx.add_init_script(
         f"localStorage.setItem('babelgrade-lang', '{lang}');"

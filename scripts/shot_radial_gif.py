@@ -26,7 +26,7 @@ def shoot(pg, name, hold_ms=0):
 
 
 def main():
-    pw, b, ctx, pg = make_page(lang="fr", width=390, height=844)
+    pw, b, ctx, pg = make_page(lang="en", width=390, height=844)
     errs = []
     pg.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
     login(pg)

@@ -5,10 +5,14 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **Turn a student's written copy or oral recording into a CEFR attestation with
-verbatim evidence.** BabelGrade is a teacher-facing web app that maps every
-criterion of the official French LVA/LVB attestation grids to a recommended
-CEFR level (A1–C2) — and shows *why*: each recommendation is backed by
-verbatim quotes (or timestamps) from the student's own work.
+verbatim evidence.** BabelGrade is a teacher-facing, **international** web app
+that maps every criterion of a CEFR attestation grid to a recommended level
+(A1–C2) — and shows *why*: each recommendation is backed by verbatim quotes
+(or timestamps) from the student's own work. It ships with the official
+**French LVA/LVB** attestation grids as presets (the app's only France-specific
+part — see [Custom rubrics](#custom-rubrics)), but the framework, the UI and
+the whole workflow are language-neutral: the UI is localised in
+**EN / FR / ES / DE**, and any grid can be defined as a custom rubric.
 
 It is an objective **evidence extractor**: it lowers the teacher's cognitive
 load, never replaces their judgment. Nothing is auto-graded — every level
@@ -34,9 +38,10 @@ stays editable and recomputes instantly.
    and/or the source document (text, photos, PDF, or audio).
 2. **Get a Proof Matrix** — every rubric criterion gets a suggested CEFR
    level, a justification, and verbatim evidence. No level without a quote.
-3. **Attestation synthesis** — for the official LVA/LVB grids, per-criterion
-   levels (A1–C2) are converted to a deterministic **score /120** and an
-   attestation level, recomputed live as the teacher edits.
+3. **Attestation synthesis** — on the official attestation grids (LVA/LVB
+   presets), per-criterion levels (A1–C2) are converted to a deterministic
+   **score /120** and an attestation level, recomputed live as the teacher
+   edits.
 4. **Annotate the copy** — select a word range in the OCR'd transcript: the
    photo auto-crops to it, the teacher drops a marker (sticker, level, note)
    that the AI reads as context for its next run.
@@ -86,9 +91,24 @@ stays editable and recomputes instantly.
   background scheduler (`app/jobs.py`, no external broker). The queue
   survives restarts; progress streams over SSE. See
   [docs/async-jobs.md](docs/async-jobs.md).
-- **Frontend** — a single vanilla-JS page (`static/index.html`), i18n in
-  **FR / EN / ES / DE**, with a simplified "home" mode driven by an animated
-  radial menu.
+- **Frontend** — a single vanilla-JS page (`static/index.html`), localised
+  in **EN / FR / ES / DE**, with a simplified "home" mode driven by an
+  animated radial menu.
+
+## Custom rubrics
+
+BabelGrade works with **any** CEFR rubric, not only the French presets:
+
+- **Presets (shared):** the official French LVA/LVB attestation grids
+  (comprehension, written expression, oral expression) are bundled as
+  shared rubrics with the official A1→C2 criterion descriptors, the
+  deterministic /120 scoring and the attestation thresholds. They ship
+  in their original French wording — that is data, not UI: every screen
+  around them is in the language the teacher has chosen.
+- **Custom rubrics (per owner):** teachers can create their own rubric with
+  any criteria, any level scale and any wording, in whatever language they
+  prefer. A custom rubric is private to its owner and can be used on any
+  assignment, in any of the four UI languages.
 
 ## Quick start
 
@@ -180,7 +200,7 @@ app/media.py           upload staging + PDF/scan/doc-audio extraction
 app/ocr.py             LLM-direct OCR for the annoter (per-line boxes 0..1000)
 app/imaging.py         image enhancement for copy-photo OCR
 app/config.py          paths + upload limits
-static/index.html      single-page UI (FR/EN/ES/DE)
+static/index.html      single-page UI (EN/FR/ES/DE)
 docs/                  user guide, architecture, async-jobs (in-app Docs view)
 tests/                 hermetic + Playwright E2E suites, mock LLM server
 scripts/               dev probes and screenshot generators
