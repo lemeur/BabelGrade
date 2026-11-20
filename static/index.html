@@ -2093,6 +2093,12 @@ g.g-exit{pointer-events:none}
       </div>
     </div>
 
+<!-- Grid i18n (official LVA/LVB criterion names / level descriptors / gap
+     chips) — loaded BEFORE the main script so the gName()/gGrid()/gDesc()/
+     gGap() helpers can read window.BG_GRID_I18N. If the file is missing
+     (404) the helpers fall back to the canonical French strings, so the
+     app still works. -->
+<script src="/static/grid-i18n.js"></script>
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>(v??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -2532,6 +2538,52 @@ if(!I18N[LANG])LANG='en';
 const LANG_FLAG={en:'🇬🇧',fr:'🇫🇷',es:'🇪🇸',de:'🇩🇪'};
 const LANGS=['en','fr','es','de'];
 function t(k){return (I18N[LANG]&&I18N[LANG][k])!=null?I18N[LANG][k]:(I18N.en[k]??k);}
+/* Official LVA/LVB grid text is CONTENT, not static UI: the criterion names /
+   level descriptors / gap chips live in app/rubrics.py (French-canonical) and
+   are sent to the LLM verbatim + matched on by the backend + counter-proposal.
+   So we translate the DISPLAY only, keyed on the exact canonical French
+   string (window.BG_GRID_I18N, loaded via /static/grid-i18n.js). The maps only
+   cover en/es/de; for FR the lookup misses and we return the original French,
+   which is exactly what a French teacher expects. Missing file → same fallback,
+   so the app degrades gracefully. */
+const _GI=(window.BG_GRID_I18N||{});
+/* Only langs WITH a map get translated; FR (and any unmapped lang) must keep
+   the canonical French strings — falling back to the EN map here would make a
+   French teacher see English grid text. */
+function _gmap(which){const L=_GI[LANG];return (L&&L[which])||{};}
+function gName(fr){const m=_gmap('names');return m[fr]!=null?m[fr]:fr;}
+function gGrid(fr){const m=_gmap('grids');return m[fr]!=null?m[fr]:fr;}
+function gDesc(fr){const m=_gmap('descs');return m[fr]!=null?m[fr]:fr;}
+function gGap(fr){const m=_gmap('gaps');return m[fr]!=null?m[fr]:fr;}
+/* Canonical criterion name read from an att-table row. The visible cell shows
+   gName(criterion) (translated), but the LLM mapping + counter-proposal +
+   compute_attestation all key on the ORIGINAL French string, so any read-back
+   that feeds a data lookup must use data-crit (canonical), not the visible
+   text. Falls back to the visible text for legacy rows without the attr. */
+function critKey(tr){return (tr&&tr.dataset&&tr.dataset.crit)?tr.dataset.crit
+  :(tr&&tr.cells&&tr.cells[0]?tr.cells[0].textContent.trim():'');}
+/* Re-translate the criterion cells of any open report (live #report and the
+   history #hist-report clone) IN PLACE on a language switch. A full
+   renderReport() re-render would clobber the teacher's in-progress .att-lvl
+   picks, so instead we just re-point the visible cell text from the canonical
+   data-crit. The att-table rows already carry data-crit; the unstructured
+   Proof Matrix rows are re-built fresh on every language switch via the
+   [data-i18n] pass (they're inside re-rendered cards). */
+function retintReportCrit(root){
+  root=root||document;
+  root.querySelectorAll('.att-table tbody tr.att-main-row').forEach(tr=>{
+    const cell=tr.cells&&tr.cells[0];
+    if(cell)cell.textContent=gName(critKey(tr));
+  });
+  /* printable sheet mirror (if a print sheet is open) */
+  const ps=root.querySelector('#print-root .ps-table');
+  if(ps){
+    ps.querySelectorAll('tbody tr').forEach(tr=>{
+      const cell=tr.cells&&tr.cells[0];
+      if(cell&&cell.dataset.crit)cell.textContent=gName(cell.dataset.crit);
+    });
+  }
+}
 function renderLangMenu(){
   $('#menu-lang').innerHTML=LANGS.map(l=>
     `<button class="lang-opt ${l===LANG?'on':''}" data-lang="${l}">
@@ -2599,6 +2651,10 @@ function applyI18n(){
     renderStudentStats(STSTATS_DATA);
   if($('#hist')&&!$('#hist').closest('.hide')&&HIST_SEL)renderHistoryDetail(Object.assign({},HIST_SEL._row,{sub:HIST_SEL._sub,aid:HIST_SEL._aid}));
   if($('#view-rubrics')&&!$('#view-rubrics').closest('.hide')){renderRubricList();renderRubricDetail();}
+  /* Official grid text (criterion names / level descriptors / gap chips) is
+     display-translated, not [data-i18n]-driven — re-point the visible cells of
+     any open report + the eval picker's live cells in the new language. */
+  retintReportCrit();
   refreshUploadStatuses();
   refreshMFields();   /* mode-field icon labels + placeholders re-translate (defined lower in the file, but only ever CALLED from here/boot) */
   radialRefreshI18n();   /* home radial menu (2026-10-27 v3): re-render the open crowns in the new language */
@@ -3168,14 +3224,14 @@ function attPaintPrint(card, miniNote){
   const modalite=src.dataset.attModal||'expression';
   const rows=[...src.querySelectorAll('.att-table tbody tr.att-main-row')].map(tr=>{
     const sel=tr.querySelector('.att-lvl');
-    return {level_norm:sel?sel.value:'',criterion:tr.cells[0]?tr.cells[0].textContent.trim():''};
+    return {level_norm:sel?sel.value:'',criterion:critKey(tr)};
   });
   const r=attRecompute(rows,modalite);
   const sc=pr.querySelector('.att-score'); if(sc)sc.textContent=r.score;
   const lv=pr.querySelector('.att-level'); if(lv)lv.textContent=r.att;
   pr.querySelectorAll('.ps-table tbody tr').forEach((tr,i)=>{
     if(rows[i]){const [crit,lv2,pts]=tr.cells;
-      if(crit)crit.textContent=rows[i].criterion;
+      if(crit)crit.textContent=gName(rows[i].criterion);
       if(lv2)lv2.textContent=rows[i].level_norm||'—';
       if(pts)pts.innerHTML='<b>'+(PTS[rows[i].level_norm]!=null?PTS[rows[i].level_norm]:'—')+'</b>';}
   });
@@ -3288,7 +3344,7 @@ async function attPaintReport(root){
     // P2 mobile: the tappable pill mirrors the select (hidden on mobile),
     // so any edit — select, sheet, eval mode — keeps both in sync.
     if(pill)pill.innerHTML=(lv?levelPill(lv):'<span class="muted">—</span>')+'<span class="lv-tap">✎</span>';
-    return {level_norm:lv,criterion:tr.cells[0]?tr.cells[0].textContent.trim():''};
+    return {level_norm:lv,criterion:critKey(tr)};
   });
   const r=attRecompute(rows,modalite);
   const scoreEl=card.querySelector('.att-score');
@@ -3708,7 +3764,7 @@ async function loadRubrics(){
      to both written and oral). */
   const fits=r=>r.mode===KIND||(r.modes||[]).includes(KIND);
   sel.innerHTML=RUBRICS.filter(fits).map(r=>
-    `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('')
+    `<option value="${esc(r.id)}">${esc(gGrid(r.name))}</option>`).join('')
     ||'<option value="">'+t('rub.noneMode')+'</option>';
   if([...sel.options].some(o=>o.value===cur&&cur))sel.value=cur;
   syncRubricSuggestion();
@@ -4425,7 +4481,7 @@ function rubricHint(tk){
   const cur=$('#rubric').value;
   const sug=suggestedRubricFor(tk);
   let tail='';
-  if(sug&&cur&&cur!==sug.id)tail=` — ${esc(t('an.rubricSuggest'))} : ${esc(sug.name)}`;
+  if(sug&&cur&&cur!==sug.id)tail=` — ${esc(t('an.rubricSuggest'))} : ${esc(gGrid(sug.name))}`;
   else if(sug&&cur===sug.id)tail=' ✓';
   return lbl+tail;
 }
@@ -4677,7 +4733,7 @@ function renderAssignmentStats(id){
   const box=$('#asgd-stats');
   box.innerHTML=`<div class="muted">${esc(t('stat.loading'))}…</div>`;
   api('/api/assignments/'+id+'/stats').then(st=>{
-    const rubNames=(st.rubrics||[]).map(r=>r.name).join(' · ');
+    const rubNames=(st.rubrics||[]).map(r=>gGrid(r.name)).join(' · ');
     let html=`<div class="stat-head">
       <span class="pill">${esc(t('stat.pill')).replace('{n}',st.evaluations)}</span>
       ${rubNames?`<span class="muted" style="font-size:12.5px">${esc(t('stat.rubrics'))}: ${esc(rubNames)}</span>`:''}
@@ -4695,7 +4751,7 @@ function renderAssignmentStats(id){
       let rows='';
       critNames.forEach(cn=>{
         const d=cl.criterion[cn];
-        rows+=`<tr><td title="${esc(cn)}">${esc(cn)}</td><td style="min-width:170px">${gaussBar(d,d.mean)}</td>
+        rows+=`<tr><td title="${esc(cn)}">${esc(gName(cn))}</td><td style="min-width:170px">${gaussBar(d,d.mean)}</td>
           <td>${momCell(d)}</td></tr>`;
       });
       const ov=cl.overall||{};
@@ -5602,7 +5658,7 @@ function renderReport(d, targetSel='#report'){
     <li><b>${esc(a.domain||'')}</b> — ${esc(a.pattern||'')}
     <div class="quotes"><ul>${(a.evidence||[]).map(fmtQuote).join('')}</ul></div></li>`).join('');
   const rm=(P.rubric_mapping||[]).map(m=>`
-    <tr><td><b>${esc(m.criterion||'')}</b></td>
+    <tr><td><b>${esc(gName(m.criterion||''))}</b></td>
       <td>${levelPill(m.suggested_level)}</td>
       <td>${esc(m.justification||'')}
       <div class="quotes"><ul>${(m.evidence||[]).map(fmtQuote).join('')}</ul></div></td></tr>`).join('');
@@ -5656,7 +5712,7 @@ function renderReport(d, targetSel='#report'){
         const det=attRowDetail(b);
         return `
         <tr class="att-main-row" data-crit="${esc(b.criterion)}">
-          <td class="${det.expandable?'att-crit-cell':''}">${esc(b.criterion)}</td>
+          <td class="${det.expandable?'att-crit-cell':''}">${esc(gName(b.criterion))}</td>
           <td class="lvl-cell"><select class="att-lvl">
             <option value="">—</option>
             ${['A1','A2','B1','B2','C1','C2'].map(Lv=>
@@ -5810,7 +5866,7 @@ document.addEventListener('click', async function attSaveDelegated(e){
   const levels={};
   card.querySelectorAll('tr.att-main-row').forEach(tr=>{
     const sel=tr.querySelector('.att-lvl');
-    if(sel) levels[tr.cells[0].textContent.trim()]=sel.value;
+    if(sel) levels[critKey(tr)]=sel.value;
   });
   const scope=(btn.closest('#hist-report')||btn.closest('#report')||document);
   const n20el=scope.querySelector('.note20-card');
@@ -5883,7 +5939,7 @@ document.addEventListener('input', function(e){
    state (open row) is LVL_SHEET; all wiring is document-level delegation so
    the history flow's innerHTML re-serialisation can't detach it. */
 let LVL_SHEET=null;   /* {row: <tr>, sel: <select>} while open, else null */
-function lsTitleFor(row){return row&&row.cells&&row.cells[0]?row.cells[0].textContent.trim():'';}
+function lsTitleFor(row){return (row&&row.cells&&row.cells[0])?gName(critKey(row)):'';}
 function lsRender(){
   if(!LVL_SHEET)return;
   const cur=LVL_SHEET.sel.value;
@@ -5954,7 +6010,7 @@ function paintAiCell(root,d){
     card.querySelectorAll('.att-table tbody tr').forEach(tr=>{
       const cell=tr.querySelector('.ai-cell');
       const sel=tr.querySelector('.att-lvl');
-      if(cell&&sel)cell.innerHTML=aiCellFor(tr.cells[0].textContent.trim(),sel.value,d);
+      if(cell&&sel)cell.innerHTML=aiCellFor(critKey(tr),sel.value,d);
     });
   });
 }
@@ -5971,7 +6027,7 @@ function paintAiRecap(root,d){
     let ok=0,diff=0,empty=0;
     if(rows.length){
       rows.forEach(tr=>{
-        const crit=tr.cells[0]?tr.cells[0].textContent.trim():'';
+        const crit=critKey(tr);
         const tl=(tr.querySelector('.att-lvl')||{}).value||'';
         const a=(aiRows.find(x=>x.criterion===crit)||{}).suggested_level||'';
         if(!tl)empty++;
@@ -6333,7 +6389,7 @@ async function loadHistory(){
     <td class="muted">${r.assignment_name?esc(r.assignment_name):'<span class="muted">'+t('hist.adhoc')+'</span>'}</td>
     <td class="col-sec">${kindLabel(r.kind)}</td>
     <td>${histTitle(r)}</td>
-    <td class="muted col-sec">${esc(r.rubric_name||'')}</td>
+    <td class="muted col-sec">${esc(gGrid(r.rubric_name||''))}</td>
     <td>${r.analysis_id?levelPill(r.overall_level):'—'} ${badgesOf(r)}</td>
     <td><button class="btn delsub" data-delsub="${r.id}" style="padding:4px 10px" title="${t('hist.delBtn')}">✕</button></td>
     </tr>`;}).join('')||'<tr><td colspan="9" class="muted">'+t('hist.empty')+'</td></tr>';
@@ -6352,7 +6408,7 @@ async function loadHistory(){
         ${esc(r.student_name||'—')}${r.classroom?' · <span class="muted">'+esc(r.classroom)+'</span>':''}
         <span class="muted"> · ${kindLabel(r.kind)}</span> · ${whenOf(r)}
       </div>
-      <div class="hcard-sub muted">${r.assignment_name?'📋 '+esc(r.assignment_name):'📋 '+t('hist.adhoc')}${r.rubric_name?' · '+esc(r.rubric_name):''}</div>
+      <div class="hcard-sub muted">${r.assignment_name?'📋 '+esc(r.assignment_name):'📋 '+t('hist.adhoc')}${r.rubric_name?' · '+esc(gGrid(r.rubric_name)):''}</div>
     </div>`;}).join('')||'<div class="card muted">'+t('hist.empty')+'</div>';
   /* open a specific analysis on demand (deep link from the Jobs view) */
   if(_histPendingAid!=null){
@@ -6453,7 +6509,7 @@ async function renderHistoryDetail(ds){
   if(s){
     const pills=[];
     if(s.assignment_name)pills.push(`<span class="pill soft" title="${t('hist.assessedAssignment')}">📋 ${t('hist.assignmentPill')}: ${esc(s.assignment_name)}</span>`);
-    if(s.rubric_name||meta.rubric)pills.push(`<span class="pill">${t('hist.rubricPill')}: ${esc(s.rubric_name||meta.rubric||'')}</span>`);
+    if(s.rubric_name||meta.rubric)pills.push(`<span class="pill">${t('hist.rubricPill')}: ${esc(gGrid(s.rubric_name||meta.rubric||''))}</span>`);
     pills.push(`<span class="pill">${t('hist.target')}: ${s.target_level?levelPill(s.target_level):'<span class="muted">—</span>'}</span>`);
     if(s.accommodations)pills.push(`<span class="pill" title="${t('hist.accomTip')}">⚖️ ${esc(s.accommodations)}</span>`);
     html+=`<div class="card" style="border:2px solid var(--acc)">`;
@@ -6567,12 +6623,15 @@ function rubParseLevels(desc){
 function rubDetailHTML(r){
   const pts=(r.point_scale)||{A1:1,A2:3,B1:5,B2:10,C1:20,C2:30};
   const rows=(r.criteria||[]).map(c=>{
-    const lv=rubParseLevels(c.description||'');
+    /* display the translated descriptor (gDesc falls back to the original for
+       custom grids / FR) — the translated text keeps the "C2: … C1: …" level
+       tags, so rubParseLevels splits it exactly the same way. */
+    const lv=rubParseLevels(gDesc(c.description||''));
     const cells=CEFR_LVLS.map(L=>{
       const txt=lv[L];
       return `<td class="rub-det-cell"><b class="rub-det-pts">${pts[L]!=null?pts[L]:''}</b>${txt?`<div>${esc(txt)}</div>`:`<div class="muted">—</div>`}</td>`;
     }).join('');
-    return `<tr><th class="rub-det-crit">${esc(c.name)}</th>${cells}</tr>`;
+    return `<tr><th class="rub-det-crit">${esc(gName(c.name))}</th>${cells}</tr>`;
   }).join('');
   const scale=CEFR_LVLS.map(L=>`<span class="pill" style="background:var(--acc-soft);color:var(--acc);font-weight:700">${L}=${pts[L]!=null?pts[L]:0}</span>`).join(' ');
   const hasDesc=(r.criteria||[]).some(c=>Object.keys(rubParseLevels(c.description||'')).length);
@@ -6599,7 +6658,7 @@ function rubDetailHTML(r){
   }
   return `
   <div class="card" style="margin-top:10px">
-    <h3 style="margin-top:0">${esc(r.name)} — ${t('rub.detail')}</h3>
+    <h3 style="margin-top:0">${esc(gGrid(r.name))} — ${t('rub.detail')}</h3>
     <p class="muted" style="margin:0 0 8px">${t('rub.scale')} ${scale}</p>
     ${hasDesc?`<div class="tbl-wrap"><table class="rub-det">
       <thead><tr><th style="min-width:150px">${t('rep.critGrid')}</th>${CEFR_LVLS.map(L=>`<th style="min-width:170px">${L} <span class="rub-det-pts">${pts[L]!=null?pts[L]:''} ${t('rub.points').toLowerCase()}</span></th>`).join('')}</tr></thead>
@@ -6637,13 +6696,15 @@ function renderRubricList(list){
   if(list)RUBRICS_CACHE=list; else list=RUBRICS_CACHE||[];
   const open=$('#rub-editor')&&!$('#rub-editor').classList.contains('hide');
   const cur=$('#r-id')?$('#r-id').value.trim():'';
-  /* list filter: name substring (case-insensitive) on the cached full list */
+  /* list filter: name substring (case-insensitive) on the DISPLAYED (translated)
+     name, so the teacher searches what they see (FR → canonical name, others →
+     translation; custom rubrics fall through to their own name). */
   const fn=($('#rub-filter-name')&&$('#rub-filter-name').value||'').trim().toLowerCase();
-  const shown=(list||[]).filter(r=>!fn||(r.name||'').toLowerCase().includes(fn));
+  const shown=(list||[]).filter(r=>!fn||(gGrid(r.name)||'').toLowerCase().includes(fn));
   $('#rubric-list').innerHTML=(shown||[]).map(r=>`
     <div class="rub-row${open&&cur&&cur===r.id?' sel':''}" data-rubrow="${esc(r.id)}" style="display:flex;align-items:center;gap:10px;padding:8px 6px;margin:0 -6px;border-radius:8px;border-bottom:1px solid var(--line)">
       <span class="pill" style="flex:0 0 70px;text-align:center">${kindLabel(r.mode)}</span>
-      <b style="flex:1">${esc(r.name)} ${r.is_preset?`<span class="pill">${t('rub.preset')}</span>`:`<span class="pill">${t('rub.custom')}</span>`} ${r.attestation?`<span class="pill" style="background:#eff6ff;color:#2563eb;font-weight:700">attestation /120</span>`:''}</b>
+      <b style="flex:1">${esc(gGrid(r.name))} ${r.is_preset?`<span class="pill">${t('rub.preset')}</span>`:`<span class="pill">${t('rub.custom')}</span>`} ${r.attestation?`<span class="pill" style="background:#eff6ff;color:#2563eb;font-weight:700">attestation /120</span>`:''}</b>
       <button class="btn ghost" data-rdetail="${esc(r.id)}" style="padding:4px 10px">${t('rub.detail')}</button>
       <button class="btn ghost" data-edit="${esc(r.id)}" style="padding:4px 12px">${t('rub.edit')}</button>
       ${r.is_preset?'':`<button class="btn danger" data-rdel="${esc(r.id)}" style="padding:4px 12px">✕</button>`}
@@ -6803,7 +6864,7 @@ async function openEval(btn){
   /* entered levels: read from the live .att-lvl selects; empty falls back to
      the AI recommendation so the overlay always has a centre to work from */
   const rows=[...card.querySelectorAll('.att-table tbody tr.att-main-row')];
-  EVAL.rows=rows.map(tr=>({name:tr.cells[0].textContent.trim(),sel:tr.querySelector('.att-lvl')}));
+  EVAL.rows=rows.map(tr=>({name:critKey(tr),sel:tr.querySelector('.att-lvl')}));
   EVAL.chosen=EVAL.rows.map(r=>{
     const v=(r.sel&&r.sel.value)||'';
     if(PTS[v]!=null)return v;
@@ -6889,7 +6950,7 @@ function evTotal(){return EVAL.chosen.reduce((s,L)=>s+(PTS[L]!=null?PTS[L]:0),0)
 function evRender(){
   if(!EVAL)return;
   const name=EVAL.rows[EVAL.cur].name,L=EVAL.chosen[EVAL.cur],i=CEFR_ORDER.indexOf(L);
-  $('#ev-crit-name').textContent=name;
+  $('#ev-crit-name').textContent=gName(name);
   $('#ev-pill-lvl').textContent=L||'—';
   $('#ev-score-hdr').innerHTML=t('eval.total')+' <b>'+evTotal()+'</b>/120';
   const crit=EVAL.crits[name]||{};
@@ -6925,7 +6986,7 @@ function evRender(){
          left = what L adds above Lv (= what's missing below).
          point 6: label the chip "vs L" so it's clear which level it's relative to */
       const g=(gaps[L]||{});
-      const word=pos==='right'?g.up:g.down;
+      const word=gGap(pos==='right'?g.up:g.down);
       if(word)gapChip='<span class="gap-chip '+(pos==='right'?'up':'down')+'" title="'+esc(word)+'">'
         +esc(t('eval.vs').replace('{lv}',L))+(pos==='right'?'+ ':'− ')+esc(word)+'</span>';
     }
@@ -6961,10 +7022,10 @@ function evRender(){
       }).join('')
     :mk(i>0?CEFR_ORDER[i-1]:null,'left')+mk(L||'','center')+mk(i<5?CEFR_ORDER[i+1]:null,'right');
   $('#ev-chips').innerHTML=EVAL.rows.map((r,j)=>
-    '<button class="ev-chip'+(j===EVAL.cur?' on':'')+'" data-evcrit="'+j+'" title="'+esc(r.name)+'">'
+    '<button class="ev-chip'+(j===EVAL.cur?' on':'')+'" data-evcrit="'+j+'" title="'+esc(gName(r.name))+'">'
     +'<span class="c-top"><span>'+(j+1)+'/'+EVAL.rows.length+'</span><span class="c-lvl">'
     +(EVAL.chosen[j]||'—')+'</span></span>'
-    +'<span class="c-name">'+esc(r.name)+'</span></button>').join('');
+    +'<span class="c-name">'+esc(gName(r.name))+'</span></button>').join('');
   $('#ev-hint-swipe').textContent=t('eval.swipe');
   $('#ev-hint-kbd').textContent=t('eval.kbd');
   _evWasWide=evWide();   /* the DOM now reflects this wide-state */
