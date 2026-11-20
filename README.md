@@ -4,6 +4,13 @@
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue.svg)](requirements.txt)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+> **BabelGrade is an agentic, fully local AI assessment tool.** A student's
+> handwritten copy or oral recording flows through a pipeline of cooperating
+> **local AI agents** — a vision model that reads the handwriting, an offline
+> speech model that transcribes the recording, and a 27B language model that
+> grades the work — and *every* one of them runs on the machine in the
+> classroom. No cloud, no external API, no student data leaving the building.
+
 **Turn a student's written copy or oral recording into a CEFR attestation with
 verbatim evidence.** BabelGrade is a teacher-facing, **international** web app
 that maps every criterion of a CEFR attestation grid to a recommended level
@@ -17,6 +24,49 @@ the whole workflow are language-neutral: the UI is localised in
 It is an objective **evidence extractor**: it lowers the teacher's cognitive
 load, never replaces their judgment. Nothing is auto-graded — every level
 stays editable and recomputes instantly.
+
+## Local AI — by law, not just by choice
+
+Student work — a handwritten essay, a recorded oral exam — is **personal
+data**. In France, teachers may only process that data on **sovereign,
+self-mastered systems**; sending a student's production to a third-party
+cloud model is not permitted. It would expose minors to profiling and to
+data flows they have no control over.
+
+That constraint is not a trade-off we accept — **it is the reason BabelGrade
+exists in this form.** Because only self-hosted models are allowed, BabelGrade
+is built around a pipeline of *local* AI agents:
+
+```
+ student work                          all on the classroom machine
+ ┌──────────────────┐   photos   ┌──────────────────────┐
+ │ written copy     │ ─────────► │ OCR agent            │ Qwen3.8-27B
+ │ (handwritten)    │            │ vision → verbatim    │ (SGLang, local)
+ └──────────────────┘            └──────────┬───────────┘
+ ┌──────────────────┐   audio    ┌──────────┴───────────┐
+ │ oral recording   │ ─────────► │ ASR agent            │ faster-whisper
+ └──────────────────┘            │ offline → transcript │ (base, int8, CPU)
+                                 └──────────┬───────────┘
+                                            ▼
+                              ┌──────────────────────┐
+                              │ LLM grader agent     │ Qwen3.8-27B (local)
+                              │ grades against the   │
+                              │ rubric → Proof Matrix│
+                              └──────────────────────┘
+```
+
+Three cooperating agents, one machine:
+
+| Agent | Model | Role | Runs |
+|---|---|---|---|
+| **OCR / vision** | Qwen3.8-27B (NVFP4, SGLang) | reads handwritten copies line by line, verbatim, with per-line boxes | local GPU |
+| **ASR** | faster-whisper `base` (int8) | transcribes oral audio + word timings | local CPU, fully offline |
+| **Grader / language** | Qwen3.8-27B | grades against the CEFR rubric, produces the Proof Matrix | local GPU |
+
+The LLM *cannot hear audio* — the two channels deliberately stay separate:
+audio goes through the ASR agent first, the model only ever sees the
+timestamped transcript. No component phones home; the app runs offline once
+the models are cached.
 
 <p align="center">
   <img src="docs/readme/radial-menu.gif" alt="Home radial menu" width="300">
@@ -109,6 +159,35 @@ BabelGrade works with **any** CEFR rubric, not only the French presets:
   any criteria, any level scale and any wording, in whatever language they
   prefer. A custom rubric is private to its owner and can be used on any
   assignment, in any of the four UI languages.
+
+## Roadmap — where the agentic loop goes next
+
+The core loop (OCR/ASR → grader → Proof Matrix) already works end-to-end on
+local models. The remaining work is about making each agent *smarter* and
+closing the loop from assessment back to the learner. Priorities:
+
+1. **Harden the OCR / ASR agents — faithful, not "correct".** Improve the
+   transcription and handwriting-reading workflows so they stay *verbatim*:
+   they must adapt to imperfect audio and imperfect cursive writing
+   (blue grid paper, smudges, crossed-out words) **without correcting the
+   student's own errors.** A student's mistakes are the signal the grader
+   reads; a "cleaned-up" transcript would silently destroy it.
+2. **Relevant feedback for the learner.** Improve the analysis so each
+   student gets actionable feedback — key strengths, target areas, and
+   *concrete improvement suggestions and practice exercises* tied to the weak
+   criteria. Sharing will be via a **secure link / QR code**, so a teacher can
+   hand a report straight to a student **without creating an app account**.
+3. **Per-student progression for the teacher.** Aggregate an individual's
+   results across *all* evaluations to profile their skills over time, then
+   **propose and track a personalised progression plan** and share it. This
+   directly supports preparing **class councils / report periods**.
+4. **Class-level insight.** Aggregate a whole group's results to give the
+   teacher a read on the **class's overall level and heterogeneity** — what
+   worked, what to re-teach, who to watch.
+
+These are deliberately *agentic* upgrades: better prompts, better evidence
+handling, and multi-agent reasoning on top of the same local models — not a
+move to the cloud.
 
 ## Quick start
 
@@ -215,15 +294,26 @@ Short guide: see [CONTRIBUTING.md](CONTRIBUTING.md). Module map, import
 direction rules and the "add an endpoint" recipe:
 [docs/architecture.md](docs/architecture.md). Outstanding work: [TODO.md](TODO.md).
 
-## Built with AI
+## Built with AI — and on the hardware the challenge targets
 
 > **This project is vibe-coded.** The codebase was produced by an LLM
-> (Hermes Agent) working with **Qwen3.8-27b** — the same local SGLang model
+> (Hermes Agent) working with **Qwen3.8-27b** — the same local model
 > the app uses at runtime to assess student work. Feature design, UI
 > iterations, OCR pipeline, and the whole E2E test suite were co-authored in
-> conversation, with the app itself running on the same VM. It stands as a
-> working example of a non-trivial, multi-user, production-shaped web app
+> conversation, with the app itself running on the same machine. It stands as
+> a working example of a non-trivial, multi-user, production-shaped web app
 > built conversationally on a local 27B model.
+
+The runtime matches the challenge's target hardware profile. On the
+development machine — an **NVIDIA GB10** (Blackwell, ARM64, ~121 GiB unified
+memory) — **Qwen3.8-27B** is served locally by **SGLang** in **NVFP4**
+precision with a 256 K-token context and EAGLE speculative decoding, and it
+does double duty: it is the *vision* agent (handwritten OCR) **and** the
+*language* agent (rubric grading). The **ASR** agent is **faster-whisper
+`base` (int8)** on the CPU, fully offline. Together they cover the three
+model roles the project needs — OCR, transcription, and language — on
+on-prem AI inference, exactly the "local, sovereign, on the teacher's
+machine" story this tool is built to tell.
 
 ## License
 
