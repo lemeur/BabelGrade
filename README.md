@@ -38,21 +38,21 @@ exists in this form.** Because only self-hosted models are allowed, BabelGrade
 is built around a pipeline of *local* AI agents:
 
 ```
- student work                          all on the classroom machine
- ┌──────────────────┐   photos   ┌──────────────────────┐
- │ written copy     │ ─────────► │ OCR agent            │ Qwen3.8-27B
- │ (handwritten)    │            │ vision → verbatim    │ (SGLang, local)
- └──────────────────┘            └──────────┬───────────┘
- ┌──────────────────┐   audio    ┌──────────┴───────────┐
- │ oral recording   │ ─────────► │ ASR agent            │ faster-whisper
- └──────────────────┘            │ offline → transcript │ (base, int8, CPU)
-                                 └──────────┬───────────┘
-                                            ▼
-                              ┌──────────────────────┐
-                              │ LLM grader agent     │ Qwen3.8-27B (local)
-                              │ grades against the   │
-                              │ rubric → Proof Matrix│
-                              └──────────────────────┘
+student work                      (all local — nothing leaves the classroom)
+  ┌───────────────────┐            ┌───────────────────────┐ Qwen3.8-27B
+  │    written copy   │ photos────►│   OCR agent (vision)  │ (SGLang, local)
+  │   (handwritten)   │            │  reads copy verbatim  │
+  └───────────────────┘            │   → transcript text   │
+  ┌───────────────────┐            ┌───────────┴───────────┐
+  │   oral recording  │  audio────►│  ASR agent (offline)  │ faster-whisper
+  │    (audio file)   │            │  transcript + timing  │ (base, int8, CPU)
+  └───────────────────┘            │    fluency metrics    │
+                                   └───────────┬───────────┘
+                                               ▼
+                                   ┌───────────────────────┐ Qwen3.8-27B (local)
+                                   │    LLM grader agent   │
+                                   │ rubric → Proof Matrix │
+                                   └───────────────────────┘
 ```
 
 Three cooperating agents, one machine:
