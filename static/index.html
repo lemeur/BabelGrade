@@ -5475,6 +5475,23 @@ $('#img-file').onchange=e=>addPageFiles(e.target.files);
     if(e.dataTransfer.files[0])setFile(e.dataTransfer.files[0])};
   f.onchange=()=>setFile(f.files[0]);
 })();
+/* (2026-11-21 bug fix) switching the student must CLEAR the previous student's
+   work (copy photos / pasted text / oral audio) — that state lives in module
+   globals (currenasgnFiles / currentAudio + the #written-text / #img-file
+   inputs) which nothing else resets, so the previous student's photo was left
+   "selected" for the next one. The task-level context (assignment card 1 +
+   target + rubric) is deliberately untouched. */
+$('#student').addEventListener('change',function(){
+  currenasgnFiles.length=0;
+  renderPageThumbs();
+  const tf=$('#img-file');if(tf)tf.value='';
+  const wt=$('#written-text');if(wt)wt.value='';
+  if(currentAudio){
+    currentAudio=null;
+    const af=$('#audio-file');if(af)af.value='';
+    refreshUploadStatuses();
+  }
+});
 
 /* Re-render the mode fields (called at boot + after a language switch so
    the icon labels + placeholders re-translate in place). The ad-hoc
