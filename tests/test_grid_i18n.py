@@ -11,7 +11,7 @@ it — no pre-existing data is touched, so the test is safe to re-run.
 Run (any venv with playwright + the project importable):
   /tmp/bg_venv/bin/python tests/test_grid_i18n.py
 """
-import sys, tempfile, os
+import sys, os
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
