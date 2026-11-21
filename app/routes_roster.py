@@ -27,6 +27,7 @@ import uuid
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 
 from . import assess, config, db
+from .media import _normalize_orientation
 
 router = APIRouter()
 
@@ -77,6 +78,7 @@ async def import_roster_photos(
         data = await f.read()
         if len(data) > config.MAX_IMAGE_BYTES:
             raise HTTPException(422, f"photo '{f.filename}' too large")
+        data = _normalize_orientation(data, ext)
         name = f"roster-{uuid.uuid4().hex}.{ext}"
         (config.UPLOAD_DIR / name).write_bytes(data)
         staged.append(name)

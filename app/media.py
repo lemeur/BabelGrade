@@ -41,6 +41,50 @@ def _mime_for(ext: str) -> str:
     }.get(ext, "application/octet-stream")
 
 
+# EXIF orientation tag (0x0112 = IFD tag 274)
+_EXIF_ORIENTATION = 0x0112
+
+def _normalize_orientation(data: bytes, ext: str) -> bytes:
+    """Bake the EXIF orientation into the pixel data, upright.
+
+    Phone photos are frequently stored sideways/upside-down with an EXIF
+    Orientation tag (6/8 = 90° rotations, 3 = 180°) instead of rotated
+    pixels. Browsers render the preview upright from the tag, but the LLM
+    vision engine, the OCR pipeline and the Annoter read the RAW pixels —
+    without this they see a rotated copy and grade/annotate the wrong
+    orientation.
+
+    The rotation is applied and re-encoded in the SAME format (JPEG/PNG/
+    WebP) at upload time, so the stored file is upright for every consumer
+    (LLM, OCR, UI thumbnails, history, downloads). Images without a tag
+    (or formats we cannot re-encode: gif/heic/tiff/…) are returned
+    UNCHANGED — this helper never raises.
+    """
+    if ext not in ("jpg", "jpeg", "png", "webp"):
+        return data
+    try:
+        import io
+        from PIL import Image, ImageOps
+        im = Image.open(io.BytesIO(data))
+        im.load()
+        if im.getexif().get(_EXIF_ORIENTATION, 1) == 1:
+            return data
+        if im.mode in ("RGBA", "LA", "P"):
+            im = im.convert("RGBA")
+        elif im.mode not in ("RGB", "L"):
+            im = im.convert("RGB")
+        ImageOps.exif_transpose(im, in_place=True)
+        fmt = {"jpg": "JPEG", "jpeg": "JPEG", "png": "PNG", "webp": "WEBP"}[ext]
+        out = io.BytesIO()
+        save_kw = {"exif": im.getexif().tobytes()}  # tag already removed by transpose
+        if fmt in ("JPEG", "WEBP"):
+            save_kw["quality"] = 92
+        im.save(out, format=fmt, **save_kw)
+        return out.getvalue()
+    except Exception:
+        return data
+
+
 def _default_title(kind: str, student_name: str = "", assignment_name: str = "",
                    when_iso: str | None = None) -> str:
     """Point 8: smart default title for untitled submissions.
@@ -383,6 +427,7 @@ async def _read_image_uploads(files: list) -> tuple[list, list]:
         data = await f.read()
         if len(data) > MAX_IMAGE_BYTES:
             raise HTTPException(422, f"image too large (photo {i})")
+        data = _normalize_orientation(data, ext)
         p = config.UPLOAD_DIR / f"pg-{uuid.uuid4().hex}-{i}.{ext}"
         p.write_bytes(data)
         saved.append(p.name)
