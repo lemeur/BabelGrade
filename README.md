@@ -8,8 +8,9 @@
 > handwritten copy or oral recording flows through a pipeline of cooperating
 > **local AI agents** — a vision model that reads the handwriting, an offline
 > speech model that transcribes the recording, and a 27B language model that
-> grades the work — and *every* one of them runs on the machine in the
-> classroom. No cloud, no external API, no student data leaving the building.
+> grades the work — and *every* one of them runs on the teacher's own
+> machine. No external API, no student data leaving the teacher's
+> environment.
 
 **Turn a student's written copy or oral recording into a CEFR attestation with
 verbatim evidence.** BabelGrade is a teacher-facing, **international** web app
@@ -25,20 +26,19 @@ It is an objective **evidence extractor**: it lowers the teacher's cognitive
 load, never replaces their judgment. Nothing is auto-graded — every level
 stays editable and recomputes instantly.
 
-## Local AI — by law, not just by choice
+## Local AI — the default, not the compromise
 
 Student work — a handwritten essay, a recorded oral exam — is **personal
-data**. In France, teachers may only process that data on **sovereign,
-self-mastered systems**; sending a student's production to a third-party
-cloud model is not permitted. It would expose minors to profiling and to
-data flows they have no control over.
-
-That constraint is not a trade-off we accept — **it is the reason BabelGrade
-exists in this form.** Because only self-hosted models are allowed, BabelGrade
-is built around a pipeline of *local* AI agents:
+data**. A *sovereign* AI provider — one that respects students' data and is
+validated by the French Ministry of National Education — would be permitted
+to process it. But for development and fast experimentation, the simplest
+way to guarantee that a minor's production never leaves the teacher's
+environment is to run every AI step on the teacher's own machine. That is
+what BabelGrade does, and why it is built around a pipeline of *local* AI
+agents:
 
 ```
-student work                      (all local — nothing leaves the classroom)
+student work                  (all local — nothing leaves the teacher's machine)
   ┌───────────────────┐            ┌───────────────────────┐ Qwen3.8-27B
   │    written copy   │ photos────►│   OCR agent (vision)  │ (SGLang, local)
   │   (handwritten)   │            │  reads copy verbatim  │
@@ -140,7 +140,11 @@ the models are cached.
   tokens) are computed deterministically from the ASR timings.
 - **Async job queue** — long LLM/Whisper work is offloaded to an in-process
   background scheduler (`app/jobs.py`, no external broker). The queue
-  survives restarts; progress streams over SSE. See
+  survives restarts; progress streams over SSE. Because the work is
+  organised as **asynchronous, persistent jobs** with a stable handle-and-SSE
+  contract, the system is built to scale out: the same tasks can be
+  distributed across remote systems (additional inference machines) without
+  changing the API or the UI. See
   [docs/async-jobs.md](docs/async-jobs.md).
 - **Frontend** — a single vanilla-JS page (`static/index.html`), localised
   in **EN / FR / ES / DE**, with a simplified "home" mode driven by an
@@ -187,8 +191,16 @@ closing the loop from assessment back to the learner. Priorities:
    worked, what to re-teach, who to watch.
 
 These are deliberately *agentic* upgrades: better prompts, better evidence
-handling, and multi-agent reasoning on top of the same local models — not a
-move to the cloud.
+handling, and multi-agent reasoning on top of the same local models.
+
+**Deployment today, and beyond.** Teachers correct their students' work on
+their own machine, at home — BabelGrade is designed for that: one local
+install, the AI pipeline on the teacher's hardware, and the async job
+layer ready for tasks to be fanned out to additional (remote) inference
+systems when the class grows. If the tool proves itself, a hosted deployment
+*within the Ministry of National Education* is a realistic next step — the
+same data-protection guarantees, at ministry scale, without every teacher
+running their own GPU.
 
 ## Quick start
 
@@ -228,8 +240,9 @@ no LLM fallback.
 - **Registration is closed by default.** Accounts can only be registered at
   first boot (via the initial-login env vars); the app refuses to stay in
   "registration open" afterwards.
-- **Nothing leaves the machine.** No external API calls at all: the LLM is a
-  local OpenAI-compatible endpoint and the ASR model runs offline.
+- **Nothing leaves the teacher's environment.** No external API calls at all
+  in the local deployment: the LLM is a local OpenAI-compatible endpoint and
+  the ASR model runs offline.
 - **Evidence before level.** The backend warns when a criterion mapping
   lacks a verbatim quote; recurring errors are flagged, isolated slips are
   not over-penalised; per-student accommodations may change content and
@@ -295,7 +308,7 @@ Short guide: see [CONTRIBUTING.md](CONTRIBUTING.md). Module map, import
 direction rules and the "add an endpoint" recipe:
 [docs/architecture.md](docs/architecture.md). Outstanding work: [TODO.md](TODO.md).
 
-## Built with AI — and on the hardware the challenge targets
+## Built with AI
 
 > **This project is vibe-coded.** The codebase was produced by an LLM
 > (Hermes Agent) working with **Qwen3.8-27b** — the same local model
@@ -304,17 +317,6 @@ direction rules and the "add an endpoint" recipe:
 > conversation, with the app itself running on the same machine. It stands as
 > a working example of a non-trivial, multi-user, production-shaped web app
 > built conversationally on a local 27B model.
-
-The runtime matches the challenge's target hardware profile. On the
-development machine — an **NVIDIA GB10** (Blackwell, ARM64, ~121 GiB unified
-memory) — **Qwen3.8-27B** is served locally by **SGLang** in **NVFP4**
-precision with a 256 K-token context and EAGLE speculative decoding, and it
-does double duty: it is the *vision* agent (handwritten OCR) **and** the
-*language* agent (rubric grading). The **ASR** agent is **faster-whisper
-`base` (int8)** on the CPU, fully offline. Together they cover the three
-model roles the project needs — OCR, transcription, and language — on
-on-prem AI inference, exactly the "local, sovereign, on the teacher's
-machine" story this tool is built to tell.
 
 ## License
 
