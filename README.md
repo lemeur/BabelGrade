@@ -70,12 +70,13 @@ the models are cached.
 
 <p align="center">
   <img src="docs/readme/radial-menu.gif" alt="Home radial menu" width="300">
-  <img src="docs/readme/mobile-level-picker.png" alt="Mobile criterion grading" width="300">
+  <img src="docs/readme/mobile-level-picker.png" alt="Criterion-by-criterion grading — per-level AI opinion, entered level, and live /120" width="300">
 </p>
 
 <p align="center">
-  Home: a single radial menu (tap a verb, fan out, pick) · Mobile: grade every
-  criterion with a bottom-sheet level picker
+  Home: a single radial menu (tap a verb, fan out, pick) · Criterion-by-criterion:
+  each level card shows the AI's opinion, the entered level, and the /120 score
+  recomputes as you swipe between levels
 </p>
 
 ---
