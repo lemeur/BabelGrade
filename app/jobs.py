@@ -171,6 +171,46 @@ def _cancelled(job_id: int) -> bool:
     return bool(j and j.get("cancel_flag"))
 
 
+def ensure_copy_ocr(sub_id: int | None) -> int | None:
+    """Auto-OCR: enqueue the LLM OCR job for a written submission's page
+    photos when it hasn't run yet.
+
+    A written photo copy analyzed by the AI should already have its Annoter
+    transcription available afterwards (the teacher may want to check what
+    the AI read, or annotate the copy immediately). OCR is a SEPARATE LLM
+    pass from the analysis (the analyze job never writes ocr_json), so this
+    helper chains it automatically — called at the end of the ``analyze``
+    and ``run_ai`` jobs.
+
+    Idempotent: a finished OCR or a queued/running OCR job → no-op. Never
+    raises (a failure here must never fail the analysis job). Returns the
+    new OCR job id when enqueued, else None.
+    """
+    if not sub_id:
+        return None
+    try:
+        sub = db.get_submission(sub_id)
+    except Exception:
+        return None
+    if not sub or sub.get("kind") != "written":
+        return None
+    if sub.get("ocr"):
+        return None
+    if not (sub.get("payload_meta") or {}).get("page_paths"):
+        return None
+    try:
+        with db._LOCK:
+            n = db._conn().execute(
+                "SELECT COUNT(*) FROM jobs WHERE submission_id=? AND kind='ocr' "
+                "AND status IN ('queued','running')", (sub_id,)).fetchone()[0]
+        if n:
+            return None
+        return db.create_job("ocr", {"submission_id": sub_id},
+                             submission_id=sub_id)
+    except Exception:
+        return None
+
+
 # --------------------------------------------------------------------- helpers
 def _data_urls_from_names(names: list) -> list:
     m = _media()
@@ -203,6 +243,53 @@ def _extract_pdf_file(pdf_path: Path, label: str, page_prefix: str) -> tuple[str
 
 
 # --------------------------------------------------------------------- report
+def _copy_text_basis(sub_id: int | None) -> dict | None:
+    """What the teacher can READ about a written copy in the report.
+
+    The analyze LLM pass grades the grid and never transcribes the copy, so
+    the teacher had no way to see "what the AI actually read" (and the
+    Annoter needed the OCR before it could be used at all). This helper
+    reports the copy's text basis for the report's "Copy transcription" card:
+
+      - written + page photos, OCR ready   -> {mode:"ocr", text}
+      - written + page photos, OCR queued/running -> {mode:"running",
+        job_id}   (the UI auto-refreshes once the auto-OCR job lands)
+      - written + page photos, no OCR yet  -> {mode:"none"}
+      - written pasted text                -> {mode:"text", text}
+      - oral                                -> None (the transcript card
+        already shows the ASR transcript + timestamps)
+    """
+    if not sub_id:
+        return None
+    try:
+        sub = db.get_submission(sub_id)
+    except Exception:
+        return None
+    if not sub:
+        return None
+    if sub.get("kind") != "written":
+        return None
+    if (sub.get("payload_meta") or {}).get("page_paths"):
+        ocr = sub.get("ocr")
+        if ocr and ocr.get("pages"):
+            lines = []
+            for pg in ocr["pages"]:
+                for ln in pg.get("lines") or []:
+                    if (ln.get("text") or "").strip():
+                        lines.append(ln["text"])
+            return {"mode": "ocr",
+                    "text": "\n".join(lines).strip() or None}
+        with db._LOCK:
+            row = db._conn().execute(
+                "SELECT id FROM jobs WHERE submission_id=? AND kind='ocr' "
+                "AND status IN ('queued','running') LIMIT 1",
+                (sub_id,)).fetchone()
+        if row:
+            return {"mode": "running", "job_id": row[0]}
+        return {"mode": "none"}
+    return {"mode": "text", "text": (sub.get("payload_path") or "").strip() or None}
+
+
 def _report_payload(analysis_id: int, *, parsed: bool = True,
                     raw: str = "", warnings: list | None = None,
                     attestation: dict | None = None) -> dict:
@@ -254,6 +341,7 @@ def _report_payload(analysis_id: int, *, parsed: bool = True,
         "warnings": warnings or [],
         "fluency": fluency,
         "transcript": transcript,
+        "copy_text": _copy_text_basis(a.get("submission_id")),
         "transcript_correction": transcript_correction,
         "transcript_mode": a.get("transcript_mode"),
         "annotations": db.list_annotations(a.get("submission_id")) if a.get("submission_id") else [],
@@ -397,6 +485,12 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
         ai_at=db.now_iso(),
         status="done",
     )
+    # Auto-OCR: a written photo copy should have its Annoter transcription
+    # ready right after the analysis. The analyze LLM pass never writes
+    # ocr_json (it only grades the grid), so enqueue the OCR job in the
+    # background here — the Annoter follows it live. Idempotent + no-op for
+    # oral / text-only / already-OCRed copies.
+    ensure_copy_ocr(sub_id)
     _finalize(job_id, js, "done", report=_report_payload(analysis_id,
                 parsed=parsed["ok"], raw=full, warnings=warnings,
                 attestation=attestation))
@@ -574,6 +668,10 @@ async def _stage_and_run_runai(job_id: int, js: JobStream, payload: dict) -> Non
         ai_at=db.now_iso(),
         status="done",
     )
+    # Auto-OCR (re-run safe, idempotent): a written photo copy should have its
+    # Annoter transcription ready after the AI pass too. `sub` here is the
+    # SUBMISSION row (fetched above via a["submission_id"]) — pass that id.
+    ensure_copy_ocr(a.get("submission_id"))
     _finalize(job_id, js, "done", report=_report_payload(analysis_id,
                 parsed=parsed["ok"], raw=full, warnings=warnings,
                 attestation=attestation))
