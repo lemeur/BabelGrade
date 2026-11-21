@@ -43,42 +43,76 @@ def _mime_for(ext: str) -> str:
 
 # EXIF orientation tag (0x0112 = IFD tag 274)
 _EXIF_ORIENTATION = 0x0112
+# Minimum confidence (from app.pose) required before a deterministic
+# deskew rotation is applied to an uploaded photo.  Below this the flip
+# 0°/180° is not reliable enough and we keep the pixels as-is.
+_POSE_MIN_CONFIDENCE = 0.30
 
 def _normalize_orientation(data: bytes, ext: str) -> bytes:
-    """Bake the EXIF orientation into the pixel data, upright.
+    """Make an uploaded page photo upright (EXIF + deterministic deskew).
 
-    Phone photos are frequently stored sideways/upside-down with an EXIF
-    Orientation tag (6/8 = 90° rotations, 3 = 180°) instead of rotated
-    pixels. Browsers render the preview upright from the tag, but the LLM
-    vision engine, the OCR pipeline and the Annoter read the RAW pixels —
-    without this they see a rotated copy and grade/annotate the wrong
-    orientation.
+    Phone photos are frequently stored sideways/upside-down:
+      * with an EXIF Orientation tag (6/8 = 90°, 3 = 180°) instead of
+        rotated pixels, or
+      * with NO / a WRONG tag (flat-sheet scans, apps that strip metadata),
+        so the pixels themselves are rotated.
+    Browsers render the preview upright from the tag, but the LLM vision
+    engine, the OCR pipeline and the Annoter read the RAW pixels — without
+    this they see a rotated copy and grade/annotate the wrong orientation.
 
-    The rotation is applied and re-encoded in the SAME format (JPEG/PNG/
-    WebP) at upload time, so the stored file is upright for every consumer
-    (LLM, OCR, UI thumbnails, history, downloads). Images without a tag
-    (or formats we cannot re-encode: gif/heic/tiff/…) are returned
-    UNCHANGED — this helper never raises.
+    Two-step fix, applied at upload so the stored file is upright for every
+    consumer (LLM, OCR, UI thumbnails, history, downloads):
+      1. EXIF transpose (cheap, reliable when the tag is present).
+      2. Deterministic orientation estimate (``app.pose``): modulo-180 line
+         alignment + 0°/180° hampes/majuscules asymmetry.  EXIF is IGNORED
+         by the estimator itself — it works on the pixels, so it also catches
+         missing / wrong EXIF tags.  The rotation is only applied when the
+         confidence is high enough AND the angle is non-negligible, so a
+         wrong flip is never forced.
+
+    Re-encoded in the SAME format (JPEG/PNG/WebP) ONLY when a correction was
+    actually applied; otherwise the original bytes are returned untouched
+    (no re-encode, no quality loss, faster).  Images without ink, or formats
+    we cannot re-encode (gif/heic/tiff/…), are returned UNCHANGED.  This
+    helper NEVER raises.
     """
     if ext not in ("jpg", "jpeg", "png", "webp"):
         return data
     try:
         import io
         from PIL import Image, ImageOps
+        from . import pose
         im = Image.open(io.BytesIO(data))
         im.load()
-        if im.getexif().get(_EXIF_ORIENTATION, 1) == 1:
+        changed = False
+        # -- Step 1: EXIF orientation (cheap, reliable when the tag is set)
+        if im.getexif().get(_EXIF_ORIENTATION, 1) != 1:
+            if im.mode in ("RGBA", "LA", "P"):
+                im = im.convert("RGBA")
+            elif im.mode not in ("RGB", "L"):
+                im = im.convert("RGB")
+            ImageOps.exif_transpose(im, in_place=True)
+            changed = True
+        # -- Step 2: deterministic deskew / missing-EXIF detection
+        est = pose._estimate_from_image(im, target_w=700)
+        angle = est["angle_ccw"]
+        if (est["confidence"] >= _POSE_MIN_CONFIDENCE
+                and abs(angle) >= 0.5):
+            im = pose.rotate_ccw(im, angle)
+            changed = True
+        if not changed:
             return data
-        if im.mode in ("RGBA", "LA", "P"):
-            im = im.convert("RGBA")
-        elif im.mode not in ("RGB", "L"):
-            im = im.convert("RGB")
-        ImageOps.exif_transpose(im, in_place=True)
+        # -- Re-encode in the original format
         fmt = {"jpg": "JPEG", "jpeg": "JPEG", "png": "PNG", "webp": "WEBP"}[ext]
         out = io.BytesIO()
-        save_kw = {"exif": im.getexif().tobytes()}  # tag already removed by transpose
+        save_kw: dict = {}
         if fmt in ("JPEG", "WEBP"):
             save_kw["quality"] = 92
+        if fmt == "JPEG":
+            try:
+                save_kw["exif"] = im.getexif().tobytes()
+            except Exception:
+                pass
         im.save(out, format=fmt, **save_kw)
         return out.getvalue()
     except Exception:
