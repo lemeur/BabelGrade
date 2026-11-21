@@ -26,6 +26,10 @@ It is an objective **evidence extractor**: it lowers the teacher's cognitive
 load, never replaces their judgment. Nothing is auto-graded — every level
 stays editable and recomputes instantly.
 
+> **One-pager (FR)** — a single A4 page explaining BabelGrade in French:
+> [interactive HTML](docs/onepager-fr/onepager.html) ·
+> [PDF](docs/onepager-fr/onepager.pdf).
+
 ## Local AI — the default, not the compromise
 
 Student work — a handwritten essay, a recorded oral exam — is **personal
