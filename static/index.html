@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>BabelGrade — CEFR Evidence Mapping</title>
+<link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+<link rel="icon" type="image/png" sizes="48x48" href="/static/favicon.png">
 <style>
 :root{
   --bg:#f4f6f9; --panel:#ffffff; --ink:#1c2430; --muted:#64748b; --line:#e2e8f0;
@@ -25,7 +27,8 @@ header{background:var(--panel);border-bottom:1px solid var(--line);position:stic
    Harmless elsewhere — the radial menu only exists on home. */
 .wrap{max-width:1100px;margin:0 auto;padding:0 20px}
 header .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;min-height:58px}
-.logo{font-weight:800;font-size:17px;letter-spacing:.2px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:.2px}
+.logo img{width:28px;height:auto;display:block}
 .logo span{color:var(--acc)}
 .badges{display:flex;gap:8px;margin-left:auto;align-items:center}
 .badge{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--acc-soft);color:var(--acc);
@@ -66,6 +69,7 @@ nav button.on{color:var(--acc);border-bottom-color:var(--acc)}
   box-shadow:0 12px 40px rgba(16,24,40,.25);max-width:400px;width:100%;padding:26px 26px 22px}
 .auth-card h1{font-size:20px;margin:0 0 2px;font-weight:800}
 .auth-card h1 span{color:var(--acc)}
+.auth-logo{display:block;margin:0 auto 12px;width:72px;height:auto}
 .auth-sub{color:var(--muted);font-size:13px;margin:0 0 18px}
 .auth-card label{display:block;font-size:12.5px;font-weight:700;color:var(--muted);
   text-transform:uppercase;letter-spacing:.4px;margin:10px 0 4px}
@@ -1085,6 +1089,10 @@ table.conv-tab thead td.conv-bd{font-weight:700}
 .an-tsegt[contenteditable=true] .an-w{cursor:text;user-select:text}
 .print-sheet{background:#fff;border:1.5px solid #0f172a;border-radius:12px;padding:26px 30px;
   margin:18px 0;box-shadow:none;font-size:14px;color:#0f172a;page-break-after:avoid}
+.print-sheet .ps-head{display:flex;align-items:center;gap:14px;border-bottom:2px solid #0f172a;padding-bottom:12px;margin-bottom:14px}
+.print-sheet .ps-head img{width:40px;height:auto}
+.print-sheet .ps-head h2{font-size:17px;margin:0;border:0;padding:0}
+.print-sheet .ps-head .ps-app{display:block;font-size:11px;letter-spacing:.3px;color:#64748b;font-weight:600;margin-top:1px}
 .print-sheet h2{font-size:17px;border-bottom:2px solid #0f172a;padding-bottom:8px;margin-bottom:12px}
 .ps-meta{display:grid;grid-template-columns:repeat(3,auto);gap:6px 28px;justify-content:space-between;margin-bottom:14px}
 .ps-meta div{font-size:13.5px}
@@ -1164,6 +1172,7 @@ table.conv-tab thead td.conv-bd{font-weight:700}
   padding:11px 20px;font:inherit;font-size:15px;font-weight:600;color:var(--ink);
   cursor:pointer;box-shadow:var(--shadow);display:flex;align-items:center;gap:10px}
 .home-reopen:hover{border-color:var(--acc);border-style:solid;color:var(--acc)}
+.home-reopen img{width:26px;height:26px;object-fit:contain;display:block}
 .home-reopen.hide{display:none}
 .home-adv-wrap{text-align:center;margin-bottom:34px;position:relative;z-index:71}
 /* simplified home only: the radial menu already exposes "Évaluer" (top
@@ -1206,6 +1215,7 @@ body.home-active #menu-data-wrap{display:none}
 .rsvg .center:hover circle{fill:var(--acc-soft)}
 .rsvg .center:focus{outline:none}
 .rsvg .center text{pointer-events:none}
+.rsvg .center .center-logo{pointer-events:none}
 /* Fan-out (éventail / deck de cartes, 2026-10-28) : l'ouverture d'une
    couronne se joue comme un paquet de cartes superposées. Au départ TOUS les
    secteurs sont empilés à la position du 1er segment (--fan = 0 pour le 1er,
@@ -1237,6 +1247,7 @@ g.g-exit{pointer-events:none}
      shown until /api/auth/me proves a session (authGate() in the boot block) -->
 <div id="auth-gate" class="hide">
   <div class="auth-card">
+    <img class="auth-logo" src="/static/logo.svg" alt="BabelGrade">
     <h1>Babel<span>Grade</span></h1>
     <p class="auth-sub" data-i18n="auth.sub">Multi-user assessment · CEFR Proof Matrix</p>
     <div id="auth-login-form">
@@ -1311,7 +1322,7 @@ g.g-exit{pointer-events:none}
 
 <header>
   <div class="wrap">
-    <div class="logo">Babel<span>Grade</span></div>
+    <div class="logo"><img src="/static/logo.svg" alt="BabelGrade" loading="lazy">Babel<span>Grade</span></div>
     <nav id="nav">
       <button data-view="assignments" class="on" data-i18n="nav.assignments">Assignments</button>
       <button data-view="history" data-i18n="nav.history">Evaluations</button>
@@ -1373,7 +1384,7 @@ g.g-exit{pointer-events:none}
     <div class="home-center" id="home-center">
       <div id="home-anchor"></div>
       <button class="home-reopen hide" id="home-reopen">
-        <span style="font-size:18px">◎</span><span data-i18n="home.reopen">Open the menu</span>
+        <img src="/static/logo-square.svg" alt="BabelGrade"><span data-i18n="home.reopen">Open the menu</span>
       </button>
     </div>
     <div class="home-adv-wrap">
@@ -3001,6 +3012,11 @@ function rUpdateCenter(L0){
     c.id='pie-center';c.setAttribute('class','center');c.setAttribute('role','button');
     c.appendChild(Object.assign(document.createElementNS(RNS,'title'),{textContent:t('home.closeMenu')}));
     c.appendChild(document.createElementNS(RNS,'circle'));
+    /* BabelGrade mark, shown in the empty centre (no level-0 verb selected) */
+    const im=document.createElementNS(RNS,'image');
+    im.id='pie-center-logo';im.setAttribute('href','/static/logo-square.svg');
+    im.setAttribute('alt','');im.setAttribute('class','center-logo');
+    c.appendChild(im);
     const tx=document.createElementNS(RNS,'text');
     tx.setAttribute('class','em');tx.setAttribute('text-anchor','middle');
     c.appendChild(tx);
@@ -3011,13 +3027,22 @@ function rUpdateCenter(L0){
   const tx=c.querySelector('text');
   tx.setAttribute('y',RST.C*0.3);
   tx.style.fontSize=Math.round(RST.C*0.78)+'px';
-  /* 2026-10-29: no pre-selected verb → empty centre icon (the circle is still
-     the "close menu" control); a selected verb shows its glyph as before. */
+  const img=c.querySelector('#pie-center-logo');
+  /* 2026-10-29: no pre-selected verb → the centre shows the BabelGrade mark
+     (the circle is still the "close menu" control); a selected verb shows its
+     glyph as before. */
   if(L0.sel!=null){
     tx.textContent=L0.items[L0.sel].ico;
+    if(img)img.setAttribute('opacity','0');
     c.setAttribute('aria-label',t(L0.items[L0.sel].i18n));
   }else{
     tx.textContent='';
+    if(img){
+      const s=Math.round((RST.C-2)*1.7);
+      img.setAttribute('width',s);img.setAttribute('height',s);
+      img.setAttribute('x',-s/2);img.setAttribute('y',-s/2);
+      img.setAttribute('opacity','1');
+    }
     c.setAttribute('aria-label',t('home.closeMenu'));
   }
 }
@@ -3177,7 +3202,10 @@ function printSheet(att, init, ctx){
   </tr>`).join('');
   $('#print-root').innerHTML=`
   <div class="print-sheet">
-    <h2>${t('rep.sheetTitle')}</h2>
+    <div class="ps-head">
+      <img src="/static/logo.svg" alt="BabelGrade">
+      <div><h2>${t('rep.sheetTitle')}</h2><span class="ps-app">BabelGrade</span></div>
+    </div>
     <div class="ps-meta">
       <div><b>${t('rep.sheetStudent')}</b> ${esc(c.student||t('rep.sheetNone'))}</div>
       <div><b>${t('rep.sheetClass')}</b> ${esc(c.classroom||t('rep.sheetNone'))}</div>
