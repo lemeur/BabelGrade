@@ -47,6 +47,16 @@ _EXIF_ORIENTATION = 0x0112
 # deskew rotation is applied to an uploaded photo.  Below this the flip
 # 0°/180° is not reliable enough and we keep the pixels as-is.
 _POSE_MIN_CONFIDENCE = 0.30
+# Second-chance gate for "clearly sideways" pages whose 0°/180° hampes/
+# majuscules signal is too faint to clear the confidence threshold on its
+# own (grid / ruled paper makes the line baseline near-symmetric).  The
+# modulo-180 LINE ALIGNMENT that picks the ±90° axis is still rock-solid in
+# that regime, so when the page is clearly sideways (|angle| ≈ 90°) AND it is
+# a real page (≥ 3 detected text-line bands) we rotate anyway rather than
+# store a sideways copy.  This only loosens the gate on the specific
+# orientation class that failed; blank / low-ink / upright photos keep the
+# strict confidence-only behaviour.
+_SIDEWAYS_MIN_BASIS = 3
 
 def _normalize_orientation(data: bytes, ext: str) -> bytes:
     """Make an uploaded page photo upright (EXIF + deterministic deskew).
@@ -66,9 +76,14 @@ def _normalize_orientation(data: bytes, ext: str) -> bytes:
       2. Deterministic orientation estimate (``app.pose``): modulo-180 line
          alignment + 0°/180° hampes/majuscules asymmetry.  EXIF is IGNORED
          by the estimator itself — it works on the pixels, so it also catches
-         missing / wrong EXIF tags.  The rotation is only applied when the
-         confidence is high enough AND the angle is non-negligible, so a
-         wrong flip is never forced.
+         missing / wrong EXIF tags.  The rotation is applied when EITHER the
+         0°/180° flip signal is strong enough (confidence ≥ threshold) AND the
+         angle is non-negligible — so a wrong flip is never forced — OR the
+         page is clearly sideways (|angle| ≈ 90°) AND it is a real page (≥ 3
+         detected text-line bands): the ±90° axis is locked by line alignment
+         and even a faint hampes/majuscules signal is then safe enough to act
+         on.  Blank / low-ink / upright photos keep the strict
+         confidence-only behaviour.
 
     Re-encoded in the SAME format (JPEG/PNG/WebP) ONLY when a correction was
     actually applied; otherwise the original bytes are returned untouched
@@ -96,8 +111,15 @@ def _normalize_orientation(data: bytes, ext: str) -> bytes:
         # -- Step 2: deterministic deskew / missing-EXIF detection
         est = pose._estimate_from_image(im, target_w=700)
         angle = est["angle_ccw"]
-        if (est["confidence"] >= _POSE_MIN_CONFIDENCE
-                and abs(angle) >= 0.5):
+        # Apply when the 0°/180° flip signal is strong (high confidence)…
+        if est["confidence"] >= _POSE_MIN_CONFIDENCE and abs(angle) >= 0.5:
+            im = pose.rotate_ccw(im, angle)
+            changed = True
+        # …or when the page is clearly SIDEWAYS (|angle| ≈ 90°) and is a real
+        # page (≥ 3 line bands): the ±90° axis is locked by line alignment,
+        # so even a faint hampes/majuscules signal is safe enough to act on.
+        elif (abs(angle) >= 80.0
+                and est.get("n_bands", 0) >= _SIDEWAYS_MIN_BASIS):
             im = pose.rotate_ccw(im, angle)
             changed = True
         if not changed:

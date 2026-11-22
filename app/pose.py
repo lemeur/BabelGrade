@@ -84,19 +84,28 @@ def _profile_var(ys: np.ndarray, xs: np.ndarray, phi_rad: float,
 
 
 def mod180_estimate(ys: np.ndarray, xs: np.ndarray) -> float:
-    """Return the optimal projection angle in [-90, +90] (mod 180)."""
+    """Return the optimal projection angle in [-90, +90] (mod 180).
+
+    ``ys``/``xs`` are already centred on the image (see the caller), so the
+    projected coordinate ``ys*c - xs*s`` stays within ``|ys|max + |xs|max``
+    of zero for every projection angle.  The offset used to keep the
+    ``bincount`` indices non-negative is computed from that bound, which keeps
+    this safe for any image size (a fixed offset would underflow on large /
+    portrait frames where the coordinate range exceeds it).
+    """
+    off = int(np.abs(ys).max() + np.abs(xs).max()) + 1
     best, bv = 0.0, -1.0
     for i in range(91):
         phi = -90.0 + 2.0 * i
-        v = _profile_var(ys, xs, np.deg2rad(phi))
+        v = _profile_var(ys, xs, np.deg2rad(phi), off)
         if v > bv:
             bv, best = v, float(phi)
     for phi in np.arange(best - 2.0, best + 2.0 + 1e-9, 0.25):
-        v = _profile_var(ys, xs, np.deg2rad(float(phi)))
+        v = _profile_var(ys, xs, np.deg2rad(float(phi)), off)
         if v > bv:
             bv, best = v, float(phi)
     for phi in np.arange(best - 0.25, best + 0.25 + 1e-9, 0.1):
-        v = _profile_var(ys, xs, np.deg2rad(float(phi)))
+        v = _profile_var(ys, xs, np.deg2rad(float(phi)), off)
         if v > bv:
             bv, best = v, float(phi)
     return best
@@ -154,7 +163,7 @@ def _estimate_from_image(im: Image.Image, target_w: int) -> dict:
     the pixels it actually wants to analyse."""
     t0 = time.perf_counter()
     neutral = {"angle_ccw": 0.0, "confidence": 0.0, "ms": 0.0,
-               "baseline_pos": 0.5, "ink_pixels": 0}
+               "baseline_pos": 0.5, "ink_pixels": 0, "n_bands": 0}
     try:
         im = im.convert("RGB")
     except Exception:
@@ -213,7 +222,7 @@ def _estimate_from_image(im: Image.Image, target_w: int) -> dict:
 
     return {"angle_ccw": float(angle), "confidence": float(conf),
             "ms": float(ms), "baseline_pos": float(baseline_pos),
-            "ink_pixels": ink_n}
+            "ink_pixels": ink_n, "n_bands": int(n_bands)}
 
 
 def estimate_orientation(data: bytes, target_w: int = 700) -> dict:
@@ -236,10 +245,12 @@ def estimate_orientation(data: bytes, target_w: int = 700) -> dict:
         ms:         wall-clock time in milliseconds.
         baseline_pos: the raw per-band baseline signal (0.5 = neutral).
         ink_pixels:  number of ink pixels in the miniature (diagnostic).
+        n_bands:     how many text-line bands the baseline detector found
+                    (0 = blank / no usable ink; >= 3 = a real page).
     """
     t0 = time.perf_counter()
     neutral = {"angle_ccw": 0.0, "confidence": 0.0, "ms": 0.0,
-               "baseline_pos": 0.5, "ink_pixels": 0}
+               "baseline_pos": 0.5, "ink_pixels": 0, "n_bands": 0}
     try:
         im = Image.open(io.BytesIO(data))
     except Exception:
