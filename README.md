@@ -14,9 +14,18 @@
 > handwritten copy or oral recording flows through a pipeline of cooperating
 > **local AI agents** — a vision model that reads the handwriting, an offline
 > speech model that transcribes the recording, and a 27B language model that
-> grades the work — and *every* one of them runs on the teacher's own
-> machine. No external API, no student data leaving the teacher's
-> environment.
+> grades the work — and *every* one of them runs on a local machine.
+> **No external API, no student data leaving the teacher's
+> environment.**
+
+<p align="center">
+  <img src="docs/readme/mobile-level-picker.png" alt="Criterion-by-criterion grading — per-level AI opinion, entered level, and live /120" width="800">
+</p>
+<p align="center">
+  Screenshot of the mobile Criterion-by-criterion interface:
+  each level card shows the AI's opinion, the entered level, and the /120 score
+  recomputes as you swipe between levels
+</p>
 
 **Turn a student's written copy or oral recording into a CEFR attestation with
 verbatim evidence.** BabelGrade is a teacher-facing, **international** web app
@@ -78,17 +87,6 @@ audio goes through the ASR agent first, the model only ever sees the
 timestamped transcript. No component phones home; the app runs offline once
 the models are cached.
 
-<p align="center">
-  <img src="docs/readme/radial-menu.gif" alt="Home radial menu" width="300">
-  <img src="docs/readme/mobile-level-picker.png" alt="Criterion-by-criterion grading — per-level AI opinion, entered level, and live /120" width="300">
-</p>
-
-<p align="center">
-  Home: a single radial menu (tap a verb, fan out, pick) · Criterion-by-criterion:
-  each level card shows the AI's opinion, the entered level, and the /120 score
-  recomputes as you swipe between levels
-</p>
-
 ---
 
 ## What it does
@@ -115,6 +113,14 @@ the models are cached.
    photos, with a review step before anything is committed.
 
 ### Screenshots
+
+<p align="center">
+  <img src="docs/readme/radial-menu.gif" alt="Home radial menu" width="300">
+</p>
+
+<p align="center">
+  Quick access to all functions from a simple home radial menu
+</p>
 
 <details>
 <summary><b>AI analysis report</b> — Proof Matrix with justifications + verbatim evidence, AI column (✓/≠), attestation /120, AI feedback card</summary>
