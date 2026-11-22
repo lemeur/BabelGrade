@@ -115,7 +115,7 @@ the models are cached.
 ### Screenshots
 
 <p align="center">
-  <img src="docs/readme/radial-menu.gif" alt="Home radial menu" width="300">
+  <img src="docs/readme/radial-menu-cropped.gif" alt="Home radial menu" width="260">
 </p>
 
 <p align="center">
