@@ -677,6 +677,124 @@ async def _stage_and_run_runai(job_id: int, js: JobStream, payload: dict) -> Non
                 attestation=attestation))
 
 
+# --------------------------------------------------------- reanalyze (retry)
+async def _stage_and_run_reanalyze(job_id: int, js: JobStream, payload: dict) -> None:
+    """Re-run the FULL grading LLM on an existing, STORED submission and
+    replace the analysis's grade in place.
+
+    This is the "Nouvelle analyse" action: the submission already holds the
+    student's work (page photos / audio / pasted text) + the assignment
+    context, so no re-upload is needed. Unlike run_ai (which only refreshes
+    the AI opinion in ai_matrix_json), this rewrites matrix_json +
+    overall_level + raw_markdown and — because a fresh grade is being
+    produced — clears the previous teacher-validated state (validated_at,
+    /20 note) and the prior AI snapshot so the analysis shows the new
+    result cleanly. The job's analysis_id points at the analysis row to
+    overwrite (no new submission/analysis row is created)."""
+    m = _media()
+    p = payload
+    analysis_id = p["analysis_id"]
+    a = db.get_analysis(analysis_id)
+    if not a:
+        raise ValueError("analysis not found")
+    sub = db.get_submission(a.get("submission_id") or 0)
+    if not sub:
+        raise ValueError("submission not found")
+    rubric = db.get_rubric(a.get("rubric_id") or "")
+    if not rubric:
+        raise ValueError("rubric not found")
+    kind = sub.get("kind") or "written"
+
+    _set_phase(job_id, PHASE_PREPARING, js)
+    mats = await m._submission_materials(sub, a)
+    transcript = mats["transcript"]
+    fluency = assess.fluency_metrics(transcript) if transcript else None
+    ctx_lines = []
+    if sub.get("student_name"):
+        ctx_lines.append(f"Student: {sub['student_name']}")
+    if sub.get("assignment_name"):
+        ctx_lines.append(f"Linked assignment: {sub['assignment_name']}")
+    wt = (mats["written_text"] or "").strip()
+    if wt.startswith("(transcribed from"):
+        wt = ""
+    # An oral re-analysis that lost its transcript (e.g. the first run
+    # failed before persisting it) must re-transcribe from the stored audio.
+    if kind == "oral" and not transcript:
+        audio_name = ((sub.get("payload_meta") or {}).get("audio_name")
+                      if isinstance(sub.get("payload_meta"), dict) else None)
+        if not audio_name:
+            raise ValueError("oral submission has no stored audio to re-transcribe")
+        _set_phase(job_id, PHASE_TRANSCRIBING, js)
+        lang = sub.get("language") or "en"
+        transcript = await asyncio.to_thread(
+            whisper.transcribe, str(config.UPLOAD_DIR / audio_name), lang)
+        fluency = assess.fluency_metrics(transcript)
+
+    messages = assess.build_messages(
+        kind=kind, rubric=rubric, student_context="\n".join(ctx_lines),
+        written_text=(wt or None) if kind == "written" else None,
+        image_data_urls=mats["image_data_urls"] if kind == "written" else None,
+        oral_transcript=(assess.transcript_with_timestamps(transcript)
+                         if transcript else None),
+        oral_metadata=fluency,
+        target_level=mats["target"],
+        assignment_context=mats["assignment_context"],
+        eval_notes=mats["eval_notes"],
+        accommodations=mats["accommodations"],
+        pre_annotations=mats.get("pre_annotations") or None,
+        transcript_corrected=bool(mats.get("transcript_corrected")),
+        ui_language=p.get("ui_language") or None,
+    )
+
+    _set_phase(job_id, PHASE_ANALYZING, js)
+    if _cancelled(job_id):
+        return _mark_cancelled(job_id, js)
+    full, usage = await _run_llm_stream(job_id, js, messages)
+
+    parsed = assess.parse_result(full)
+    data = parsed["data"]
+    warnings = assess.validate_matrix(data, rubric) if data else [parsed["error"]]
+    attestation = compute_attestation(rubric, (data or {}).get("rubric_mapping", []))
+    if attestation and attestation.get("unmapped"):
+        warnings.append("Certains critères n'ont pas pu être notés sur l'"
+                        "échelle A1–C2 ; le score d'attestation est à valider.")
+    if not parsed["ok"] and usage.get("truncated"):
+        warnings.append("The model hit the token limit before finishing its "
+                        "reply; the analysis may be incomplete. Try again.")
+
+    _set_phase(job_id, PHASE_PERSISTING, js)
+    # Replace the grade wholesale (mirror the canonical analyze persist), but
+    # because a fresh analysis is being produced, also invalidate the previous
+    # teacher-validated state (validated_at, /20 note) and the prior AI
+    # snapshot so the report shows only the new result.
+    db.update_analysis(
+        analysis_id,
+        raw_markdown=full,
+        overall_level=(data or {}).get("overall_level"),
+        matrix_json=json.dumps(data, ensure_ascii=False) if data else None,
+        feedback=json.dumps((data or {}).get("student_feedback"), ensure_ascii=False)
+        if data else None,
+        fluency_json=json.dumps(fluency, ensure_ascii=False) if fluency else None,
+        transcript_json=(json.dumps(
+            {"text": transcript["text"], "segments": transcript["segments"],
+             "duration_s": transcript["duration_s"],
+             "language": transcript["language"],
+             "words": transcript.get("words") or []}, ensure_ascii=False)
+            if transcript else None),
+        ai_matrix_json=json.dumps(data, ensure_ascii=False) if data else None,
+        ai_mode="blind",
+        ai_at=db.now_iso(),
+        validated_at=db._CLEAR,  # type: ignore[assignment]
+        note20_json=db._CLEAR,  # type: ignore[assignment]
+        status="done",
+        error=None,
+    )
+    ensure_copy_ocr(a.get("submission_id"))
+    _finalize(job_id, js, "done", report=_report_payload(analysis_id,
+                parsed=parsed["ok"], raw=full, warnings=warnings,
+                attestation=attestation))
+
+
 # ------------------------------------------------- stats-ai (class insight)
 async def _stage_and_run_statsai(job_id: int, js: JobStream, payload: dict) -> None:
     """AI class insight for an assignment's Stats view: read the assignment
@@ -1021,6 +1139,7 @@ _RUNNERS = {
     "analyze": _stage_and_run_analyze,
     "evaluate": _stage_and_run_evaluate,
     "run_ai": _stage_and_run_runai,
+    "reanalyze": _stage_and_run_reanalyze,
     "ocr": _run_ocr,
     "stats_ai": _stage_and_run_statsai,
     "roster_import": _run_roster_import,

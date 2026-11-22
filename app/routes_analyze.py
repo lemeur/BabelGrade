@@ -433,3 +433,31 @@ async def run_ai(analysis_id: int, body: dict = {}):
                                        a)
     return handle
 
+
+@router.post("/api/analyses/{analysis_id}/reanalyze")
+async def reanalyze(analysis_id: int, body: dict = {}):
+    """Re-run the FULL grading LLM on this analysis's stored submission and
+    replace its grade in place — the "Nouvelle analyse" retry.
+
+    Unlike /run-ai (which only refreshes the AI opinion in ai_matrix_json),
+    this rewrites matrix_json + overall_level + raw_markdown and clears the
+    previous teacher validation / 20-point note / AI snapshot, so a failed or
+    unstructured analysis can be retried without re-uploading the work.
+    The submission already holds the student's materials + assignment
+    context. The job's analysis_id is this row — no new submission/analysis
+    is created. Returns the job handle; follow it at `follow_url`.
+    """
+    a = db.get_analysis(analysis_id)
+    if not a:
+        raise HTTPException(404, "analysis not found")
+    sub = db.get_submission(a.get("submission_id") or 0)
+    if not sub:
+        raise HTTPException(404, "submission not found")
+    if db.job_active_for(analysis_id, ("reanalyze",)):
+        raise HTTPException(409, "a re-analysis for this analysis is already in the queue")
+    ui_language = assess._ui_language(str((body or {}).get("ui_language") or ""))
+    handle = await _enqueue_and_handle(
+        "reanalyze", {"analysis_id": analysis_id, "ui_language": ui_language},
+        sub["id"], analysis_id, a)
+    return handle
+
