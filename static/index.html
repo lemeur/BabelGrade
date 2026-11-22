@@ -30,6 +30,7 @@ header .wrap{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;min-hei
 .logo{display:flex;align-items:center;gap:8px;font-weight:800;font-size:17px;letter-spacing:.2px}
 .logo img{width:28px;height:auto;display:block}
 .logo span{color:var(--acc)}
+.logo .wordmark{display:inline;white-space:nowrap}
 .badges{display:flex;gap:8px;margin-left:auto;align-items:center}
 .badge{font-size:12px;padding:3px 10px;border-radius:999px;background:var(--acc-soft);color:var(--acc);
   display:inline-flex;gap:6px;align-items:center}
@@ -1322,7 +1323,7 @@ g.g-exit{pointer-events:none}
 
 <header>
   <div class="wrap">
-    <div class="logo"><img src="/static/logo.svg" alt="BabelGrade" loading="lazy">Babel<span>Grade</span></div>
+    <div class="logo"><img src="/static/logo.svg" alt="BabelGrade" loading="lazy"><span class="wordmark">Babel<span>Grade</span></span></div>
     <nav id="nav">
       <button data-view="assignments" class="on" data-i18n="nav.assignments">Assignments</button>
       <button data-view="history" data-i18n="nav.history">Evaluations</button>
