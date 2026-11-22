@@ -148,9 +148,11 @@ def main():
         # ---- 3) Annoter "OCR in progress" state (mocked .ocr endpoint) ----
         # The app fetches `/api/submissions/{id}.ocr` — note the DOT, not /ocr.
         mock_url = BASE + f"/api/submissions/{sid}.ocr"
-        run_handler = lambda r: r.fulfill(
-            status=200, content_type="application/json",
-            body='{"submission_id":1,"ocr":null,"running":true,"job_id":99999}')
+
+        def run_handler(r):
+            return r.fulfill(
+                status=200, content_type="application/json",
+                body='{"submission_id":1,"ocr":null,"running":true,"job_id":99999}')
         pg.route(mock_url, run_handler)
         try:
             open_hist_detail(pg, aid)
@@ -170,9 +172,10 @@ def main():
             pg.unroute(mock_url, run_handler)
 
         # ---- 4) Annoter "no OCR, not running" state (mocked) keeps the button ----
-        none_handler = lambda r: r.fulfill(
-            status=200, content_type="application/json",
-            body='{"submission_id":1,"ocr":null,"running":false,"job_id":null}')
+        def none_handler(r):
+            return r.fulfill(
+                status=200, content_type="application/json",
+                body='{"submission_id":1,"ocr":null,"running":false,"job_id":null}')
         pg.route(mock_url, none_handler)
         try:
             open_hist_detail(pg, aid)

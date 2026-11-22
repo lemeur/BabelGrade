@@ -16,7 +16,7 @@ Flow (no LLM involved, no data kept):
 Run (live server on :8090 required):
   /tmp/bg_venv/bin/python tests/test_student_switch_clears_work.py
 """
-import io, sys
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
