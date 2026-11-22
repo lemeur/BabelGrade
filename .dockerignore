@@ -1,0 +1,17 @@
+.git
+.github
+.venv
+venv
+data
+tests
+mockups
+mock-hybrid
+scripts
+docs/assets
+docs/readme
+docs/onepager-fr
+__pycache__
+*.pyc
+.env
+tests/.credentials
+server.log*

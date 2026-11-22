@@ -226,6 +226,13 @@ pip install -r requirements.txt
 HOST=0.0.0.0 PORT=8090 ./run.sh
 ```
 
+**With Docker** (web front + job workers in one container):
+
+```bash
+cp .env.example .env     # optional, then edit
+docker compose up -d --build   # http://localhost:8090
+```
+
 Configuration (env vars, all optional):
 
 | Variable | Default | Purpose |

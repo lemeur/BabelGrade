@@ -28,3 +28,6 @@ mock-hybrid/page1.jpg
 
 # Stray literal-tilde cache dir created 2026-09-19 (~ not expanded)
 /~
+
+# Release artifacts
+dist/

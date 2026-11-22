@@ -1,0 +1,28 @@
+# BabelGrade — `cp .env.example .env && docker compose up -d --build`
+# then open http://localhost:${BABELGRADE_PORT:-8090}
+services:
+  babelgrade:
+    build: .
+    image: babelgrade:0.1.0
+    container_name: babelgrade
+    restart: unless-stopped
+    env_file:
+      - path: .env        # optional: works with defaults if absent
+        required: false
+    environment:
+      # LLM endpoint: default targets an OpenAI-compatible server on the Docker host.
+      BABELGRADE_LLM_BASE: ${BABELGRADE_LLM_BASE:-http://host.docker.internal:8078/v1}
+      BABELGRADE_LLM_MODEL: ${BABELGRADE_LLM_MODEL:-qwen38-27b}
+      BABELGRADE_LLM_API_KEY: ${BABELGRADE_LLM_API_KEY:-}
+      BABELGRADE_INITIAL_LOGIN: ${BABELGRADE_INITIAL_LOGIN:-admin}
+      BABELGRADE_INITIAL_PASSWORD: ${BABELGRADE_INITIAL_PASSWORD:-}
+      HF_HUB_OFFLINE: ${HF_HUB_OFFLINE:-1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux; built in on Docker Desktop/OrbStack
+    ports:
+      - "${BABELGRADE_PORT:-8090}:8090"
+    volumes:
+      - babelgrade-data:/app/data   # SQLite DB, uploads, Whisper model cache
+
+volumes:
+  babelgrade-data:
