@@ -1,0 +1,75 @@
+# BabelGrade docs site — build + deploy to GitHub Pages.
+#
+# Source of truth: docs/ + README.md (+ static branding). The build produces
+# site/ (landing, user guide, one-pager, dev docs with client-side mermaid).
+# On every push to main this workflow rebuilds the site and deploys it to
+# https://lemeur.github.io/BabelGrade/ — the URL linked from the app's nav
+# "Docs" button. No manual step needed: edit a doc, push, done.
+#
+# One-time setup (already done on first deploy): repo Settings -> Pages ->
+# Build and deployment -> Source = "GitHub Actions".
+name: Deploy docs site (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deploys race (a cancel here would leave Pages half-updated).
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build deps (python-markdown)
+        run: pip install markdown
+      - name: Build the site into site/
+        run: python scripts/build_site.py
+      - name: Check the built site (link integrity + no dead refs)
+        run: |
+          python - <<'PY'
+          import re, pathlib
+          out = pathlib.Path('site')
+          bad = 0
+          for f in out.glob('*.html'):
+              html = f.read_text()
+              for r in re.findall(r'(?:src|href)="([^"]+)"', html):
+                  if r.startswith(('http://', 'https://', 'data:', '#')):
+                      continue
+                  p = r.lstrip('/').split('#')[0]
+                  if not p:
+                      continue
+                  t = f.parent / p
+                  if t.is_dir():
+                      t = t / 'index.html'
+                  if not t.exists():
+                      print(f'BROKEN in {f.name}: {r}')
+                      bad += 1
+          assert bad == 0, f'{bad} broken link(s)'
+          print('site link check OK')
+          PY
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

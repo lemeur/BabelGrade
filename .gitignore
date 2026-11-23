@@ -31,3 +31,7 @@ mock-hybrid/page1.jpg
 
 # Release artifacts
 dist/
+
+# Docs-site build output (site/) — built by .github/workflows/deploy-pages.yml
+# from docs/ + README.md on every push; not committed.
+site/
