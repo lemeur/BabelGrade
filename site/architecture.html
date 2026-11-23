@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Architecture — module map & conventions — BabelGrade</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="site.css">
+
+</head>
+<body>
+<header>
+  <div class="hd">
+    <a class="logo" href="./"><img src="logo.svg" alt=""><b>BabelGrade</b></a>
+    <nav>
+      <a href="./" >Accueil</a>
+      <a href="userguide.html" >Guide utilisateur</a>
+      <a href="onepager/onepager.html" >One-pager</a>
+      <a href="architecture.html" >Architecture</a>
+      <a href="async-jobs.html" >Async jobs</a>
+      <a href="ux-audit.html" >UX audit</a>
+      <a href="readme.html" >README</a>
+      <a class="ext" href="https://github.com/lemeur/BabelGrade">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+<div class="md">
+<h1>Architecture — module map &amp; conventions</h1>
+<p>One-page map of the codebase (2026-10-16 module split) so a new contributor —
+or a future agent session — can navigate without re-discovering. Companion
+docs: <strong>Async jobs</strong> (deep dive on the job queue) and the README (features).</p>
+<h2>Module map</h2>
+<table>
+<thead>
+<tr>
+<th>File</th>
+<th>Lines</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>app/main.py</code></td>
+<td>85</td>
+<td><code>create_app()</code>: lifespan, global auth gate, CORS, DB init + seed, <code>include_router</code> ×12, static mounts. Wiring ONLY — no route handlers.</td>
+</tr>
+<tr>
+<td><code>app/routes_*.py</code></td>
+<td>12 modules</td>
+<td>One <code>APIRouter</code> per domain: health, auth, rubrics, students, assignments, admin, analyze, jobs, analyses, annotate, files, docs.</td>
+</tr>
+<tr>
+<td><code>app/db.py</code></td>
+<td>1774</td>
+<td>SQLite layer: schema + forward-migrations (<code>init_db</code>), CRUD, owner scoping (<code>_owner()</code> contextvar read), media-ownership map.</td>
+</tr>
+<tr>
+<td><code>app/auth.py</code></td>
+<td>233</td>
+<td>PBKDF2 logins, session table + HttpOnly cookie, <code>auth_dependency</code> gate, <code>owner_var</code> propagation.</td>
+</tr>
+<tr>
+<td><code>app/jobs.py</code></td>
+<td>952</td>
+<td>Async job queue: <code>jobs</code> table (survives restarts), worker pool, <code>JobStream</code> SSE, the three long runners (analyze / evaluate / run-ai + stats-ai).</td>
+</tr>
+<tr>
+<td><code>app/media.py</code></td>
+<td>512</td>
+<td>Upload validation/staging, PDF extraction (text layer / scanned-page JPEGs), doc-audio transcription, task-context + eval-notes assembly.</td>
+</tr>
+<tr>
+<td><code>app/assess.py</code></td>
+<td>687</td>
+<td>Prompt building (system + task context + eval notes + accommodations + language), fluency metrics, LLM JSON parsing, matrix validation.</td>
+</tr>
+<tr>
+<td><code>app/rubrics.py</code></td>
+<td>428</td>
+<td>Official LVA/LVB attestation grids + presets, <code>compute_attestation()</code>, /120 point scale, official /20 note bands (reference-only).</td>
+</tr>
+<tr>
+<td><code>app/stats.py</code></td>
+<td>274</td>
+<td><code>stats_for_assignment</code> (assignment stats view + stats-ai feed) and <code>stats_for_student</code> (per-student time chart).</td>
+</tr>
+<tr>
+<td><code>app/ocr.py</code> / <code>imaging.py</code></td>
+<td>311 / 190</td>
+<td>Hybrid OCR (Tesseract line boxes + LLM polish) and geometry-preserving image enhancement for the Annoter.</td>
+</tr>
+<tr>
+<td><code>app/whisper.py</code></td>
+<td>88</td>
+<td>Offline faster-whisper (base, int8, CPU) with word-level timings.</td>
+</tr>
+<tr>
+<td><code>app/llm_client.py</code></td>
+<td>160</td>
+<td>SGLang OpenAI-compatible client: <code>chat_json</code> + <code>stream_chat</code> (honours <code>thinking_budget</code>).</td>
+</tr>
+<tr>
+<td><code>app/config.py</code></td>
+<td>21</td>
+<td>Paths + upload limits (<code>UPLOAD_DIR</code>, <code>MAX_*_BYTES</code>…). Import from here, never re-define.</td>
+</tr>
+<tr>
+<td><code>app/docs_catalog.py</code></td>
+<td>21</td>
+<td>Which markdown docs the in-app Docs view can render (slug → path + category).</td>
+</tr>
+<tr>
+<td><code>static/index.html</code></td>
+<td>~7700</td>
+<td>The whole SPA: views, i18n (4 languages), hand-rolled charts, the doc-view markdown renderer + vendored mermaid.</td>
+</tr>
+</tbody>
+</table>
+<h2>Module structure</h2>
+<pre><code class="language-mermaid">flowchart LR
+  UI[&quot;static/index.html&lt;br/&gt;SPA · i18n x4 · charts&quot;]
+  MAIN[&quot;app/main.py&lt;br/&gt;factory · auth gate ·&lt;br/&gt;include_router x12&quot;]
+  subgraph RT[&quot;route modules — 12 APIRouters&quot;]
+    RA[&quot;analyze&quot;]
+    RJ[&quot;jobs&quot;]
+    RC[&quot;assignments&quot;]
+    RS[&quot;students&quot;]
+    RX[&quot;…+8 more&quot;]
+  end
+  subgraph CORE[&quot;domain layer&quot;]
+    JOBS[&quot;jobs.py&quot;]
+    MEDIA[&quot;media.py&quot;]
+    ASSESS[&quot;assess.py&quot;]
+    STATS[&quot;stats.py&quot;]
+    RUB[&quot;rubrics.py&quot;]
+  end
+  subgraph IO[&quot;I/O + data&quot;]
+    LLM[&quot;llm_client.py&quot;]
+    WH[&quot;whisper.py&quot;]
+    OCR[&quot;ocr.py + imaging.py&quot;]
+    DB[&quot;db.py&quot;]
+    AU[&quot;auth.py&quot;]
+  end
+  UI --&gt; MAIN
+  MAIN --&gt; RT
+  RT --&gt; CORE
+  CORE --&gt; IO
+</code></pre>
+<p>Import direction is one-way and layered: <code>db &lt;- {stats, media, jobs, …} &lt;-
+routes &lt;- main</code> (the UI talks to <code>main</code> only, via <code>/api/*</code>). Never create the
+reverse — e.g. a <code>db.py</code> re-export of the <code>stats.py</code> names would make
+<code>db &lt;-&gt; stats</code> circular (hit in P2.7). The table above carries the
+per-module "calls which" detail; the diagram carries the layering.</p>
+<h2>Long-endpoint request lifecycle</h2>
+<p>The three heavy endpoints (<code>POST /api/analyze</code>, <code>POST /api/evaluate</code>,
+<code>POST /api/analyses/{id}/run-ai</code>) are <strong>async</strong>: the request stages uploads
+fast, persists rows, enqueues a job and returns a job handle. Progress is
+followed on <code>GET /api/jobs/{id}/events</code> (SSE: <code>meta</code> → <code>phase*</code> → <code>token*</code> →
+<code>result</code> → <code>done|error|cancelled</code>). Full state machine + sequence detail:
+the <strong>Async jobs</strong> doc.</p>
+<pre><code class="language-mermaid">sequenceDiagram
+  participant UI
+  participant R as routes_analyze
+  participant M as media.py
+  participant D as db.py
+  participant W as jobs worker
+  participant L as llm_client
+  UI-&gt;&gt;R: POST /api/analyze (multipart)
+  R-&gt;&gt;M: stage uploads
+  M-&gt;&gt;D: submission + analysis rows
+  R-&gt;&gt;W: enqueue job
+  R--&gt;&gt;UI: job handle
+  UI-&gt;&gt;W: GET /api/jobs/id/events
+  W-&gt;&gt;L: stream_chat (thinking_budget)
+  W--&gt;&gt;UI: SSE result + done
+  W-&gt;&gt;D: persist before done
+</code></pre>
+<h2>Conventions to preserve</h2>
+<ul>
+<li><strong>Owner scoping</strong> — every owned row carries <code>owner_id</code>; the request's
+  identity rides in <code>auth.owner_var</code> (a contextvar) and <code>db._owner()</code> reads
+  it. Job runners re-set it per job. New owned queries MUST filter by it
+  (or use a <code>_scoped()</code> helper).</li>
+<li><strong>Proof-matrix rule</strong> — every rubric criterion gets a mapping with at
+  least one verbatim evidence item; <code>assess.validate_matrix()</code> warnings are
+  surfaced in the UI. No level without a quote/timestamp.</li>
+<li><strong>Media ownership</strong> — <code>/api/files</code> serves a file only to its owner
+  (<code>db.media_owner_map()</code>); untracked files 404.</li>
+<li><strong>Last AI opinion wins</strong> — <code>run-ai</code> overwrites <code>analyses.ai_matrix_json</code>
+  on every run; <code>matrix_json</code> is the teacher's, never touched by the AI.</li>
+<li><strong>No per-element listeners inside a rendered report</strong> — the history flow
+  re-serialises <code>#hist-report</code> via innerHTML, which detaches them. All
+  report interactivity is document-level delegation registered once at boot.</li>
+<li><strong>Never bind a local named <code>t</code>, <code>esc</code>, <code>stats</code>, <code>$</code> in a function that
+  also needs the global of that name</strong> — the i18n <code>t</code> shadowing cost a whole
+  debugging session; <code>stats</code> is the module, so local vars are <code>data</code>/<code>agg</code>.</li>
+<li><strong>i18n</strong> — every key exists in all 4 languages (en/fr/es/de); FR values
+  use typographic apostrophes (') only; run the 4-way key-count check after
+  any i18n edit.</li>
+<li><strong>DB schema</strong> — forward-migrated at startup by <code>init_db</code> (idempotent
+  <code>ALTER TABLE ADD COLUMN</code>); additive column changes need no manual
+  migration.</li>
+</ul>
+<h2>Recipes</h2>
+<h3>Add a new endpoint</h3>
+<ol>
+<li>Put it in the matching <code>app/routes_&lt;domain&gt;.py</code> on that module's
+   <code>router</code> (create a new module + <code>include_router</code> in <code>main.py</code> only for a
+   genuinely new domain).</li>
+<li>Heavy work goes through a job (see Async jobs doc); light reads call
+   <code>db.*</code> / <code>stats.*</code> directly.</li>
+<li>Owned data → scope with <code>db._owner()</code>; uploads → <code>app/media.py</code> helpers.</li>
+<li>UI: add the key(s) to all 4 i18n dicts + <code>node --check</code> the extracted JS.</li>
+<li>Add/extend a test in <code>tests/</code> (in-process TestClient for API shape,
+   Playwright for UI), commit, verify per the close-out checklist in
+   <code>https://github.com/lemeur/BabelGrade/blob/main/TODO.md</code>.</li>
+</ol>
+<h3>Add a doc to the in-app Docs view</h3>
+<ol>
+<li>Write <code>docs/&lt;name&gt;.md</code> (minimal markdown: headings, tables, fenced code,
+   lists, quotes; mermaid fences render via the vendored mermaid).</li>
+<li>Add a slug to <code>DOCS_INDEX</code> in <code>app/docs_catalog.py</code> with its <code>category</code>
+   (<code>user</code> or <code>dev</code>).</li>
+<li>i18n: add <code>docs.tab.&lt;slug&gt;</code> in all 4 languages.</li>
+<li>Frontend: the dev sub-tab labels come from an inline ternary in the docs
+   view JS block (<code>paintDocsSubtabs</code>, <code>static/index.html</code>) that maps slugs
+   to i18n keys — add your slug if its i18n key is not just the slug
+   itself (<code>architecture</code> is the new case; <code>async-jobs</code>→<code>asyncjobs</code>).</li>
+<li>Verify in the app: Docs → Dev section → new sub-tab renders, mermaid
+   diagrams paint (check visually, not just "it parsed").</li>
+</ol>
+<h2>Verification baseline</h2>
+<ul>
+<li><code>ruff check .</code> (100% green — <code>ruff.toml</code>: app/ strict, tests/ + scripts/
+  relaxed) and <code>python3 -m py_compile app/*.py</code>.</li>
+<li>In-process suites (hermes venv, temp DB): <code>tests/test_multiuser_smoke.py</code>,
+  <code>tests/test_media_ownership.py</code>, <code>tests/test_ui_language_prompt.py</code>.</li>
+<li>Playwright suites (<code>/tmp/elt_dm/venv</code>, live server on :8090, login
+  <code>tibo</code>/<code>BABELGRADE_TEST_PASSWORD</code> (in <code>tests/.credentials</code>)): <code>tests/test_smoke_assignments.py</code>,
+  <code>tests/test_p4_filters.py</code>, <code>tests/test_p5_filters.py</code>,
+  <code>tests/test_p6_ststats.py</code>, <code>tests/test_p7_eval_exit.py</code>,
+  <code>tests/test_ui_language_frontend.py</code>.</li>
+<li>Server health: <code>curl -s localhost:8090/api/health</code>.</li>
+</ul></div>
+</main>
+<footer>BabelGrade — évaluation CEFR 100 % locale · <a href="https://github.com/lemeur/BabelGrade">dépôt GitHub</a> · licence MIT</footer>
+<script type="module">
+import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs";
+mermaid.initialize({ startOnLoad: false, securityLevel: "loose" });
+document.querySelectorAll("pre > code.language-mermaid").forEach(function (code) {
+  var div = document.createElement("div");
+  div.className = "mermaid";
+  div.textContent = code.textContent;
+  code.parentElement.replaceWith(div);
+});
+mermaid.run({ querySelector: ".mermaid", suppressErrors: true });
+</script>
+
+</body>
+</html>

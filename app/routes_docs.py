@@ -1,33 +1,16 @@
-"""In-app Docs routes + SPA index.
+"""SPA index route.
 
-Extracted from main.py (2026-10-16 split).
+Extracted from main.py (2026-10-16 split). The in-app Docs view was removed
+in 2026-11 — documentation now lives on the project's GitHub Pages site
+(lemeur.github.io/BabelGrade, built into site/ by scripts/build_site.py).
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 from fastapi.responses import FileResponse
 
 from .config import STATIC_DIR
-from . import docs_catalog
 
 router = APIRouter()
 
-
-@router.get("/api/docs")
-def list_docs():
-    out = []
-    for slug, meta in docs_catalog.DOCS_INDEX.items():
-        if meta["path"].exists():
-            out.append({"slug": slug, "exists": True,
-                        "category": meta["category"],
-                        "bytes": meta["path"].stat().st_size})
-    return {"docs": out}
-
-@router.get("/api/docs/{slug}")
-def get_doc(slug: str):
-    meta = docs_catalog.DOCS_INDEX.get(slug)
-    if not meta or not meta["path"].exists():
-        raise HTTPException(404, "document not found")
-    return {"slug": slug, "category": meta["category"],
-            "markdown": meta["path"].read_text(encoding="utf-8")}
 
 @router.get("/")
 def index():

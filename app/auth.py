@@ -200,7 +200,7 @@ PUBLIC_PATHS = {"/api/health", "/api/auth/login", "/api/auth/register",
 def _is_public(request: Request) -> bool:
     path = request.url.path
     return (path in PUBLIC_PATHS or path == "/"
-            or path.startswith("/static") or path.startswith("/docs-static"))
+            or path.startswith("/static"))
 
 
 async def auth_dependency(request: Request) -> int | None:

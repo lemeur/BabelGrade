@@ -16,7 +16,9 @@
 | **Grilles** | Les grilles d'évaluation disponibles (Bac, BTS, CEFR attestation LVA/LVB). |
 | **Élèves** | La liste des élèves. |
 | **Tâches** | La file de traitement : tout ce qui tourne en arrière-plan (transcription Whisper, analyse IA…). |
-| **Docs** | Cette documentation (README, guide utilisateur, architecture async). |
+
+Le lien **Docs** dans la barre du haut mène à la documentation complète
+(hostée sur le site GitHub du projet).
 
 Deux façons de travailler :
 

@@ -20,8 +20,8 @@ optional items remain. Verification recipe at the bottom.
   checks: enqueue→run→finalize, proof-matrix persistence, deterministic
   attestation, aware-mode last-AI-wins, SSE ordering).
 - **P2.9 — developer docs.** `docs/architecture.md` (module map, import
-  direction, the three-endpoint lifecycle, conventions, recipes), wired into
-  the in-app Docs view.
+  direction, the three-endpoint lifecycle, conventions, recipes), published on
+  the GitHub Pages docs site (the in-app Docs view was removed in 2026-11).
 - **P2.10 — OCR rewrite + word-selection annotation.** OCR is now LLM-direct
   (per-line boxes 0..1000, no tesseract pipeline); Annoter v5 selects word
   ranges in the transcript with auto-crop.

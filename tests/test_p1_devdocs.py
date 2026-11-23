@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
-"""P1.4 E2E: docs view split into user guide (main) + Dev section (sub-tabs).
-- main tabs = [User guide, Developer]
-- user section: userguide loaded, no sub-tabs
-- dev section: sub-tabs [Architecture, Async jobs (tech), README, UX audit]
-- sub-tab click loads that doc
-- switching back to user shows userguide again
-- i18n 4x for docs.tab.user / docs.tab.dev
+"""E2E (post 2026-11-23): in-app docs view removed — Docs is an external link.
+
+The in-app markdown/mermaid docs view was replaced by the GitHub Pages site
+(lemeur.github.io/BabelGrade, built into site/ by scripts/build_site.py).
+This test verifies:
+- the nav carries an EXTERNAL <a.ext-docs> (target=_blank, github.io URL)
+- no in-app docs DOM remains (#view-docs, #docs-tabs, #docs-content…)
+- no orphaned i18n keys (docs.title / docs.help / docs.loading / docs.tab.*)
+- nav.docs still defined 4x (the link label)
+- clicking Jobs then back still works (nav stack intact after docs removal)
 - no JS errors
 """
 import re
@@ -13,6 +16,7 @@ from pathlib import Path
 import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
 BASE = "http://127.0.0.1:8090"
+DOCS_URL = "https://lemeur.github.io/BabelGrade/"
 PASS, FAIL = [], []
 
 def check(name, cond, extra=""):
@@ -27,9 +31,7 @@ def login(pg, lang="fr"):
     pg.click("#auth-login-btn")
     pg.wait_for_selector("#user-chip-wrap:not(.hide)", timeout=20000)
     pg.wait_for_timeout(1200)
-    # 2026-10-27: boot default = home view, where the tab bar is HIDDEN —
-    # the test clicks the Docs nav button right after login, so open
-    # assignments first (navGo restores the bar).
+    # 2026-10-27: boot default = home view, where the tab bar is HIDDEN
     pg.evaluate("navGo('assignments')")
     pg.wait_for_timeout(400)
 
@@ -40,87 +42,59 @@ with sync_playwright() as pw:
     errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)))
     login(pg, "fr")
-    pg.click("#nav button[data-view=\"docs\"]")
-    pg.wait_for_timeout(2000)
 
-    tabs = pg.evaluate("""() => {
-      const main=[...document.querySelectorAll('#docs-tabs button')].map(b=>b.textContent.trim());
-      const sub=document.getElementById('docs-subtabs');
-      const subVisible=sub && !sub.classList.contains('hide');
-      const subBtns=subVisible?[...sub.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
-      const content=document.getElementById('docs-content').textContent;
-      return {main, subVisible, subBtns, h1:(document.querySelector('#docs-content h1')||{}).textContent||''};
+    nav = pg.evaluate("""() => {
+      const a = document.querySelector('nav a.ext-docs');
+      const docsBtn = document.querySelector('#nav button[data-view="docs"]');
+      return {
+        link: a ? {href: a.href, target: a.target, text: a.textContent.trim(),
+                   i18n: a.dataset.i18n} : null,
+        inAppBtn: !!docsBtn,
+        views: ['view-docs','docs-tabs','docs-content','docs-subtabs',
+                'docs-loading','docs-view'].filter(id => document.getElementById(id))
+      };
     }""")
-    check("FR: 2 main tabs (user guide / dev)", tabs["main"]==["Guide utilisateur","Développeur"], tabs["main"])
-    check("FR: user section loaded (userguide)", "guide" in tabs["h1"].lower() or tabs["h1"].strip()!="", tabs["h1"])
-    check("FR: no dev sub-tabs in user section", tabs["subVisible"] is False, tabs)
+    check("Docs = external link", nav["link"] is not None, nav["link"])
+    if nav["link"]:
+        check("Docs URL = github.io site", nav["link"]["href"] == DOCS_URL, nav["link"]["href"])
+        check("Docs opens in new tab", nav["link"] and nav["link"]["target"] in ("", "_blank"), nav["link"])
+        check("Docs label uses i18n key", nav["link"]["i18n"] == "nav.docs", nav["link"]["i18n"])
+    check("no in-app docs nav button", nav["inAppBtn"] is False, nav)
+    check("no in-app docs DOM remains", nav["views"] == [], nav["views"])
 
-    # switch to dev section
-    pg.click('#docs-tabs button[data-docsec="dev"]')
-    pg.wait_for_timeout(2000)
-    tabs = pg.evaluate("""() => {
-      const sub=document.getElementById('docs-subtabs');
-      const subVisible=sub && !sub.classList.contains('hide');
-      const subBtns=subVisible?[...sub.querySelectorAll('button')].map(b=>b.dataset.docslug):[];
-      const on=subVisible?[...sub.querySelectorAll('button')].findIndex(b=>b.style.background.includes('var(--ai)')):-1;
-      const devActive=[...document.querySelectorAll('#docs-tabs button')].findIndex(b=>b.dataset.docsec==='dev'&&b.style.background.includes('var(--acc)'));
-      const h1=(document.querySelector('#docs-content h1')||{}).textContent||'';
-      return {subVisible, subBtns, on, devActive, h1};
-    }""")
-    check("FR: dev sub-tabs visible", tabs["subVisible"] is True, tabs)
-    check("FR: 4 dev sub-tabs", tabs["subBtns"]==["architecture","async-jobs","ux-audit","readme"], tabs["subBtns"])
-    check("FR: first dev doc loaded (architecture)", tabs["on"]==0, tabs)
-    check("FR: main dev tab highlighted", tabs["devActive"]>=0, tabs)
-
-    # click README sub-tab
-    pg.click('#docs-subtabs button[data-docslug="readme"]')
-    pg.wait_for_timeout(1500)
-    st = pg.evaluate("""() => {
-      const sub=[...document.querySelectorAll('#docs-subtabs button')];
-      const on=sub.findIndex(b=>b.style.background.includes('var(--ai)'));
-      return {on, h1:(document.querySelector('#docs-content h1')||{}).textContent||''};
-    }""")
-    check("FR: readme sub-tab highlighted + content swapped", st["on"]==3, st)
-
-    # back to user section
-    pg.click('#docs-tabs button[data-docsec="user"]')
-    pg.wait_for_timeout(1500)
-    st = pg.evaluate("""() => {
-      const sub=document.getElementById('docs-subtabs');
-      const main=[...document.querySelectorAll('#docs-tabs button')].findIndex(b=>b.dataset.docsec==='user'&&b.style.background.includes('var(--acc)'));
-      return {subHidden:sub.classList.contains('hide'), main};
-    }""")
-    check("FR: back to user, sub-tabs hidden, user tab on", st["subHidden"] is True and st["main"]==0, st)
+    # nav stack intact: docs no longer a view, other views still navigate
+    pg.evaluate("navGo('jobs')")
+    pg.wait_for_timeout(600)
+    st = pg.evaluate("""() => ({
+      jobsVisible: !document.getElementById('view-jobs').classList.contains('hide')
+    })""")
+    check("jobs view still reachable", st["jobsVisible"] is True, st)
 
     check("FR: no JS errors", not errs, errs[:2])
     ctx.close()
 
-    # EN
+    # EN — link label translated
     ctx = b.new_context(viewport={"width": 1280, "height": 800})
     pg = ctx.new_page()
     errs = []
     pg.on("pageerror", lambda e: errs.append(str(e)))
     login(pg, "en")
-    pg.click("#nav button[data-view=\"docs\"]")
-    pg.wait_for_timeout(2000)
-    tabs = pg.evaluate("""() => [...document.querySelectorAll('#docs-tabs button')].map(b=>b.textContent.trim())""")
-    check("EN: main tabs translated", tabs==["User guide","Developer"], tabs)
-    pg.click('#docs-tabs button[data-docsec="dev"]')
-    pg.wait_for_timeout(1500)
-    sub = pg.evaluate("""() => {
-      const sub=document.getElementById('docs-subtabs');
-      return sub&&!sub.classList.contains('hide')?[...sub.querySelectorAll('button')].map(b=>b.textContent.trim()):[];
-    }""")
-    check("EN: dev sub-tabs translated", sub==["Architecture","Async jobs (tech)","UX audit","README"], sub)
+    txt = pg.evaluate("document.querySelector('nav a.ext-docs').textContent.trim()")
+    check("EN: Docs label", txt == "Docs", txt)
     check("EN: no JS errors", not errs, errs[:2])
     ctx.close()
     b.close()
 
-# i18n balance: new keys 4x
+# i18n: nav.docs 4x ; the removed keys are gone
 html = open(Path(__file__).resolve().parent.parent / 'static' / 'index.html').read()
-for key in ["docs.tab.user", "docs.tab.dev"]:
-    n = len(re.findall(re.escape(key) + "':", html))
-    check(f"i18n key '{key}' defined 4x", n == 4, n)
+n = len(re.findall(r"'nav\.docs':", html))
+check("i18n 'nav.docs' defined 4x", n == 4, n)
+for key in ["docs.title", "docs.help", "docs.loading",
+            "docs.tab.user", "docs.tab.dev", "docs.tab.userguide",
+            "docs.tab.asyncjobs", "docs.tab.readme", "docs.tab.uxaudit",
+            "docs.tab.architecture"]:
+    m = len(re.findall(re.escape("'" + key + "':"), html))
+    check(f"i18n orphan key '{key}' removed", m == 0, m)
 
 print(f"\n=== {len(PASS)} PASS / {len(FAIL)} FAIL ===")
 if FAIL: print("FAILED:", FAIL)

@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BabelGrade — BabelGrade</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="stylesheet" href="site.css">
+
+</head>
+<body>
+<header>
+  <div class="hd">
+    <a class="logo" href="./"><img src="logo.svg" alt=""><b>BabelGrade</b></a>
+    <nav>
+      <a href="./" >Accueil</a>
+      <a href="userguide.html" >Guide utilisateur</a>
+      <a href="onepager/onepager.html" >One-pager</a>
+      <a href="architecture.html" >Architecture</a>
+      <a href="async-jobs.html" >Async jobs</a>
+      <a href="ux-audit.html" >UX audit</a>
+      <a href="readme.html" class="on">README</a>
+      <a class="ext" href="https://github.com/lemeur/BabelGrade">GitHub</a>
+    </nav>
+  </div>
+</header>
+<main>
+<div class="md">
+<h1>BabelGrade</h1>
+<p align="center">
+  <img src="logo.svg" alt="BabelGrade logo" width="220">
+</p>
+
+<p align="center">
+  <a href="https://github.com/lemeur/BabelGrade/actions/workflows/ci.yml"><img src="https://github.com/lemeur/BabelGrade/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/lemeur/BabelGrade/blob/main/requirements.txt"><img src="https://img.shields.io/badge/python-3.11%2B-blue.svg" alt="Python 3.11+"></a>
+  <a href="https://github.com/lemeur/BabelGrade/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg" alt="License: MIT"></a>
+</p>
+
+<blockquote>
+<p><strong>BabelGrade is an agentic, fully local AI assessment tool.</strong> A student's
+handwritten copy or oral recording flows through a pipeline of cooperating
+<strong>local AI agents</strong> — a vision model that reads the handwriting, an offline
+speech model that transcribes the recording, and a 27B language model that
+grades the work — and <em>every</em> one of them runs on a local machine.
+<strong>No external API, no student data leaving the teacher's
+environment.</strong></p>
+</blockquote>
+<p align="center">
+  <img src="readme/mobile-level-picker.png" alt="Criterion-by-criterion grading — per-level AI opinion, entered level, and live /120" width="800">
+</p>
+<p align="center">
+  Screenshot of the mobile Criterion-by-criterion interface:
+  each level card shows the AI's opinion, the entered level, and the /120 score
+  recomputes as you swipe between levels
+</p>
+
+<p><strong>Turn a student's written copy or oral recording into a CEFR attestation with
+verbatim evidence.</strong> BabelGrade is a teacher-facing, <strong>international</strong> web app
+that maps every criterion of a CEFR attestation grid to a recommended level
+(A1–C2) — and shows <em>why</em>: each recommendation is backed by verbatim quotes
+(or timestamps) from the student's own work. It ships with the official
+<strong>French LVA/LVB</strong> attestation grids as presets (the app's only France-specific
+part — see <a href="#custom-rubrics">Custom rubrics</a>), but the framework, the UI and
+the whole workflow are language-neutral: the UI is localised in
+<strong>EN / FR / ES / DE</strong>, and any grid can be defined as a custom rubric.</p>
+<p>It is an objective <strong>evidence extractor</strong>: it lowers the teacher's cognitive
+load, never replaces their judgment. Nothing is auto-graded — every level
+stays editable and recomputes instantly.</p>
+<blockquote>
+<p><strong>One-pager (FR)</strong> — a single A4 page explaining BabelGrade in French:
+<a href="onepager/onepager.html">interactive HTML</a> ·
+<a href="onepager/onepager.pdf">PDF</a> ·
+hosted at <a href="https://lemeur.github.io/BabelGrade/onepager/onepager.html">https://lemeur.github.io/BabelGrade/onepager/onepager.html</a>.</p>
+</blockquote>
+<h2>Local AI — the default, not the compromise</h2>
+<p>Student work — a handwritten essay, a recorded oral exam — is <strong>personal
+data</strong>. A <em>sovereign</em> AI provider — one that respects students' data and is
+validated by the French Ministry of National Education — would be permitted
+to process it. But for development and fast experimentation, the simplest
+way to guarantee that a minor's production never leaves the teacher's
+environment is to run every AI step on the teacher's own machine. That is
+what BabelGrade does, and why it is built around a pipeline of <em>local</em> AI
+agents:</p>
+<pre><code>student work                  (all local — nothing leaves the teacher's machine)
+  ┌───────────────────┐            ┌───────────────────────┐ Qwen3.8-27B
+  │    written copy   │ photos────►│   OCR agent (vision)  │ (SGLang, local)
+  │   (handwritten)   │            │  reads copy verbatim  │
+  └───────────────────┘            │   → transcript text   │
+  ┌───────────────────┐            ┌───────────┴───────────┐
+  │   oral recording  │  audio────►│  ASR agent (offline)  │ faster-whisper
+  │    (audio file)   │            │  transcript + timing  │ (base, int8, CPU)
+  └───────────────────┘            │    fluency metrics    │
+                                   └───────────┬───────────┘
+                                               ▼
+                                   ┌───────────────────────┐ Qwen3.8-27B (local)
+                                   │    LLM grader agent   │
+                                   │ rubric → Proof Matrix │
+                                   └───────────────────────┘
+</code></pre>
+<p>Three cooperating agents, one machine:</p>
+<table>
+<thead>
+<tr>
+<th>Agent</th>
+<th>Model</th>
+<th>Role</th>
+<th>Runs</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OCR / vision</strong></td>
+<td>Qwen3.8-27B (NVFP4, SGLang)</td>
+<td>reads handwritten copies line by line, verbatim, with per-line boxes</td>
+<td>local GPU</td>
+</tr>
+<tr>
+<td><strong>ASR</strong></td>
+<td>faster-whisper <code>base</code> (int8)</td>
+<td>transcribes oral audio + word timings</td>
+<td>local CPU, fully offline</td>
+</tr>
+<tr>
+<td><strong>Grader / language</strong></td>
+<td>Qwen3.8-27B</td>
+<td>grades against the CEFR rubric, produces the Proof Matrix</td>
+<td>local GPU</td>
+</tr>
+</tbody>
+</table>
+<p>The LLM <em>cannot hear audio</em> — the two channels deliberately stay separate:
+audio goes through the ASR agent first, the model only ever sees the
+timestamped transcript. No component phones home; the app runs offline once
+the models are cached.</p>
+<hr />
+<h2>What it does</h2>
+<ol>
+<li><strong>Analyze a submission</strong> — paste the student's text <em>and/or</em> attach photos
+   of the copy (the vision model reads them directly — no OCR copy-paste),
+   or drop an oral audio recording. Optionally attach the task instruction
+   and/or the source document (text, photos, PDF, or audio).</li>
+<li><strong>Get a Proof Matrix</strong> — every rubric criterion gets a suggested CEFR
+   level, a justification, and verbatim evidence. No level without a quote.</li>
+<li><strong>Attestation synthesis</strong> — on the official attestation grids (LVA/LVB
+   presets), per-criterion levels (A1–C2) are converted to a deterministic
+   <strong>score /120</strong> and an attestation level, recomputed live as the teacher
+   edits.</li>
+<li><strong>Annotate the copy</strong> — select a word range in the OCR'd transcript: the
+   photo auto-crops to it, the teacher drops a marker (sticker, level, note)
+   that the AI reads as context for its next run.</li>
+<li><strong>Annotate the oral</strong> — the transcript is word-timestamped; select a range,
+   the player seeks to it, and markers carry time ranges.</li>
+<li><strong>Dual AI loop</strong> — "AI first" (grade from the AI report) or "teacher
+   first" (grade yourself, then ask the AI for a blind or <em>aware</em> second
+   opinion that confirms or refutes each criterion with evidence).</li>
+<li><strong>Roster photo import</strong> — import a class + its students from roster
+   photos, with a review step before anything is committed.</li>
+</ol>
+<h3>Screenshots</h3>
+<p align="center">
+  <img src="readme/radial-menu-cropped.gif" alt="Home radial menu" width="360">
+</p>
+
+<p align="center">
+  Quick access to all functions from a simple home radial menu
+</p>
+
+<details>
+<summary><b>AI analysis report</b> — Proof Matrix with justifications + verbatim evidence, AI column (✓/≠), attestation /120, AI feedback card</summary>
+
+![AI analysis report](docs/readme/ai-analysis-report-full.png)
+
+</details>
+
+<details>
+<summary><b>Written copy annotation</b> — photo ↔ OCR dual pane, word-range selection with auto-crop, marker panel (sticker · level · note)</summary>
+
+![OCR annotation](docs/readme/ocr-annotation.png)
+
+</details>
+
+<details>
+<summary><b>Oral annotation</b> — synced audio player + timestamped transcript, range selection, marker panel</summary>
+
+![Oral annotation](docs/readme/oral-annotation.png)
+
+</details>
+
+<hr />
+<h2>How it works</h2>
+<ul>
+<li><strong>Backend</strong> — FastAPI (<code>app/</code>), SQLite persistence (<code>data/babelgrade.db</code>).
+  Multi-user: PBKDF2 logins, every owned table scoped to its owner.</li>
+<li><strong>LLM</strong> — a local OpenAI-compatible endpoint (by default SGLang serving
+  <code>qwen38-27b</code>, text + vision). The model <em>cannot hear audio</em>; oral
+  submissions go through offline <strong>faster-whisper</strong> first (timestamped
+  transcript + word timings), and fluency metrics (WPM, pauses, hesitation
+  tokens) are computed deterministically from the ASR timings.</li>
+<li><strong>Async job queue</strong> — long LLM/Whisper work is offloaded to an in-process
+  background scheduler (<code>app/jobs.py</code>, no external broker). The queue
+  survives restarts; progress streams over SSE. Because the work is
+  organised as <strong>asynchronous, persistent jobs</strong> with a stable handle-and-SSE
+  contract, the system is built to scale out: the same tasks can be
+  distributed across remote systems (additional inference machines) without
+  changing the API or the UI. See
+  <a href="async-jobs.html">async-jobs.html</a>.</li>
+<li><strong>Frontend</strong> — a single vanilla-JS page (<code>static/index.html</code>), localised
+  in <strong>EN / FR / ES / DE</strong>, with a simplified "home" mode driven by an
+  animated radial menu.</li>
+</ul>
+<h2>Custom rubrics</h2>
+<p>BabelGrade works with <strong>any</strong> CEFR rubric, not only the French presets:</p>
+<ul>
+<li><strong>Presets (shared):</strong> the official French LVA/LVB attestation grids
+  (comprehension, written expression, oral expression) are bundled as
+  shared rubrics with the official A1→C2 criterion descriptors, the
+  deterministic /120 scoring and the attestation thresholds. They ship
+  in their original French wording — that is data, not UI: every screen
+  around them is in the language the teacher has chosen.</li>
+<li><strong>Custom rubrics (per owner):</strong> teachers can create their own rubric with
+  any criteria, any level scale and any wording, in whatever language they
+  prefer. A custom rubric is private to its owner and can be used on any
+  assignment, in any of the four UI languages.</li>
+</ul>
+<h2>Roadmap — where the agentic loop goes next</h2>
+<p>The core loop (OCR/ASR → grader → Proof Matrix) already works end-to-end on
+local models. The remaining work is about making each agent <em>smarter</em> and
+closing the loop from assessment back to the learner. Priorities:</p>
+<ol>
+<li><strong>Harden the OCR / ASR agents — faithful, not "correct".</strong> Improve the
+   transcription and handwriting-reading workflows so they stay <em>verbatim</em>:
+   they must adapt to imperfect audio and imperfect cursive writing
+   (blue grid paper, smudges, crossed-out words) <strong>without correcting the
+   student's own errors.</strong> A student's mistakes are the signal the grader
+   reads; a "cleaned-up" transcript would silently destroy it.</li>
+<li><strong>Relevant feedback for the learner.</strong> Improve the analysis so each
+   student gets actionable feedback — key strengths, target areas, and
+   <em>concrete improvement suggestions and practice exercises</em> tied to the weak
+   criteria. Sharing will be via a <strong>secure link / QR code</strong>, so a teacher can
+   hand a report straight to a student <strong>without creating an app account</strong>.</li>
+<li><strong>Per-student progression for the teacher.</strong> Aggregate an individual's
+   results across <em>all</em> evaluations to profile their skills over time, then
+   <strong>propose and track a personalised progression plan</strong> and share it. This
+   directly supports preparing <strong>class councils / report periods</strong>.</li>
+<li><strong>Class-level insight.</strong> Aggregate a whole group's results to give the
+   teacher a read on the <strong>class's overall level and heterogeneity</strong> — what
+   worked, what to re-teach, who to watch.</li>
+</ol>
+<p>These are deliberately <em>agentic</em> upgrades: better prompts, better evidence
+handling, and multi-agent reasoning on top of the same local models.</p>
+<p><strong>Deployment today, and beyond.</strong> Teachers correct their students' work on
+their own machine, at home — BabelGrade is designed for that: one local
+install, the AI pipeline on the teacher's hardware, and the async job
+layer ready for tasks to be fanned out to additional (remote) inference
+systems when the class grows. If the tool proves itself, a hosted deployment
+<em>within the Ministry of National Education</em> is a realistic next step — the
+same data-protection guarantees, at ministry scale, without every teacher
+running their own GPU.</p>
+<h2>Quick start</h2>
+<pre><code class="language-bash">pip install -r https://github.com/lemeur/BabelGrade/blob/main/requirements.txt
+./run.sh                 # http://&lt;host&gt;:8090
+HOST=0.0.0.0 PORT=8090 ./run.sh
+</code></pre>
+<p><strong>With Docker</strong> (web front + job workers in one container):</p>
+<pre><code class="language-bash">cp .env.example .env     # optional, then edit
+docker compose up -d --build   # http://localhost:8090
+</code></pre>
+<p>Configuration (env vars, all optional):</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Default</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>BABELGRADE_LLM_BASE</code></td>
+<td><code>http://127.0.0.1:8078/v1</code></td>
+<td>OpenAI-compatible LLM endpoint</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_LLM_MODEL</code></td>
+<td><code>qwen38-27b</code></td>
+<td>Model name</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_LLM_API_KEY</code></td>
+<td><em>(empty)</em></td>
+<td>API key</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_INITIAL_LOGIN</code></td>
+<td><code>tibo</code></td>
+<td>first-boot account (registration stays open only for this)</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_INITIAL_PASSWORD</code></td>
+<td><em>(empty)</em></td>
+<td>first-boot password</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_DB_PATH</code></td>
+<td><code>data/babelgrade.db</code></td>
+<td>SQLite path (tests use a throwaway DB)</td>
+</tr>
+<tr>
+<td><code>BABELGRADE_WHISPER_CACHE</code></td>
+<td><code>~/.cache/huggingface/hub</code></td>
+<td>faster-whisper model cache (<code>download_root</code>)</td>
+</tr>
+</tbody>
+</table>
+<p>Requires Python 3.11+, uvicorn, faster-whisper, PyMuPDF. The Whisper model is
+cached locally and the app runs fully offline (all Hugging Face downloads are
+disabled at import time). The LLM endpoint must be reachable — BabelGrade has
+no LLM fallback.</p>
+<h2>Security model</h2>
+<ul>
+<li><strong>Multi-user, per-owner scoping.</strong> PBKDF2-HMAC-SHA256 (per-user salt +
+  application pepper) password hashes; session cookie auth. Every owned
+  table (students, assignments, submissions, analyses, annotations, jobs,
+  custom rubrics) is scoped to its owner on every read and write, enforced
+  by a FastAPI dependency that injects the current owner.</li>
+<li><strong>Media ownership.</strong> <code>/api/files</code> serves a file <em>only</em> to its owner;
+  foreign, unknown, and untracked files all 404 identically so no filename
+  enumeration is possible.</li>
+<li><strong>Registration is closed by default.</strong> Accounts can only be registered at
+  first boot (via the initial-login env vars); the app refuses to stay in
+  "registration open" afterwards.</li>
+<li><strong>Nothing leaves the teacher's environment.</strong> No external API calls at all
+  in the local deployment: the LLM is a local OpenAI-compatible endpoint and
+  the ASR model runs offline.</li>
+<li><strong>Evidence before level.</strong> The backend warns when a criterion mapping
+  lacks a verbatim quote; recurring errors are flagged, isolated slips are
+  not over-penalised; per-student accommodations may change content and
+  feedback but never the demonstrated level.</li>
+</ul>
+<h2>Testing</h2>
+<p>The suite is split into two classes:</p>
+<p><strong>Hermetic, in-process suites</strong> (throwaway SQLite DB, in-process OpenAI
+mock server, no live server, no LLM, no Whisper model) — these run in CI
+and can be run anywhere the dependencies install:</p>
+<pre><code class="language-bash">python tests/test_multiuser_smoke.py     # auth gate, owner scoping, isolation
+python tests/test_media_ownership.py     # media-ownership 404 matrix
+python tests/test_p2_mock_llm_e2e.py    # full job pipeline against a mocked LLM
+python tests/test_roster_import.py      # roster photo import E2E (mocked LLM)
+python tests/test_ui_language_prompt.py # prompt-builder unit checks
+python tests/test_p0_state_i18n_js.py   # i18n 4-lang balance + node --check
+python -m pytest tests/test_ocr_resnap.py -q   # OCR resnap alignment units
+</code></pre>
+<p><strong>Live Playwright suites</strong> drive the real UI against a running server on
+<code>127.0.0.1:8090</code> (they read the live-server credentials from
+<code>tests/.credentials</code>, which is gitignored by design). See
+<a href="https://github.com/lemeur/BabelGrade/blob/main/CONTRIBUTING.md#running-tests">https://github.com/lemeur/BabelGrade/blob/main/CONTRIBUTING.md</a> for the local recipe.</p>
+<p>CI: <a href="https://github.com/lemeur/BabelGrade/blob/main/.github/workflows/ci.yml"><code>https://github.com/lemeur/BabelGrade/blob/main/.github/workflows/ci.yml</code></a> runs ruff,
+byte-compilation and every hermetic suite on Python 3.11 and 3.13.</p>
+<h2>Repository layout</h2>
+<pre><code>app/main.py            FastAPI factory + auth gate + include_router (no routes)
+app/routes_*.py        route modules (auth, rubrics, students, assignments,
+                       analyze, evaluate, jobs, analyses, annotate, files,
+                       docs, admin, health, roster)
+app/assess.py          prompts, fluency metrics, JSON parse/validate
+app/llm_client.py      OpenAI-compatible client (stream + JSON extract)
+app/whisper.py         offline faster-whisper wrapper (cached model)
+app/db.py              SQLite + forward migration
+app/stats.py           assignment + per-student stats
+app/rubrics.py         LVA/LVB attestation presets + /20 conversion tables
+app/auth.py            multi-user auth (PBKDF2, owner scoping)
+app/jobs.py            async job queue (scheduler, workers, SSE)
+app/media.py           upload staging + PDF/scan/doc-audio extraction
+app/ocr.py             LLM-direct OCR for the annoter (per-line boxes 0..1000)
+app/imaging.py         image enhancement for copy-photo OCR
+app/config.py          paths + upload limits
+static/index.html      single-page UI (EN/FR/ES/DE)
+docs/                  user guide, architecture, async-jobs (sources for the docs site)
+site/                  GitHub Pages docs site (built from docs/ + README by scripts/build_site.py)
+tests/                 hermetic + Playwright E2E suites, mock LLM server
+scripts/               dev probes, screenshot generators, docs-site build
+mockups/               standalone UI prototypes (radial menu, hybrid annoter)
+.github/workflows/     CI (lint + hermetic suites, Python 3.11/3.13)
+run.sh                 launcher
+</code></pre>
+<h2>Development</h2>
+<p>Short guide: see <a href="https://github.com/lemeur/BabelGrade/blob/main/CONTRIBUTING.md">https://github.com/lemeur/BabelGrade/blob/main/CONTRIBUTING.md</a>. Module map, import
+direction rules and the "add an endpoint" recipe:
+<a href="architecture.html">architecture.html</a>. Outstanding work: <a href="https://github.com/lemeur/BabelGrade/blob/main/TODO.md">https://github.com/lemeur/BabelGrade/blob/main/TODO.md</a>.</p>
+<h2>Built with AI</h2>
+<blockquote>
+<p><strong>This project is vibe-coded.</strong> The codebase was produced by an LLM
+(Hermes Agent) working with <strong>Qwen3.8-27b</strong> — the same local model
+the app uses at runtime to assess student work. Feature design, UI
+iterations, OCR pipeline, and the whole E2E test suite were co-authored in
+conversation, with the app itself running on the same machine. It stands as
+a working example of a non-trivial, multi-user, production-shaped web app
+built conversationally on a local 27B model.</p>
+</blockquote>
+<h2>License</h2>
+<p><a href="https://github.com/lemeur/BabelGrade/blob/main/LICENSE">MIT</a> © 2026 BabelGrade contributors</p></div>
+</main>
+<footer>BabelGrade — évaluation CEFR 100 % locale · <a href="https://github.com/lemeur/BabelGrade">dépôt GitHub</a> · licence MIT</footer>
+
+</body>
+</html>

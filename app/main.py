@@ -5,8 +5,7 @@ Run:  uvicorn app.main:app --host 0.0.0.0 --port 8090
 The route handlers live in app/routes_*.py modules (2026-10-16 split from a
 single 1700-line create_app). This module only wires the app together:
 lifespan, auth gate, CORS, DB init + seed, router inclusion, static mounts.
-Shared helpers: app/media.py (uploads/staging), app/config.py (paths+limits),
-app/docs_catalog.py (in-app docs index).
+Shared helpers: app/media.py (uploads/staging), app/config.py (paths+limits).
 """
 import os
 from contextlib import asynccontextmanager
@@ -21,7 +20,6 @@ from . import (routes_admin, routes_analyses, routes_analyze,
                routes_files, routes_health, routes_jobs, routes_rubrics,
                routes_roster, routes_students)
 from .config import STATIC_DIR
-from .docs_catalog import DOCS_DIR
 from .media import _migrate_default_titles, seed_rubrics
 
 
@@ -84,8 +82,6 @@ def create_app() -> FastAPI:
     app.include_router(routes_docs.router)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
-    if DOCS_DIR.exists():
-        app.mount("/docs-static", StaticFiles(directory=str(DOCS_DIR)), name="docs-static")
     return app
 
 

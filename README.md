@@ -43,7 +43,8 @@ stays editable and recomputes instantly.
 
 > **One-pager (FR)** — a single A4 page explaining BabelGrade in French:
 > [interactive HTML](docs/onepager-fr/onepager.html) ·
-> [PDF](docs/onepager-fr/onepager.pdf).
+> [PDF](docs/onepager-fr/onepager.pdf) ·
+> hosted at <https://lemeur.github.io/BabelGrade/onepager/onepager.html>.
 
 ## Local AI — the default, not the compromise
 
@@ -317,9 +318,10 @@ app/ocr.py             LLM-direct OCR for the annoter (per-line boxes 0..1000)
 app/imaging.py         image enhancement for copy-photo OCR
 app/config.py          paths + upload limits
 static/index.html      single-page UI (EN/FR/ES/DE)
-docs/                  user guide, architecture, async-jobs (in-app Docs view)
+docs/                  user guide, architecture, async-jobs (sources for the docs site)
+site/                  GitHub Pages docs site (built from docs/ + README by scripts/build_site.py)
 tests/                 hermetic + Playwright E2E suites, mock LLM server
-scripts/               dev probes and screenshot generators
+scripts/               dev probes, screenshot generators, docs-site build
 mockups/               standalone UI prototypes (radial menu, hybrid annoter)
 .github/workflows/     CI (lint + hermetic suites, Python 3.11/3.13)
 run.sh                 launcher
