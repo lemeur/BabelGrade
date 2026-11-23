@@ -11,6 +11,16 @@ Timeline (~6.5 s, deliberately slow so each label can be read):
     — cycle its 3 leaves
   - close the menu back on the home hero
 
+CRITICAL (2026-11-23, GitHub dark mode): the GIF must NOT have a
+transparent background. The 2026-11-22 crop cut the light canvas away
+(97% transparent px) so on GitHub's dark README the dark sub-crown
+labels ("Student progression", "Results for a subject") disappeared.
+Fix: shoot a `clip` rectangle AROUND the live SVG (its bounding box +
+pad) instead of the full viewport — the clip keeps the light
+backdrop (body #f4f6f9 under #pie-backdrop) OPAQUE — and downscale
+the 2x-DPR capture to 360w with LANCZOS, which also kills the
+pixelation of the old 320->267 crop.
+
 Regenerate with:
   /tmp/bg_venv/bin/python scripts/shot_radial_gif.py
 (Server must be running on http://127.0.0.1:8090)
@@ -25,13 +35,29 @@ FRAMES_DIR = tempfile.mkdtemp(prefix="bg_radial_")
 frames = []       # file paths, in order
 durations = []    # ms per frame, parallel list
 
+CLIP_PAD = 14     # px of light canvas around the SVG bbox
+
 
 def shoot(pg, name, pre_ms=0, dur_ms=110):
-    """Wait pre_ms, capture one viewport frame, remember its display duration."""
+    """Wait pre_ms, capture the clip frame, remember its display duration."""
     if pre_ms:
         pg.wait_for_timeout(pre_ms)
+    clip = pg.evaluate("""() => {
+        const s = document.querySelector('#pie-stage svg');
+        if (!s) return null;
+        const r = s.getBoundingClientRect();
+        // bottom stops just above the "Mode avancé" button so no button
+        // sliver gets into the crop (its top sits ~7px below the SVG box)
+        const adv = document.getElementById('home-advanced');
+        const advTop = adv ? adv.getBoundingClientRect().top : Infinity;
+        const bottom = Math.min(r.bottom + 14, advTop - 4);
+        return {x: Math.max(0, r.x - 14), y: Math.max(0, r.y - 14),
+                width: r.width + 28, height: bottom - r.top + 14};
+    }""")
+    if not clip:
+        raise RuntimeError("SVG not found — menu not open?")
     p = os.path.join(FRAMES_DIR, f"{name}.png")
-    pg.screenshot(path=p, full_page=False)
+    pg.screenshot(path=p, full_page=False, clip=clip)
     frames.append(p)
     durations.append(dur_ms)
     return p
@@ -100,21 +126,21 @@ def main():
         print("JS ERRORS:", errs[:5])
     b.close(); pw.stop()
 
-    # Assemble the GIF with PIL
+    # Assemble the GIF with PIL. Frames are 2x-DPR captures (~356x352)
+    # with OPAQUE light background -> downscale to 360w with LANCZOS.
     from PIL import Image
-    imgs = []
-    for f in frames:
-        imgs.append(Image.open(f).convert("RGB"))
-    # downscale to 320w to keep the GIF light (390 -> 320)
-    w = 320
+    imgs = [Image.open(f).convert("RGB") for f in frames]
+    w = 360
     rs = getattr(Image, "Resampling", Image)
-    imgs = [im.resize((w, round(im.height * w / im.width)), rs.LANCZOS) for im in imgs]
-    q = [im.quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
-         for im in imgs]
+    imgs = [im.resize((w, round(im.height * w / im.width)), rs.LANCZOS)
+            for im in imgs]
+    q = [im.quantize(colors=128, method=Image.Quantize.FASTOCTREE,
+                     dither=Image.Dither.NONE) for im in imgs]
     # Merge frames pixel-identical to the previous one by extending its
     # duration: keeps every captured step visible at its intended pace
-    # (no optimize=True, which would silently half the sampled animations)
-    # while keeping the file small (static holds become single frames).
+    # (no optimize=True, which would silently half the sampled
+    # animations) while keeping the file small (static holds become
+    # single frames).
     fq, dur = [q[0]], [durations[0]]
     for im, d in zip(q[1:], durations[1:]):
         if im.tobytes() == fq[-1].tobytes():
@@ -122,7 +148,7 @@ def main():
         else:
             fq.append(im)
             dur.append(d)
-    out = os.path.join(OUT, "radial-menu.gif")
+    out = os.path.join(OUT, "radial-menu-cropped.gif")
     fq[0].save(
         out,
         save_all=True,
@@ -131,8 +157,11 @@ def main():
         loop=0,
     )
     total_ms = sum(durations)
-    print(f"saved radial-menu.gif with {len(frames)} frames, {total_ms} ms, "
-          f"{os.path.getsize(out) // 1024} KB")
+    im0 = Image.open(out)
+    print(f"saved radial-menu-cropped.gif with {len(frames)} frames "
+          f"({len(fq)} kept), {total_ms} ms, {im0.size}, "
+          f"{os.path.getsize(out) // 1024} KB, "
+          f"opaque: {im0.convert('RGBA').getchannel('A').histogram()[0] == 0}")
 
 
 if __name__ == "__main__":
