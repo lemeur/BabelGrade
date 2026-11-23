@@ -4,7 +4,7 @@
 The app no longer ships the docs (in-app Docs view was removed in favour of
 this site, 2026-11). Everything the site needs lives in the repo:
   docs/userguide.md, docs/architecture.md, docs/async-jobs.md,
-  docs/ux-audit1.md, README.md (dev docs)  -> markdown pages
+  README.md (dev docs)  -> markdown pages
   docs/assets/**                            -> images
   docs/onepager-fr/**                       -> one-pager (interactive HTML + PDF)
   static/logo.svg + favicon.png             -> branding
@@ -28,7 +28,6 @@ OUT = ROOT / "site"
 DEV_DOCS = {
     "architecture": ROOT / "docs" / "architecture.md",
     "async-jobs": ROOT / "docs" / "async-jobs.md",
-    "ux-audit": ROOT / "docs" / "ux-audit1.md",
     "readme": ROOT / "README.md",
 }
 USER_DOC = ROOT / "docs" / "userguide.md"
@@ -124,7 +123,6 @@ HEAD = """<!doctype html>
       <a href="onepager/onepager.html" {on_one}>One-pager</a>
       <a href="architecture.html" {on_arch}>Architecture</a>
       <a href="async-jobs.html" {on_async}>Async jobs</a>
-      <a href="ux-audit.html" {on_ux}>UX audit</a>
       <a href="readme.html" {on_readme}>README</a>
       <a class="ext" href="https://github.com/lemeur/BabelGrade">GitHub</a>
     </nav>
@@ -164,7 +162,6 @@ def md_to_body(md: str) -> tuple[str, bool]:
     for src, dst in (("docs/userguide.md", "userguide.html"),
                      ("docs/architecture.md", "architecture.html"),
                      ("docs/async-jobs.md", "async-jobs.html"),
-                     ("docs/ux-audit1.md", "ux-audit.html"),
                      ("docs/onepager-fr/onepager.html", "onepager/onepager.html"),
                      ("docs/onepager-fr/onepager.pdf", "onepager/onepager.pdf"),
                      ("README.md", "readme.html"),
@@ -185,8 +182,7 @@ def on(flag: bool) -> str:
 def page(title: str, body: str, has_mermaid: bool, lang: str = "fr", active: str = "") -> str:
     flags = {"home": active == "home", "guide": active == "guide",
              "one": active == "one", "arch": active == "arch",
-             "async": active == "async", "ux": active == "ux",
-             "readme": active == "readme"}
+             "async": active == "async", "readme": active == "readme"}
     return HEAD.format(
         lang=lang,
         title=title,
@@ -195,7 +191,7 @@ def page(title: str, body: str, has_mermaid: bool, lang: str = "fr", active: str
         mermaid_run=MERMAID_RUN if has_mermaid else "",
         on_home=on(flags["home"]), on_guide=on(flags["guide"]),
         on_one=on(flags["one"]), on_arch=on(flags["arch"]),
-        on_async=on(flags["async"]), on_ux=on(flags["ux"]),
+        on_async=on(flags["async"]),
         on_readme=on(flags["readme"]),
     )
 
@@ -231,7 +227,7 @@ def build():
   <a class="card ext-link" href="https://github.com/lemeur/BabelGrade"><span class="ico">🐙</span>
     <h3>Dépôt GitHub</h3><p>Code source, CI, issues — licence MIT.</p></a>
   <a class="card" href="architecture.html"><span class="ico">🧩</span>
-    <h3>Documentation développeurs</h3><p>Architecture, jobs asynchrones, audit UX, README technique.</p></a>
+    <h3>Documentation développeurs</h3><p>Architecture, jobs asynchrones, README technique.</p></a>
 </div>
 """
     (OUT / "index.html").write_text(
