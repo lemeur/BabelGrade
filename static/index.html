@@ -2528,6 +2528,18 @@ function _gmap(which){const L=_GI[LANG];return (L&&L[which])||{};}
 function gName(fr){const m=_gmap('names');return m[fr]!=null?m[fr]:fr;}
 function gGrid(fr){const m=_gmap('grids');return m[fr]!=null?m[fr]:fr;}
 function gDesc(fr){const m=_gmap('descs');return m[fr]!=null?m[fr]:fr;}
+/* One-level descriptor translation. rubParseLevels() strips the leading "C2:"
+   tag, so crit.levels[Lv] is the bare per-level segment (e.g. "comprend sans
+   difficulté…"). We key `lvdescs` on that EXACT segment — identical across two
+   criteria that share a level's wording, so a shared segment maps to one
+   shared translation. Falls back to the original (canonical French) when the
+   UI is FR, the grid is custom, or no translation is present. */
+function gLevelDesc(txt){
+  const t=String(txt||'');
+  if(!t)return t;
+  const m=_gmap('lvdescs');
+  return m[t]!=null?m[t]:t;
+}
 function gGap(fr){const m=_gmap('gaps');return m[fr]!=null?m[fr]:fr;}
 /* Canonical criterion name read from an att-table row. The visible cell shows
    gName(criterion) (translated), but the LLM mapping + counter-proposal +
@@ -2629,6 +2641,9 @@ function applyI18n(){
      display-translated, not [data-i18n]-driven — re-point the visible cells of
      any open report + the eval picker's live cells in the new language. */
   retintReportCrit();
+  /* Mode Évaluation overlay: its level cards show translated descriptors /
+     diffs / gap chips — re-render them in the new language (2026-11-23). */
+  if(typeof EVAL!=='undefined'&&EVAL&&EVAL.open)evRender();
   refreshUploadStatuses();
   refreshMFields();   /* mode-field icon labels + placeholders re-translate (defined lower in the file, but only ever CALLED from here/boot) */
   radialRefreshI18n();   /* home radial menu (2026-10-27 v3): re-render the open crowns in the new language */
@@ -7066,6 +7081,13 @@ function evInlineDiff(sideTxt,centreTxt){
   }
   return html.trim();
 }
+function evLevelDesc(crit,Lv){
+  /* display text of one level's descriptor: the TRANSLATED grid descriptor
+     for the active UI language (gLevelDesc falls back to canonical French on
+     FR / custom grids / missing translations) — the eval cards must follow the
+     UI language like the rest of the attestation sheet (2026-11-23). */
+  return gLevelDesc((crit.levels||{})[Lv]||'');
+}
 function evWide(){
   /* wide viewport → one card per level, the whole A1→C2 scale (desktop, 2026-10-10) */
   return window.matchMedia('(min-width:900px)').matches;
@@ -7089,10 +7111,10 @@ function evRender(){
        shows what it ADDS (green) and what it LACKS vs the centre (red struck),
        so the B1/B2 boundary is legible at a glance. */
     let desc;
-    if(pos==='center')desc=esc((crit.levels||{})[Lv]||'');
+    if(pos==='center')desc=esc(evLevelDesc(crit,Lv));
     else desc=(centerDesc&&(crit.levels||{})[Lv])
-      ?evInlineDiff((crit.levels||{})[Lv],centerDesc)
-      :evSynth((crit.levels||{})[Lv]||'',evWide()?Infinity:170);
+      ?evInlineDiff(evLevelDesc(crit,Lv),centerDesc)
+      :evSynth(evLevelDesc(crit,Lv),evWide()?Infinity:170);
     /* point 6: AI opinion sits on the COLUMN it concerns, not the centre.
        - AI level is this side column  → amber "AI: Lv" badge + "voir la preuve"
        - AI level == centre level     → green "AI ✓ Lv" match badge on the centre */
