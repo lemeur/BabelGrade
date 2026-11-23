@@ -40,6 +40,7 @@ with sync_playwright() as pw:
     pg.on("pageerror", lambda e: errs.append(str(e)))
     login(pg, "fr")
     pg.evaluate("() => { location.hash = '#evaluator'; }")
+    pg.evaluate("typeof pieClose==='function'&&pieClose()")  # close radial menu (default boot view)
     pg.wait_for_timeout(1500)
 
     # markers

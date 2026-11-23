@@ -1462,25 +1462,11 @@ g.g-exit{pointer-events:none}
         <div style="flex:1"><label data-i18n="an.title">Title (optional)</label>
           <input type="text" id="title" data-i18n-ph="ph.title" placeholder="e.g. Bac blanc 2026 - dossier"></div>
       </div>
-      <!-- written inputs -->
+      <!-- written inputs (2026-11-23: photos/text swapped to the shared
+           mode-field engine, like the "Nouveau sujet" editor — compact
+           📷/✏️ icon buttons; photo is the default mode) -->
       <div id="written-panel">
-        <div class="row">
-          <div style="flex:2">
-            <label data-i18n="an.studentText">Student's text (optional if you attach the copy photos)</label>
-            <textarea id="written-text" data-i18n-ph="ph.written" placeholder="Paste the student's written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly."></textarea>
-          </div>
-          <div style="flex:1">
-            <label data-i18n="an.copyPhotos">Copy photos (the model OCRs them directly)</label>
-            <div class="drop" id="drop-image">
-              <b data-i18n="an.dropCopy">Drop photo(s) of the copy</b>
-              <span data-i18n="an.onePerPage">One photo per page, in reading order · png / jpg / webp / heic · or click to browse</span>
-            </div>
-            <input type="file" id="img-file" class="hide" accept="image/*" multiple>
-            <div id="img-thumbs" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
-            <div class="muted" id="img-name" style="margin-top:4px"></div>
-          </div>
-        </div>
-        <div class="muted" style="margin-top:8px" data-i18n="an.textPhotoNote">Text and photos are mutually exclusive: attach the page photos on their own and the model reads the copy directly. If you provide both, the model treats the photos as the ground truth.</div>
+        <div class="mfield" id="mfield-copy"></div>
       </div>
       <!-- oral inputs -->
       <div class="hide" id="oral-panel">
@@ -2172,7 +2158,7 @@ const I18N={
   'an.mode':'Mode','an.title':'Title (optional)','an.titlePh':'e.g. Bac blanc 2026 - dossier',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
   'an.studentTextPh':'Paste the student’s written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly.',
-  'an.copyPhotos':'Copy photos (the model OCRs them directly)','an.dropCopy':'Drop photo(s) of the copy',
+  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.dropCopy':'Drop photo(s) of the copy',
   'an.onePerPage':'One photo per page, in reading order · png / jpg / webp / heic · or click to browse',
   'an.textPhotoNote':'Text and photos are mutually exclusive: attach the page photos on their own and the model reads the copy directly. If you provide both, the model treats the photos as the ground truth.',
   'an.audio':'Audio recording','an.dropAudio':'Drop the student’s recording',
@@ -2260,7 +2246,7 @@ const I18N={
   'an.mode':'Mode','an.title':'Titre (optionnel)','an.titlePh':'ex. Bac blanc 2026 - dossier',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
   'an.studentTextPh':'Collez ici la production écrite de l’élève. Si la copie est manuscrite, vous pouvez à la place joindre les photos des pages ci-contre — le modèle les lit directement.',
-  'an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.dropCopy':'Déposer photo(s) de la copie',
+  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.dropCopy':'Déposer photo(s) de la copie',
   'an.onePerPage':'Une photo par page, dans l’ordre de lecture · png / jpg / webp / heic · ou cliquer pour parcourir',
   'an.textPhotoNote':'Texte et photos sont mutuellement exclusifs : joignez les photos des pages seules et le modèle lit la copie directement. Les deux fournis, le modèle prend les photos comme source de vérité.',
   'an.audio':'Enregistrement audio','an.dropAudio':'Déposer l’enregistrement de l’élève',
@@ -2348,7 +2334,7 @@ const I18N={
   'an.mode':'Modo','an.title':'Título (opcional)','an.titlePh':'p. ej. Bachillerato 2026 - dossier',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
   'an.studentTextPh':'Pega aquí el trabajo escrito del estudiante. Si la copia es manuscrita, puedes adjuntar fotos de las páginas abajo — el modelo las lee directamente.',
-  'an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.dropCopy':'Suelta foto(s) de la copia',
+  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.dropCopy':'Suelta foto(s) de la copia',
   'an.onePerPage':'Una foto por página, en orden de lectura · png / jpg / webp / heic · o haz clic para explorar',
   'an.textPhotoNote':'Texto y fotos son mutuamente excluyentes: adjunta solo las fotos de las páginas y el modelo leerá la copia directamente. Si das ambos, el modelo da la palabra a las fotos.',
   'an.audio':'Grabación de audio','an.dropAudio':'Suelta la grabación del estudiante',
@@ -2436,7 +2422,7 @@ const I18N={
   'an.mode':'Modus','an.title':'Titel (optional)','an.titlePh':'z. B. Mock-BAC 2026 – Dossier',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
   'an.studentTextPh':'Füge hier die schriftliche Arbeit der Schüler:in ein. Wenn das Blatt handschriftlich ist, kannst du stattdessen die Seitenfotos unten anhängen — das Modell liest sie direkt.',
-  'an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.dropCopy':'Fotos des Blatts ablegen',
+  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.dropCopy':'Fotos des Blatts ablegen',
   'an.onePerPage':'Ein Foto pro Seite, in Leseordnung · png / jpg / webp / heic · oder klicken zum Durchsuchen',
   'an.textPhotoNote':'Text und Fotos sind sich gegenseitig ausschließend: hänge nur die Seitenfotos an und das Modell liest das Blatt direkt. Bei beiden behandelt das Modell die Fotos als Quelle.',
   'an.audio':'Audioaufnahme','an.dropAudio':'Aufnahme der Schüler:in ablegen',
@@ -2686,10 +2672,9 @@ function paintFstat(el, text, onRemove, warn){
   if(x)x.onclick=onRemove;
 }
 function refreshUploadStatuses(){
-  try{renderPageThumbs();}catch(e){}
-  /* (2026-10-11) the ad-hoc instruction/doc/eval format panels are now
-     mode-field engine panels — they repaint their own status lines inside
-     mPhotoPanel/mSinglePanel and on refreshMFields(), so no stale paint here. */
+  /* card-3 copy photos are a mode-field engine panel (2026-11-23) — it repaints
+     its own status line inside mPhotoPanel and on refreshMFields(), so no stale
+     paint here (renderPageThumbs was removed with the legacy dropzone). */
   /* student-side single audio (card 3) */
   const an=$('#audio-name');
   paintFstat(an,currentAudio?`${currentAudio.name} (${(currentAudio.size/1e6).toFixed(1)} MB)`:'',
@@ -5331,9 +5316,18 @@ document.addEventListener('click',e=>{
   const b=e.target.closest('.mode-ctrl button[data-mmode]');
   if(b){const id=b.parentElement.id.replace('mctrl-','');setMMode(id,b.dataset.mmode);}
 });
-/* ad-hoc evaluator fields (card 1). Reuse the ORIGINAL input ids + current*
-   state vars so the run / save-as / run-eval handlers keep working unchanged. */
+/* ad-hoc evaluator fields. Reuse the ORIGINAL input ids + current*
+   state vars so the run / save-as / run-eval handlers keep working unchanged.
+   Card 3 "student work" copy field (photo + text) uses the same engine
+   (2026-11-23) — photo is the default mode. */
 function renderAdhocMFields(){
+  /* card 3 written-work: photo / text (like the "Nouveau sujet" editor) */
+  renderMField($('#mfield-copy'),{
+    id:'copy',labelKey:'an.copyWork',modes:['photo','text'],
+    textId:'written-text',phKey:'ph.written',
+    photoInput:'img-file',photoLabel:'an.copyPhotos',
+    getPhotos:()=>currenasgnFiles,setPhotos:a=>currenasgnFiles=a,
+  });
   renderMField($('#mfield-instr'),{
     id:'instr',labelKey:'an.instruction',modes:['photo','pdf','text'],
     textId:'instruction',phKey:'ph.instr',
@@ -5423,44 +5417,16 @@ function renderEvalMField(){
 function ctxAltSync(){ /* legacy disclosure removed — no-op */ }
 function evalNotesSync(){ /* legacy disclosure removed — no-op */ }
 
-/* multi-page photo upload (written copies) — card 3 "student work" (unchanged) */
+/* multi-page photo upload (written copies) — card 3 "student work" is now a
+   mode-field engine panel (2026-11-23): the photo dropzone + thumbs + status
+   are built by mPhotoPanel against the shared `currenasgnFiles` global, so the
+   old inline #drop-image / #img-file / #img-thumbs wiring is gone. naturalFiles
+   stays — the engine's mAddPhotos still sorts/validates through it. */
 function naturalFiles(list){
   const a=[...list];
   a.sort((x,y)=>x.name.localeCompare(y.name,undefined,{numeric:true,sensitivity:'base'}));
   return a;
 }
-function addPageFiles(fileList){
-  let arr=naturalFiles(fileList);
-  if(!arr.length)return;
-  const isImg=f=>/^(image\/(png|jpe?g|webp|gif|bmp|tiff?|heic))$/i.test(f.type);
-  arr=arr.filter(isImg);
-  if(!arr.length)return toast(t('st.photosImages'));
-  currenasgnFiles=currenasgnFiles.concat(arr);
-  renderPageThumbs();
-}
-function renderPageThumbs(){
-  const box=$('#img-thumbs');box.innerHTML='';
-  currenasgnFiles.forEach((f,i)=>{
-    const wrap=document.createElement('div');
-    wrap.style.cssText='position:relative;width:74px';
-    const url=URL.createObjectURL(f);
-    wrap.innerHTML=(`<img src="${url}" alt="page ${i+1}" style="width:74px;height:64px;object-fit:cover;border:1px solid var(--line);border-radius:6px;display:block">`
-      +`<span style="position:absolute;top:2px;left:2px;background:rgba(0,0,0,.72);color:#fff;font-size:10px;font-weight:700;padding:0 5px;border-radius:4px">${i+1}</span>`
-      +`<button data-pgdel="${i}" style="position:absolute;top:2px;right:2px;width:18px;height:18px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:18px;cursor:pointer" title="${t('st.removePage')}">×</button>`);
-    box.appendChild(wrap);
-  });
-  box.querySelectorAll('button[data-pgdel]').forEach(b=>b.onclick=()=>{
-    currenasgnFiles.splice(+b.dataset.pgdel,1);renderPageThumbs();});
-  const n=currenasgnFiles.length;
-  paintFstat($('#img-name'),n?`${n} ${t('st.photosN')}`:'',
-    ()=>{currenasgnFiles.length=0;renderPageThumbs();});
-}
-$('#drop-image').onclick=()=>$('#img-file').click();
-$('#drop-image').ondragover=e=>{e.preventDefault();e.currentTarget.classList.add('over')};
-$('#drop-image').ondragleave=e=>e.currentTarget.classList.remove('over');
-$('#drop-image').ondrop=e=>{e.preventDefault();$('#drop-image').classList.remove('over');
-  addPageFiles(e.dataTransfer.files)};
-$('#img-file').onchange=e=>addPageFiles(e.target.files);
 /* student-side single audio (card 3) — inline wiring: the legacy wireDrop()
    helper was removed with the old ad-hoc panels (2026-10-11). */
 (function(){
@@ -5486,7 +5452,6 @@ $('#img-file').onchange=e=>addPageFiles(e.target.files);
    target + rubric) is deliberately untouched. */
 $('#student').addEventListener('change',function(){
   currenasgnFiles.length=0;
-  renderPageThumbs();
   const tf=$('#img-file');if(tf)tf.value='';
   const wt=$('#written-text');if(wt)wt.value='';
   if(currentAudio){
@@ -5494,6 +5459,9 @@ $('#student').addEventListener('change',function(){
     const af=$('#audio-file');if(af)af.value='';
     refreshUploadStatuses();
   }
+  /* the copy-photo panel (mode-field engine) re-renders its thumbnails from
+     currenasgnFiles; repaint it so the cleared state shows immediately. */
+  refreshMFields();
 });
 
 /* Re-render the mode fields (called at boot + after a language switch so

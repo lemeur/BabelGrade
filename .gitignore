@@ -13,6 +13,8 @@ venv/
 
 # Local test credentials (live-server login) — NEVER commit
 tests/.credentials
+# Temp synthetic photo fixture written by test_student_switch_clears_work.py
+tests/_zia_copy_p1.png
 
 # server logs
 server.log*

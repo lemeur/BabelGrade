@@ -140,6 +140,9 @@ def main():
         #    hidden on the simplified home screen (2026-10-28), so it can't be
         #    the entry point here.
         pg.evaluate("goEvaluate()")
+        # the copy field defaults to photo mode (2026-11-23); #written-text
+        # lives in its text panel — switch to text mode so fill can reach it
+        pg.evaluate("setMMode('copy','text')")
         pg.fill("#written-text", "It was a nice day and we went to the park.")
         pg.select_option("#rubric", "att-exp-ecrite")
         pg.click("#run")

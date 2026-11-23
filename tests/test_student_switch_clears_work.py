@@ -83,16 +83,25 @@ def main():
         ensure_students(pg, A, B)
 
         # --- student A: attach a photo + paste text (written mode) ---
+        # the copy field is a mode-field engine panel; photo is its default mode
+        check("copy field defaults to photo mode",
+              pg.evaluate("document.getElementById('mctrl-copy') && "
+                          "document.querySelector('#mctrl-copy button.on').dataset.mmode") == 'photo')
         set_student(pg, A)
         a_id = pg.evaluate("$('#student').value")
         check("student A selected", bool(a_id))
-        pg.evaluate("""(bytes)=>{
-          const f=new File([new Uint8Array(bytes)],'alice_copy_p1.png',{type:'image/png'});
-          addPageFiles([f]); }""", list(PNG_BYTES))
+        # drive the real engine path: the hidden #img-file input inside the
+        # photo panel; its onchange (mAddPhotos + renderThumbs) does the rest
+        png_path = ROOT / "tests" / "_zia_copy_p1.png"
+        png_path.write_bytes(PNG_BYTES)
+        pg.set_input_files("#img-file", str(png_path))
+        pg.wait_for_timeout(150)
+        # switch to text mode (photo is the default) so fill can reach the
+        # engine-created #written-text textarea
+        pg.evaluate("setMMode('copy','text')")
         pg.fill("#written-text", "ALICE_WORK_TEXT")
-        check("student A: photo attached (1 thumb)",
-              pg.evaluate("document.getElementById('img-thumbs').querySelectorAll('img').length") == 1,
-              "thumbs=" + str(pg.evaluate("document.getElementById('img-thumbs').querySelectorAll('img').length")))
+        n_thumbs = pg.evaluate("document.querySelectorAll('#mpanel-copy-photo .mthumbs .mthumb img').length")
+        check("student A: photo attached (1 thumb)", n_thumbs == 1, "thumbs=" + str(n_thumbs))
         check("student A: currenasgnFiles has 1 file",
               pg.evaluate("currenasgnFiles.length") == 1)
 
@@ -101,7 +110,7 @@ def main():
         b_id = pg.evaluate("$('#student').value")
         check("student B selected (value != A's)", bool(b_id) and b_id != a_id,
               f"a={a_id} b={b_id}")
-        n_thumbs = pg.evaluate("document.getElementById('img-thumbs').querySelectorAll('img').length")
+        n_thumbs = pg.evaluate("document.querySelectorAll('#mpanel-copy-photo .mthumbs .mthumb img').length")
         check("student B: photo CLEARED (0 thumbs)", n_thumbs == 0, "thumbs=" + str(n_thumbs))
         check("student B: currenasgnFiles EMPTY", pg.evaluate("currenasgnFiles.length") == 0)
         check("student B: pasted text CLEARED",
@@ -133,7 +142,11 @@ def main():
         check("no JS console errors", not js_errs, str(js_errs[:3]))
 
     finally:
-        # cleanup throwaway students (no cascade needed — we never submitted)
+        # cleanup: temp photo fixture + throwaway students (no cascade needed)
+        try:
+            (ROOT / "tests" / "_zia_copy_p1.png").unlink(missing_ok=True)
+        except Exception:
+            pass
         for n in (A, B):
             try:
                 pg.evaluate("""async(n)=>{ const list=await (await fetch('/api/students')).json();
