@@ -10,7 +10,7 @@ Shared helpers: app/media.py (uploads/staging), app/config.py (paths+limits).
 import os
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -82,6 +82,19 @@ def create_app() -> FastAPI:
     app.include_router(routes_docs.router)
 
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+    # Cache-busting (2026-11-23): the single-file UI + grid-i18n.js ship new
+    # code on every deploy; a phone that kept a STALE index.html (no
+    # Cache-Control before) showed pre-fix behaviour until a manual hard
+    # refresh. Revalidate every document/static response — the files are tiny
+    # and served locally, so an ETag round-trip is the price of "always fresh".
+    @app.middleware("http")
+    async def no_cache_static(request: Request, call_next):
+        resp = await call_next(request)
+        if request.url.path in ("/",) or request.url.path.startswith("/static/"):
+            resp.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return resp
+
     return app
 
 
