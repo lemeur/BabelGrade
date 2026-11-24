@@ -41,6 +41,44 @@ optional items remain. Verification recipe at the bottom.
    Track regressions with the `scripts/check_word_box_accuracy.py` /
    `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
 
+### UX / a11y audit (2026-11-23) — plan to review 2026-11-24
+
+Full report: `docs/ux-audit-2026-11-23.md` (internal — **not** wired into the
+public GitHub Pages build; screenshots in `docs/ux-audit-1123-assets/`).
+Prism: potentially 3 concurrent sessions (mobile photo + criterion-by-criterion
+validation, desktop management/stats/exports).
+
+- **Wave 1 (P0 bugs + a11y, low effort):** B2 level pill renders EMPTY in the
+  mobile level bottom-sheet when the current level is B2
+  (`.lvl-sheet-btn.on .ls-lv{color:var(--acc)}` overrides `.level.B2`
+  white-on-blue → blue-on-blue); level-pill contrast A1 3.30 / A2 3.74 /
+  B1 2.77 < AA 4.5 (fix: `--lvl-a1 #15803d`, `--lvl-a2 #0f766e`,
+  `--lvl-b1 #0369a1`); modal focus not trapped / not initialized (WCAG 2.4.3);
+  `<html lang>` stuck at `en` under FR/ES/DE UI; 0 `aria-live` (toasts
+  silent); 132 of 430 buttons without accessible name; `outline:none` kills
+  focus visibility on nav + radial sectors; evaluator selects (`#assignment`,
+  `#student`, `#rubric`…) have no associated `<label for>`; required fields
+  signalled by colour-only asterisk.
+- **Wave 2 (a11y structural):** keyboard on the home radial menu (L0 sectors
+  `tabindex=-1` → boot screen unreachable by keyboard); `th scope`/caption on
+  tables; `prefers-reduced-motion` (21 transitions + 7 animations, none
+  honoured).
+- **Wave 3 (desktop ergonomics):** the two near-identical "Analyze with AI" /
+  "Evaluate first" CTAs; 5 icon-only row actions on assignments; wizard
+  stepper vs all-visible-forms mismatch (recommended: relabel as overview
+  with ✓/●/○, no next/back); opaque "Simplifié"/"Données" buttons; Whisper
+  pill shown for written tasks; Sujets table nits.
+- **Wave 4 (mobile ergonomics — design decision):** criterion-by-criterion
+  eval forces landscape (full-screen rotate hint in portrait) — decide
+  whether to add a native portrait layout (1 criterion, 3×2 level grid);
+  photo inputs lack `capture="environment"`; evaluator primary CTA stuck in
+  the header on mobile (no sticky action bar at the bottom); detail page
+  length (essentials not sticky on mobile).
+- **Wave 5 (concurrency for 3 simultaneous users):** SQLite journal_mode is
+  `delete` (→ **WAL** in `init_db` + 3-client load test); LLM job queue
+  `MAX_WORKERS=1` (→ 3–4 after proving SGLang concurrent capacity); UI for
+  "position in queue" on the run chip + Jobs view.
+
 ### Product features (not yet started)
 
 2. **Share corrections & feedback with students via a secure link.** A
