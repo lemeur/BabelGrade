@@ -41,7 +41,7 @@ optional items remain. Verification recipe at the bottom.
    Track regressions with the `scripts/check_word_box_accuracy.py` /
    `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
 
-### UX / a11y audit (2026-11-23) — 5-wave plan (V1 shipped 2026-11-24)
+### UX / a11y audit (2026-11-23) — 5-wave plan (V1 + V5 shipped 2026-11-24; V2–V4 open)
 
 Full report: `docs/ux-audit-2026-11-23.md` (internal — **not** wired into the
 public GitHub Pages build; screenshots in `docs/ux-audit-1123-assets/`).
@@ -77,10 +77,23 @@ validation, desktop management/stats/exports).
   photo inputs lack `capture="environment"`; evaluator primary CTA stuck in
   the header on mobile (no sticky action bar at the bottom); detail page
   length (essentials not sticky on mobile).
-- **Wave 5 (concurrency for 3 simultaneous users):** SQLite journal_mode is
-  `delete` (→ **WAL** in `init_db` + 3-client load test); LLM job queue
-  `MAX_WORKERS=1` (→ 3–4 after proving SGLang concurrent capacity); UI for
-  "position in queue" on the run chip + Jobs view.
+- **Wave 5 (concurrency for 3 simultaneous users) — SHIPPED 2026-11-24:**
+  C1: SQLite `journal_mode=WAL` in `init_db` (persistent) + `busy_timeout=5000`
+  per connection — proven by `tests/test_wal_concurrency.py` (4 readers +
+  3 heavy writers: **0 reader lock errors + ~3.4-4.8× read throughput** vs
+  `delete`, **4/4 PASS**). C2: LLM job queue `MAX_WORKERS` 1 → **3**
+  (`DEFAULT_MAX_WORKERS`, `BABELGRADE_MAX_WORKERS` env override 1..4,
+  priority env > DB > default) — proven safe by a live 3-parallel SGLang
+  probe (~1.6× wall-clock speedup vs serial: SGLang batches). C3: queue
+  position ("n°X") on the Jobs view pills, the follow card, the SSE `meta`
+  events and the header run chip — `db.job_queue_positions()` + `queue_pos`
+  on `job_list`/`GET /api/jobs/{id}`; `jobs.qpos` i18n key ×4.
+  Tests: `tests/test_v5_queue_position.py` (hermetic, 10/10 PASS) +
+  `tests/test_v5_queue_position_ui.py` (live E2E, 2 real analyses, FR).
+  ⚠️ Playwright `request.post` pitfall: `data=` sends a JSON body (right for
+  `set_job_settings(payload: dict)`) but `form=` is required for Form-param
+  endpoints like `/api/analyze` (a `data=` there 422s "valid rubric_id
+  required" — the Form fields arrive empty).
 
 ### Product features (not yet started)
 

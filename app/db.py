@@ -22,6 +22,11 @@ def _conn() -> sqlite3.Connection:
         conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys=ON")
+        # V5 (2026-11-24): busy_timeout=5000ms — a writer holding the single
+        # SQLite write lock (or the WAL write lock) makes every other connection
+        # WAIT up to 5s instead of failing fast with "database is locked".
+        # Per-connection pragma (must be re-asserted on every new connection).
+        conn.execute("PRAGMA busy_timeout=5000")
         _local.conn = conn
     return conn
 
@@ -73,6 +78,22 @@ def _rubric_scoped(alias: str = "r") -> tuple[str, list]:
 def init_db() -> None:
     with _LOCK:
         c = _conn()
+        # V5-C1 (2026-11-24): switch the DB to WAL journal mode — PERSISTENT
+        # (stored in the DB file header, survives restarts; the pragma re-applies
+        # as a no-op once already WAL). WAL lets 3 concurrent sessions READ
+        # freely while ONE writes, with a correct write queue instead of the
+        # whole file being locked for every connection under `delete` mode.
+        # Idempotent + guarded: a read-only / immutable / foreign-locked DB
+        # returns "readonly"/"error" without raising — we log-and-continue.
+        try:
+            jm = c.execute("PRAGMA journal_mode=WAL").fetchone()[0]
+            if jm != "wal":
+                import logging
+                logging.getLogger(__name__).warning(
+                    "BabelGrade: journal_mode is '%s' (WAL requested) — "
+                    "concurrent writes may hit 'database is locked'", jm)
+        except sqlite3.Error:
+            pass
         # 2026-10-13 multi-user: users + sessions tables (created FIRST so
         # the owner backfill below can reference the initial account).
         c.executescript(
@@ -1700,6 +1721,18 @@ def job_get(job_id: int) -> dict | None:
     return d
 
 
+def job_queue_positions() -> dict:
+    """V5-C3 (2026-11-24): map queued job id -> 1-based position (oldest=1).
+
+    The queue is global (job_claim_next is not owner-scoped), so positions are
+    global. Let 3 simultaneous users see "job n°X, waiting" in the Jobs view,
+    the live follow card, and the run chip."""
+    with _LOCK:
+        qids = [r[0] for r in _conn().execute(
+            "SELECT id FROM jobs WHERE status='queued' ORDER BY id")]
+    return {jid: i for i, jid in enumerate(qids, 1)}
+
+
 def job_list(status: str = "", limit: int = 100) -> list[dict]:
     q = ("SELECT j.*, sub.title AS submission_title, sub.kind AS submission_kind, "
          "r.name AS rubric_name, st.name AS student_name "
@@ -1732,6 +1765,10 @@ def job_list(status: str = "", limit: int = 100) -> list[dict]:
             except Exception:
                 d["payload"] = None
         out.append(d)
+    # V5-C3: annotate queued jobs with their 1-based queue position.
+    pos = job_queue_positions() if any(d.get("status") == "queued" for d in out) else {}
+    for d in out:
+        d["queue_pos"] = pos.get(d["id"]) if d.get("status") == "queued" else None
     return out
 
 

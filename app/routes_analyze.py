@@ -191,8 +191,16 @@ async def _job_events(job_id: int):
             # terminal state while waiting, fall through to the DB
             # rebuild below (the 15-minute in-memory log replay also
             # covers it).
-            for _ in range(60):  # up to ~15 s
-                await asyncio.sleep(0.25)
+            # V5-C3 follow-up: a QUEUED job's stream only exists once
+            # run_job claims it, so this wait can last minutes. Keep the
+            # SSE stream OPEN the whole time and re-emit the prelude meta
+            # (fresh status / queue_pos / times) when the position
+            # changes — the follow card and the run chip stay live.
+            # Claimed jobs reach `stream is not None` on the first poll
+            # (unchanged behaviour); terminal states exit the same way
+            # as the old loop did.
+            last_meta_sig = None
+            while True:
                 j2 = db.job_get(job_id)
                 if j2 is None:
                     raise HTTPException(404, "job not found")
@@ -202,6 +210,23 @@ async def _job_events(job_id: int):
                 stream = jobs.get_stream(job_id)
                 if stream is not None:
                     break
+                await asyncio.sleep(0.25)
+                j2 = db.job_get(job_id)
+                qpos_c = (db.job_queue_positions().get(job_id)
+                          if j2.get("status") == "queued" else None)
+                sig = (j2["status"], qpos_c, j2.get("started_at"),
+                       j2.get("finished_at"), j2.get("elapsed_s"))
+                if sig != last_meta_sig:
+                    last_meta_sig = sig
+                    yield ev("meta", {"job_id": job_id, "kind": j2["kind"],
+                                      "status": j2["status"], "phase": None,
+                                      "created_at": j2.get("created_at"),
+                                      "started_at": j2.get("started_at"),
+                                      "finished_at": j2.get("finished_at"),
+                                      "elapsed_s": j2.get("elapsed_s"),
+                                      "submission_id": j2.get("submission_id"),
+                                      "analysis_id": j2.get("analysis_id"),
+                                      "queue_pos": qpos_c})
         if stream is not None:
             # The claim (started_at written) may have happened mid-wait —
             # re-read so the prelude meta below carries real times.
@@ -214,6 +239,10 @@ async def _job_events(job_id: int):
         started = job_row.get("started_at")
         finished = job_row.get("finished_at")
         elapsed = job_row.get("elapsed_s")
+        # V5-C3: the job's position in the live queue (1-based, oldest first)
+        # so a user watching a queued job knows it is "n°X, waiting".
+        qpos = (db.job_queue_positions().get(job_id)
+                if job_row.get("status") == "queued" else None)
         if stream is not None:
             # DB prelude: the job's real timeline (created/started/
             # finished/elapsed). Replayed AFTER the in-memory log, so it
@@ -224,7 +253,8 @@ async def _job_events(job_id: int):
                               "finished_at": finished,
                               "elapsed_s": elapsed,
                               "submission_id": job_row.get("submission_id"),
-                              "analysis_id": job_row.get("analysis_id")})
+                              "analysis_id": job_row.get("analysis_id"),
+                              "queue_pos": qpos})
             q = stream.subscribe()
             try:
                 while True:
@@ -249,7 +279,8 @@ async def _job_events(job_id: int):
                               "finished_at": finished,
                               "elapsed_s": elapsed,
                               "submission_id": job_row.get("submission_id"),
-                              "analysis_id": job_row.get("analysis_id")})
+                              "analysis_id": job_row.get("analysis_id"),
+                              "queue_pos": qpos})
             if job_row["status"] == "done" and job_row.get("analysis_id"):
                 a = db.get_analysis(job_row["analysis_id"])
                 if a:

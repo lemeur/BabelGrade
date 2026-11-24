@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import threading
 import time
 from pathlib import Path
@@ -39,11 +40,23 @@ def _media():
 
 
 # --------------------------------------------------------------------- settings
-DEFAULT_MAX_WORKERS = 1
+# V5-C2 (2026-11-24): default raised 1 -> 3. Three concurrent "Analyze with AI"
+# jobs used to SERIALIZE (the 3rd waited 3-4 min). Proven safe: a live SGLang
+# probe (3 parallel chat requests) showed ~1.6x wall-clock speedup vs serial,
+# i.e. SGLang batches them. Override with BABELGRADE_MAX_WORKERS (1..4) — e.g.
+# drop to 1 on a memory-constrained box or raise to 4 once capacity is proven.
+DEFAULT_MAX_WORKERS = 3
 MAX_WORKERS_CAP = 4
 
 
 def max_workers() -> int:
+    # Priority: BABELGRADE_MAX_WORKERS env > stored DB setting > default.
+    env = os.environ.get("BABELGRADE_MAX_WORKERS")
+    if env:
+        try:
+            return max(1, min(int(env), MAX_WORKERS_CAP))
+        except (TypeError, ValueError):
+            pass
     try:
         v = int(db.get_setting("max_workers", str(DEFAULT_MAX_WORKERS)) or DEFAULT_MAX_WORKERS)
     except (TypeError, ValueError):

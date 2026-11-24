@@ -280,9 +280,10 @@ with TestClient(app, raise_server_exceptions=True) as client:
     # D. job plumbing: counts / get payload / cancel / 404
     # =======================================================================
     r = client.get("/api/jobs/counts")
-    check("job counts: at least 3 jobs, max_workers 1",
+    # V5: default max_workers is 3 (was 1) — this hermetic suite does not set it.
+    check("job counts: at least 3 jobs, max_workers 3",
           r.status_code == 200 and r.json()["counts"].get("done", 0) >= 3
-          and r.json()["max_workers"] == 1,
+          and r.json()["max_workers"] == 3,
           json.dumps(r.json()))
     r = client.get(f"/api/jobs/{j1}")
     check("get_job returns the stored payload (rubric_id round-trip)",

@@ -91,7 +91,7 @@ with sync_playwright() as pw:
     pg.evaluate("""(v)=>{const b=document.querySelector('#nav button[data-view="assignments"]');if(b)b.click();}""", None)
     pg.wait_for_timeout(500)
     try: pg.evaluate("pieClose()")
-    except: pass
+    except Exception: pass  # best-effort cleanup if the pie is closed
     pg.click("[data-assignview]")
     pg.wait_for_selector("#assignment-detail-overlay:not(.hide)", state="visible")
     pg.wait_for_timeout(300)  # allow rAF trap to run

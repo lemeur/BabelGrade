@@ -33,6 +33,9 @@ def get_job(job_id: int):
                                  "elapsed_s", "error", "cancel_flag")}
     out["job_id"] = j["id"]
     out["payload"] = j.get("payload")
+    # V5-C3: queue position (queued jobs only)
+    out["queue_pos"] = (db.job_queue_positions().get(job_id)
+                        if j.get("status") == "queued" else None)
     return out
 
 @router.post("/api/jobs/{job_id}/cancel")
