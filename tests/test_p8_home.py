@@ -7,8 +7,10 @@ crowns, innermost = the 3 verbs) OPENS BY DEFAULT; the rectangular
 "Mode avancé" back-door button stays below the menu, ACTIVE even while the
 menu is open (z-71 > backdrop z-70), and the hero title is NOT dimmed.
 centred on #home-anchor. Each submenu level = an outer crown confined to
-the selected parent's angular sector. Wheel/arrows cycle the outermost
-level, Enter executes, Esc closes (a ghost re-open pill appears).
+the selected parent's angular sector. Wheel/arrows move a SINGLE LINEAR
+CURSOR through the leaves (tibo 2026-11-24): rien → S(v) → S(v,0) → … →
+S(v,dernier) → S(v+1,0) → …, rétrograde symétrique ; Enter executes,
+Esc closes (a ghost re-open pill appears).
 
 Covers (desktop 1280, FR; then 390px mobile):
 - boot: #home hash, home view visible, menu OPEN with L0 only (3 verbs FR:

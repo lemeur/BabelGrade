@@ -3216,12 +3216,38 @@ function pieClose(){
 }
 function rCycle(d){
   const levels=rChain();
+  const sel0=levels[0].sel;
+  const n0=levels[0].items.length;
   const active=levels.length-1;
-  const n=levels[active].items.length;
-  const cur=RST.sel[active];
-  /* rien de sélectionné (sous-menu fraîchement ouvert) → la molette SÉLECTIONNE
-     l'item 0 (sens ↓) ou N-1 (sens ↑) ; sinon on cycle normalement. */
-  RST.sel[active]=(cur==null)?((d>=0)?0:n-1):(cur+d+n)%n;
+  const sel1=(active>=1)?levels[active].sel:null;
+  const sub=(sel0!=null)?RADIAL_MENU[sel0].sub:null;
+  const n1=sub?sub.length:0;
+  /* Navigation en CURSEUR LINÉAIRE UNIQUE (tibo 2026-11-24) : le curseur
+     parcourt les feuilles dans l'ordre — verbe → ses items → verbe suivant
+     + 1er item… — et rétrograde symétriquement. Cela résout le bug de
+     l'ancien rCycle : une fois dans le sous-menu, les flèches cycler
+     seulement les items L1 et ne montaient jamais au verbe suivant →
+     on était coincé. S(v) (verbe sans item, atteint au clic) : ↓→S(v,0),
+     ↑→S(v-1, dernier). Le P8 reste respecté : 1er appui = verbe +
+     sous-couronne (sans item), 2e appui = 1er item. */
+  if(d>=0){
+    /* FORWARD : rien→S(0) ; S(v)→S(v,0) ; S(v,i)→S(v,i+1) ; au dernier
+       item S(v,dernier)→S(v+1,0) (verbe suivant + 1er item). */
+    if(sel0==null)       RST.sel=[0,null];
+    else if(sel1==null)  RST.sel=[sel0,0];
+    else if(sel1<n1-1)   RST.sel=[sel0,sel1+1];
+    else                 RST.sel=[(sel0+1)%n0,0];
+  }else{
+    /* BACKWARD : rien→S(N-1) ; S(v)→S(v-1,dernier) ; S(v,i)→S(v,i-1) ;
+       au 1er item S(v,0)→S(v-1,dernier) (verbe précédent + dernier item). */
+    if(sel0==null){ RST.sel=[n0-1,null]; }
+    else{
+      const prev=(sel0-1+n0)%n0;
+      if(sel1==null)  RST.sel=[prev,RADIAL_MENU[prev].sub.length-1];
+      else if(sel1>0) RST.sel=[sel0,sel1-1];
+      else            RST.sel=[prev,RADIAL_MENU[prev].sub.length-1];
+    }
+  }
   rRender();
 }
 function rPick(level,i){
