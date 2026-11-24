@@ -41,7 +41,7 @@ optional items remain. Verification recipe at the bottom.
    Track regressions with the `scripts/check_word_box_accuracy.py` /
    `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
 
-### UX / a11y audit (2026-11-23) — 5-wave plan (V1 + V2 + V5 shipped 2026-11-24; V3–V4 open)
+### UX / a11y audit (2026-11-23) — 5-wave plan (V1 + V2 + V3 + V4 + V5 shipped 2026-11-24)
 
 Full report: `docs/ux-audit-2026-11-23.md` (internal — **not** wired into the
 public GitHub Pages build; screenshots in `docs/ux-audit-1123-assets/`).
@@ -112,12 +112,47 @@ validation, desktop management/stats/exports).
   7 `td.*` keys as object keys → `test_p0_state_i18n_js.py` now counts key
   DEFINITIONS within the I18N slice only (whole-file counts would over-count
   consumer usages).
-- **Wave 4 (mobile ergonomics — design decision):** criterion-by-criterion
-  eval forces landscape (full-screen rotate hint in portrait) — decide
-  whether to add a native portrait layout (1 criterion, 3×2 level grid);
-  photo inputs lack `capture="environment"`; evaluator primary CTA stuck in
-  the header on mobile (no sticky action bar at the bottom); detail page
-  length (essentials not sticky on mobile).
+- **Wave 4 (mobile ergonomics) — SHIPPED 2026-11-24:** M1 decision = ADD the
+  native portrait layout (tibo's "valider sur le vif" use: one hand holds the
+  phone, the other taps a level). M1/V4.1: criterion-by-criterion eval now
+  renders a NATIVE portrait layout on a coarse-pointer phone held portrait —
+  1 criterion full-screen, the 6 levels A1..C2 as one 3×2 grid of big tappable
+  buttons (`#eval.ev-port .ev-port-grid .ev-lvl-btn[data-pick]`), the entered
+  level's descriptor in a compact scrollable panel below (`.ev-port-desc`),
+  `eval.pdEmpty` i18n ×4. `evPort()` (coarse + portrait) is the 3rd render mode
+  alongside `evWide()` (≥900px scale) and the 3-col; the forced-rotate hint is
+  now suppressed when `evPort()` (it effectively never shows), and the resize +
+  `orientationchange` handler re-renders on a genuine mode crossing (`_evWasMode`
+  port|wide|cols). Landscape phones (<900px) keep the 3-col layout, desktops the
+  6-wide scale. M2: `capture="environment"` on the copy/instruction/doc photo
+  inputs (camera-first; some browsers drop the gallery option — accepted, copies
+  are live-shot in class; source docs can also be PDF/text). M3: `.card.an-actions`
+  sticky-bottom on the evaluator form under 760px (CTAs one thumb away at any
+  scroll position). M4: detail-page essentials sticky — the `.att-ess`
+  attestation band is now sticky under the header on mobile. **M4 root cause
+  (the real bug):** `overflow-x:hidden` on `body` made body the vertical scroll
+  container and silently KILLED `position:sticky` for both the header and the
+  band; moved to `html` only. Plus the header height is VIEW-DEPENDENT (mobile
+  home 59px, nav views 86px after flex-wrap reflow, desktop detail 103px), so a
+  hardcoded sticky `top` was wrong in at least one view → new `syncHdrH()`
+  publishes the measured header height as `--hdr-h` on `:root` (called from
+  `navApplyView` home/evaluator/main branches + `bootApp`, plus a
+  `ResizeObserver` on the header), and `.att-ess{top:var(--hdr-h,59px)}`. The
+  band is card-bounded (pins under the header while the attestation card is on
+  screen, then scrolls with it — matches desktop `.att-ess`). M4 also folds the
+  long oral transcript behind a `<details open>` card (open by default = nothing
+  hidden, just foldable on mobile; consistent with the copy-text `<details>`
+  card). Tests: `tests/test_ux_wave4.py` (16/16 PASS live mobile 390 portrait +
+  landscape 844 + desktop 1280 FR) + `tests/test_p7_eval_exit.py` REWRITTEN for
+  the native portrait (P1–P4 now assert hint-off + 6-button grid + grid-pick +
+  save-persists; landscape/desktop exit-bar/discard/back-swipe semantics
+  unchanged → 18/18 PASS). Regression re-confirmed: P8 57/57, linear-cursor
+  27/27, wave1/2, wave3 25/25, P1-wizard, P6-ststats, P2-mobile, P0-i18n 4×4,
+  grid-i18n, WAL 4/4. **P7 pitfall (resume 2026-11-24):** the `/api/analyses`
+  list is newest-first, so an in-flight `queued` attestation (no level yet, no
+  `.att-card`) can sit at the top — `find_target` must filter
+  `status==='done' && overall_level` or `open_eval` times out on the missing
+  card.
 - **Wave 5 (concurrency for 3 simultaneous users) — SHIPPED 2026-11-24:**
   C1: SQLite `journal_mode=WAL` in `init_db` (persistent) + `busy_timeout=5000`
   per connection — proven by `tests/test_wal_concurrency.py` (4 readers +
