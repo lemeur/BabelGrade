@@ -317,7 +317,7 @@ with sync_playwright() as p:
     check("Enter on 'Directe': evaluator form + ad-hoc context boxes visible",
           pg.evaluate("location.hash") == "#evaluator"
           and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')")
-          and pg.evaluate("!document.querySelector('#assignment-inherited').classList.contains('hide')===false"
+          and pg.evaluate("document.querySelector('#assignment-edit-row').classList.contains('hide')"
                           " && document.querySelector('#context-panel').style.display!=='none'"))
     check("menu closed after Enter",
           not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
@@ -363,7 +363,7 @@ with sync_playwright() as p:
           pg.evaluate("location.hash") == "#evaluator"
           and not pg.evaluate("document.querySelector('#view-analyze').classList.contains('hide')")
           and pg.evaluate("document.querySelector('#assignment').value!==''")
-          and pg.evaluate("!document.querySelector('#assignment-inherited').classList.contains('hide')"))
+          and pg.evaluate("!document.querySelector('#assignment-edit-row').classList.contains('hide')"))
     check("menu closed after 'Sur sujet'",
           not pg.evaluate("document.querySelector('#pie-wrap').classList.contains('open')"))
     # back to home, then the Directe branch

@@ -483,20 +483,13 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted
 .mfield textarea{width:100%;box-sizing:border-box}
 /* compact status line used inside a mode panel */
 .mstat{margin-top:6px;font-size:12.5px}
-/* ---- compact task card (inherited task materials) ---- */
-.assignment-card{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--acc);
-  border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 16px;margin:12px 0 0}
-.assignment-card .tc-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.assignment-card .tc-name{font-size:15.5px;font-weight:800}
-.assignment-card .tc-res{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+/* ---- resource badges (Sujets list + detail modal) ---- */
 .res{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;background:var(--acc-soft);
   color:var(--acc);border-radius:999px;padding:3px 10px;font-weight:600}
 /* P3.1: Sujets resource badges — localized label (+count), tooltip on hover */
 .res-badge{display:inline-block;font-size:12px;font-weight:600;color:var(--acc);
   background:var(--acc-soft);border-radius:999px;padding:2px 9px;cursor:help;
   white-space:nowrap}
-.assignment-card .tc-preview{max-height:150px;overflow:auto;background:#f8fafc;border:1px solid var(--line);
-  border-radius:8px;padding:10px 12px;font-size:13.5px;white-space:pre-wrap;margin-top:10px}
 /* ---- level: inherited vs override ---- */
 .lvl-block{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .lvl-block .lvl-opt{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--ink);
@@ -1480,8 +1473,10 @@ g.g-exit{pointer-events:none}
       <label for="assignment" data-i18n="an.assignment">Assignment (instruction + source document)</label>
       <select id="assignment"><option value="">— ad-hoc —</option></select>
 
-      <!-- inherited compact task card (shown when a task is selected) -->
-      <div class="assignment-card hide" id="assignment-inherited"></div>
+      <!-- compact edit link (shown when a task is selected) -->
+      <div class="hide" id="assignment-edit-row" style="margin-top:10px">
+        <button class="btn sm ghost" id="assignment-edit-btn">✎ <span data-i18n="an.editSubject">Edit this subject</span></button>
+      </div>
 
       <!-- ad-hoc inline context (shown when no task). Each field is a mode controller:
      inline 📷 Photo / 📄 PDF / ✏️ Texte icons; the active icon opens its input
@@ -2333,7 +2328,7 @@ const I18N={
   'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.advBackTip':'Back to the home screen (simplified mode with the radial menu)','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
-  'an.assignment':'Assignment (instruction + source document)','an.adhoc':'— ad-hoc (define the context below) —',
+  'an.assignment':'Assignment (instruction + source document)','an.editSubject':'Edit this subject','an.adhoc':'— ad-hoc (define the context below) —',
   'an.instruction':'Instruction (given to students)','an.docText':'Source document (text)',
   'an.instrPhotos':'…or photo(s) of the assignment','an.instrPdf':'…or upload the instruction as PDF',
   'an.docPhotos':'…or photo(s) of the document','an.docPdf':'…or upload the source document as PDF',
@@ -2363,8 +2358,6 @@ const I18N={
   'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.',
   'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.title':'New evaluation','wiz.s1':'Assignment','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.advOpts':'Advanced options','wiz.evalNotes':'Evaluation instructions (optional)',
 'tip.att':'Attests a CEFR level (A1\u2013C2) from the official /120 grid (B.O. LVA/LVB). It is a recommendation \u2014 the teacher makes the final call.','tip.modalite':'Modality = whether the assessment covers comprehension or expression. The official point thresholds differ between the two.','tip.note20':'Hand-entered /20 mark. Reference only \u2014 the attested level is never computed from the /20.','tip.vsTarget':'Compares the attested level with the target level of the assignment.','tip.aiCol':'AI opinion per criterion: \u2713 if it matches your level, \u2260 if it differs.','tip.just':'AI justification + verbatim quotes from the production (evidence).','tip.points':'Points out of 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Overall level computed from the /120 grid (official thresholds).','tip.critGrid':'The six official sub-scores (comprehension or expression) make up the /120 total; the level is read from the official B.O. grid.',
-  'an.tInherit':'Stored assignment materials are used for this analysis (photos, PDFs and audio included).',
-  'an.showContent':'Show the instruction & document','an.hideContent':'Hide',
   'an.assignmentTarget':'Assignment target','an.overrideDiff':'differs from the assignment',
   'an.savedMedia':'stored assignment materials were sent to the model',
   'mode.written':'Written','mode.oral':'Oral','mode.photo':'Photo','mode.pdf':'PDF','mode.text':'Text','mode.audio':'Audio',
@@ -2421,7 +2414,7 @@ const I18N={
   'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.advBackTip':'Retour à l’écran d’accueil (mode simplifié avec le menu radial)','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique','home.evOnSubject':'Sur sujet','home.evDirect':'Directe','home.prepImportClass':'Importer une classe (photos)',
   'menu.export':'Exporter les élèves (CSV)','menu.import':'Importer les élèves (CSV)','menu.reset':'Réinitialiser la base','menu.wipe':'Réinit. + effacer les fichiers','menu.confirmWipe':'RÉINITIALISER la base ET supprimer tous les fichiers stockés (photos, audio, PDFs) dans data/uploads/ ?\n\nTous les élèves, productions et analyses seront effacés. Irréversible.','menu.confirmReset':'RÉINITIALISER la base ?\n\nTous les élèves, productions et analyses seront effacés (fichiers stockés conservés sur disque). Irréversible.',
   'an.1':'Qu’est-ce qu’on évalue ?','an.2':'Élève & niveau cible','an.3':'Le travail de l’élève','an.4':'Paramètres d’évaluation','an.otherFormats':'Autres formats d’entrée (photos / PDF / audio)','an.rubricNote':'La grille définit les critères notés par l’IA (et le rapport que vous relirez).',
-  'an.assignment':'Sujet (la consigne + le document source)','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
+  'an.assignment':'Sujet (la consigne + le document source)','an.editSubject':'Modifier ce sujet','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
   'an.instruction':'Consigne (donnée aux élèves)','an.docText':'Document source (texte)',
   'an.instrPhotos':'…ou photo(s) de la consigne','an.instrPdf':'…ou déposer la consigne en PDF',
   'an.docPhotos':'…ou photo(s) du document','an.docPdf':'…ou déposer le document source en PDF',
@@ -2451,8 +2444,6 @@ const I18N={
   'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.',
   'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.title':'Nouvelle évaluation','wiz.s1':'Sujet','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.advOpts':'Options avancées','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
 'tip.att':'Atteste un niveau CECRL (A1\u2013C2) à partir de la grille officielle /120 (B.O. LVA/LVB). C’est une recommandation \u2014 l’enseignant tranche en dernier.','tip.modalite':'Modalité = la compétence évaluée : réception (compréhension) ou production (expression). Les seuils de points officiels diffèrent selon la modalité.','tip.note20':'Note /20 saisie à la main. À titre de référence uniquement \u2014 le niveau attesté ne se calcule jamais à partir du /20.','tip.vsTarget':'Compare le niveau attesté avec le niveau cible du sujet.','tip.aiCol':'Avis IA par critère : \u2713 s’il coïncide avec votre niveau, \u2260 s’il diffère.','tip.just':'Justification de l’IA + citations littérales de la production (preuves).','tip.points':'Points sur 120 : A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Niveau global calculé sur la grille /120 (seuils officiels).','tip.critGrid':'Les six sous-critères officiels (réception ou production) composent le /120 ; le niveau se lit sur la grille B.O. officielle.',
-  'an.tInherit':'Les ressources stockées du sujet sont utilisées pour cette analyse (photos, PDF et audio inclus).',
-  'an.showContent':'Afficher la consigne & le document','an.hideContent':'Masquer',
   'an.assignmentTarget':'Niveau du sujet','an.overrideDiff':'diffère du sujet',
   'an.savedMedia':'les ressources stockées du sujet ont été envoyées au modèle',
   'mode.written':'Écrit','mode.oral':'Oral','mode.photo':'Photo','mode.pdf':'PDF','mode.text':'Texte','mode.audio':'Audio',
@@ -2509,7 +2500,7 @@ const I18N={
   'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.advBackTip':'Volver a la pantalla de inicio (modo simplificado con el menú radial)','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial','home.evOnSubject':'Sobre una tarea','home.evDirect':'Directa','home.prepImportClass':'Importar clase (fotos)',
   'menu.export':'Exportar estudiantes (CSV)','menu.import':'Importar estudiantes (CSV)','menu.reset':'Reiniciar la base de datos','menu.wipe':'Reiniciar + borrar archivos','menu.confirmWipe':'¿REINICIAR la base de datos Y borrar todos los archivos guardados (fotos, audio, PDFs) en data/uploads/?\n\nSe borrarán todos los estudiantes, producciones y análisis. No se puede deshacer.','menu.confirmReset':'¿REINICIAR la base de datos?\n\nSe borrarán todos los estudiantes, producciones y análisis (los archivos guardados se conservan en disco). No se puede deshacer.',
   'an.1':'¿Qué estamos evaluando?','an.2':'Estudiante y nivel objetivo','an.3':'El trabajo del estudiante','an.4':'Ajustes de evaluación','an.otherFormats':'Otros formatos de entrada (fotos / PDF / audio)','an.rubricNote':'La rúbrica define los criterios que la IA puntuará (y el informe que revisarás).',
-  'an.assignment':'Tarea (consigna + documento fuente)','an.adhoc':'— ad hoc (definir el contexto abajo) —',
+  'an.assignment':'Tarea (consigna + documento fuente)','an.editSubject':'Editar esta tarea','an.adhoc':'— ad hoc (definir el contexto abajo) —',
   'an.instruction':'Consigna (dada a los estudiantes)','an.docText':'Documento fuente (texto)',
   'an.instrPhotos':'…o foto(s) de la consigna','an.instrPdf':'…o sube la consigna en PDF',
   'an.docPhotos':'…o foto(s) del documento','an.docPdf':'…o sube el documento fuente en PDF',
@@ -2539,8 +2530,6 @@ const I18N={
   'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.',
   'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.title':'Nueva evaluación','wiz.s1':'Tarea','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.advOpts':'Opciones avanzadas','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
 'tip.att':'Certifica un nivel MCER (A1–C2) a partir de la cuadrícula oficial /120 (B.O. LVA/LVB). Es una recomendación: el docente toma la decisión final.','tip.modalite':'Modalidad = si la evaluación cubre comprensión o expresión. Los umbrales de puntos oficiales difieren entre ambas.','tip.note20':'Nota /20 introducida a mano. Solo como referencia: el nivel certificado nunca se calcula a partir del /20.','tip.vsTarget':'Compara el nivel certificado con el nivel objetivo de la tarea.','tip.aiCol':'Opinión IA por criterio: ✓ si coincide con su nivel, ≠ si difiere.','tip.just':'Justificación de la IA + citas literales de la producción (pruebas).','tip.points':'Puntos sobre 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Nivel global calculado sobre la cuadrícula /120 (umbrales oficiales).','tip.critGrid':'Los seis subcriterios oficiales (comprensión o expresión) componen el /120; el nivel se lee en la rejilla oficial B.O.',
-  'an.tInherit':'Se usan los materiales guardados de la tarea para esta evaluación (fotos, PDFs y audio incluidos).',
-  'an.showContent':'Mostrar la consigna y el documento','an.hideContent':'Ocultar',
   'an.assignmentTarget':'Nivel de la tarea','an.overrideDiff':'difiere de la tarea',
   'an.savedMedia':'los materiales guardados de la tarea se enviaron al modelo',
   'mode.written':'Escrito','mode.oral':'Oral','mode.photo':'Foto','mode.pdf':'PDF','mode.text':'Texto','mode.audio':'Audio',
@@ -2597,7 +2586,7 @@ const I18N={
   'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.advBackTip':'Zurück zur Startansicht (Vereinfachter Modus mit Radialmenü)','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf','home.evOnSubject':'Zu einer Aufgabe','home.evDirect':'Direkt','home.prepImportClass':'Klasse importieren (Fotos)',
   'menu.export':'Schüler:innen CSV exportieren','menu.import':'Schüler:innen CSV importieren','menu.reset':'Datenbank zurücksetzen','menu.wipe':'Zurücksetzen + Dateien löschen','menu.confirmWipe':'DATENBANK ZURÜCKSETZEN und alle gespeicherten Dateien (Fotos, Audio, PDFs) in data/uploads/ löschen?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht. Das kann nicht rückgängig gemacht werden.','menu.confirmReset':'DATENBANK ZURÜCKSETZEN?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht (gespeicherte Dateien bleiben auf der Platte). Das kann nicht rückgängig gemacht werden.',
   'an.1':'Was bewerten wir?','an.2':'Schüler:in & Zielstufe','an.3':'Die Arbeit der Schüler:in','an.4':'Bewertungseinstellungen','an.otherFormats':'Weitere Eingabeformate (Fotos / PDF / Audio)','an.rubricNote':'Die Rubrik bestimmt die Kriterien, die die KI bewertet (und den Bericht, den Sie prüfen werden).',
-  'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
+  'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.editSubject':'Diese Aufgabe bearbeiten','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
   'an.instruction':'Anleitung (für die Schüler:innen)','an.docText':'Quelldokument (Text)',
   'an.instrPhotos':'…oder Foto(s) des Auftrags','an.instrPdf':'…oder Anleitung als PDF hochladen',
   'an.docPhotos':'…oder Foto(s) des Dokuments','an.docPdf':'…oder Quelldokument als PDF hochladen',
@@ -2627,8 +2616,6 @@ const I18N={
   'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.',
   'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.title':'Neue Bewertung','wiz.s1':'Aufgabe','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.advOpts':'Erweiterte Optionen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
 'tip.att':'Attestiert ein GER-Niveau (A1–C2) aus dem offiziellen /120-Raster (B.O. LVA/LVB). Es ist eine Empfehlung — die Lehrkraft entscheidet letztinstanzlich.','tip.modalite':'Modalität = ob die Bewertung Rezeption (Verstehen) oder Produktion (Ausdrücken) betrifft. Die offiziellen Punkteschwellen unterscheiden sich.','tip.note20':'Von Hand eingetragene Note von 20. Nur als Referenz — das attestierte Niveau wird niemals aus der /20 berechnet.','tip.vsTarget':'Vergleicht das attestierte Niveau mit dem Zielniveau der Aufgabe.','tip.aiCol':'KI-Meinung pro Kriterium: ✓ bei Übereinstimmung mit Ihrer Stufe, ≠ bei Abweichung.','tip.just':'KI-Begründung + wörtliche Zitate aus der Produktion (Belege).','tip.points':'Punkte von 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Gesamtstufe, berechnet aus dem /120-Raster (offizielle Schwellen).','tip.critGrid':'Die sechs offiziellen Teilpunkte (Rezeption oder Produktion) ergeben die 120; die Stufe wird aus dem offiziellen B.O.-Raster abgelesen.',
-  'an.tInherit':'Die gespeicherten Materialien der Aufgabe werden für diese Bewertung verwendet (Fotos, PDFs und Audio eingeschlossen).',
-  'an.showContent':'Anleitung & Dokument anzeigen','an.hideContent':'Ausblenden',
   'an.assignmentTarget':'Ziel der Aufgabe','an.overrideDiff':'weicht von der Aufgabe ab',
   'an.savedMedia':'die gespeicherten Materialien der Aufgabe wurden an das Modell gesendet',
   'mode.written':'Geschrieben','mode.oral':'Mündlich','mode.photo':'Foto','mode.pdf':'PDF','mode.text':'Text','mode.audio':'Audio',
@@ -4532,37 +4519,18 @@ function resBadges(items){
     return `<span class="res-badge" title="${esc(full)}">${esc(full)}</span>`;
   }).join(' ');
 }
-/* compact inherited-assignment card: replaces the greyed-out form when a task is selected */
+/* compact "edit subject" row: shown (instead of the full card) when a task is
+   selected; also hides the bottom "Save as assignment" button — a selected
+   subject IS already a saved subject, so the button is meaningless there. */
 function renderAssignmentInherited(){
-  const box=$('#assignment-inherited'), ctx=$('#context-panel');
+  const row=$('#assignment-edit-row'), ctx=$('#context-panel');
   const sel=$('#assignment').value;
   const tk=sel?ASSIGNMENTS.find(x=>String(x.id)===sel):null;
-  if(!tk){box.classList.add('hide');box.innerHTML='';ctx.style.display='';return;}
+  const saveBtn=$('#save-assignment');
+  if(!tk){row.classList.add('hide');ctx.style.display='';if(saveBtn)saveBtn.style.display='';return;}
   ctx.style.display='none';
-  const res=resBadges(resOf(tk));
-  const instr=esc(tk.instruction||'').slice(0,400);
-  const doc=esc(tk.document_text||'').slice(0,400);
-  const sk=asgnSkillOf(tk), kd=asgnKindOf(tk);
-  const typePill=(sk||kd)?`<span class="pill skill k-${kd||'unknown'}">${sk?esc(t('skill.'+sk))+' · ':''}${kd?esc(t('mode.'+kd)):''}</span>`:'';
-  box.classList.remove('hide');
-  box.innerHTML=`
-    <div class="tc-head">
-      <span style="font-size:18px">📋</span>
-      <span class="tc-name">${esc(tk.name)}</span>
-      ${typePill}
-      ${tk.target_level?levelPill(tk.target_level):''}
-      <span class="muted">${tk.submission_count!=null?tk.submission_count+' submissions · ':''}${esc((tk.created_at||'').slice(0,10))}</span>
-      <button class="btn sm ghost" id="ti-details" style="margin-left:auto">👁</button>
-      <button class="btn sm ghost" id="ti-clear" title="${t('an.adhoc')}">↪</button>
-    </div>
-    <div class="tc-res">${res}
-      <span class="muted">→ ${t('an.tInherit')}</span></div>
-    <details style="margin-top:10px">
-      <summary style="cursor:pointer;color:var(--acc);font-size:13.5px;font-weight:600">${t('an.showContent')}</summary>
-      <div class="tc-preview">${(tk.instruction?'<b>In</b>\n'+instr:'')+(tk.document_text?'\n— — —\n<b>Document</b>\n'+doc:'')||'<i>—</i>'}</div>
-    </details>`;
-  $('#ti-details').onclick=()=>openAssignmentDetail(tk.id);
-  $('#ti-clear').onclick=()=>{$('#assignment').value='';syncAssignmentForm();};
+  if(saveBtn)saveBtn.style.display='none';
+  row.classList.remove('hide');
   syncLevelUI();
 }
 /* target level: inherit from assignment vs override per student */
@@ -4682,6 +4650,12 @@ function syncAssignmentForm(){
   }
 }
 $('#assignment').addEventListener('change',syncAssignmentForm);
+/* "Edit this subject" (card 1, on-subject mode): open the shared subject
+   editor for the selected assignment. */
+$('#assignment-edit-btn').addEventListener('click',()=>{
+  const tk=selectedAssignment();
+  if(tk)openAssignmentEditor(tk.id);
+});
 $('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;updateLvlDiff();});
 $('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;updateLvlDiff();});
 $('#target-override').addEventListener('change',updateLvlDiff);
