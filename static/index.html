@@ -12,9 +12,12 @@
   --acc:#2563eb; --acc-soft:#eff6ff; --ok:#16a34a; --warn:#d97706; --err:#dc2626;
   /* point 7: 6 distinct CEFR level shades — green (A) → blue (B) → purple (C),
      so B1 vs B2 and C1 vs C2 read differently, not just by the letter */
-  --lvl-a1:#16a34a; --lvl-a2:#0d9488; --lvl-b1:#0ea5e9;
+  /* 2026-11-23 a11y (Wave 1): A1/A2/B1 darkened to *-700 shades so the white
+     12.5px/700 pill text passes WCAG AA (4.5:1). Before: 3.30 / 3.74 / 2.77.
+     After: 5.02 / 5.47 / 5.93 (B2/C1/C2 already passed). */
+  --lvl-a1:#15803d; --lvl-a2:#0f766e; --lvl-b1:#0369a1;
   --lvl-b2:#2563eb; --lvl-c1:#7c3aed; --lvl-c2:#4c1d95;
-  --b1:#0ea5e9; --b2:#2563eb; --c1:#7c3aed; --a:#94a3b8;
+  --b1:#0369a1; --b2:#2563eb; --c1:#7c3aed; --a:#94a3b8;
   --radius:12px; --shadow:0 1px 3px rgba(16,24,40,.08),0 1px 2px rgba(16,24,40,.04);
 }
 *{box-sizing:border-box}
@@ -133,6 +136,13 @@ input[type=text],input[type=search],textarea,select{width:100%;padding:9px 11px;
   border-radius:8px;font:inherit;background:#fff;color:inherit}
 textarea{min-height:120px;resize:vertical}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--acc-soft);border-color:var(--acc)}
+/* 2026-11-23 a11y (Wave 1): keyboard focus was INVISIBLE on buttons/links
+   (no :focus-visible rule anywhere; several components set outline:none).
+   Global :focus-visible ring on every interactive element — mouse users never
+   see it (focus-visible only fires for keyboard), keyboard users do.
+   SVG .rsvg sectors keep their own rule below (drop-shadow ring). */
+button:focus-visible,a:focus-visible,[tabindex="0"]:focus-visible{outline:2px solid var(--acc);
+  outline-offset:2px;border-radius:6px}
 .row{display:flex;gap:14px}.row>*{flex:1}
 /* P3.2 (2026-10-15): Students toolbar label spans — hidden on desktop
    (icon-only + tooltip), shown on phones via the 760px media query. */
@@ -191,6 +201,13 @@ button.btn:disabled{opacity:.5;cursor:wait}
    the box's min-content and push the × past the 390px viewport. */
 .tfr-cur span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hide{display:none!important}
+/* 2026-11-23 a11y (Wave 1, bonus from Wave 2): honour prefers-reduced-motion —
+   kill all CSS animations/transitions for users who ask for it (the rotate-hint
+   spinning icon, the fan-out/sector transitions, .req-flash glow, etc.). */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
 /* Roster photo import (2026-11-08): photo thumbnails in the modal dropzone
    + the editable review rows (compact inputs, first/last split). */
 #roster-overlay .r-photos{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
@@ -717,7 +734,11 @@ table.conv-tab thead td.conv-bd{font-weight:700}
 .lvl-sheet-btn .ls-lv{font-size:18px;font-weight:800}
 .lvl-sheet-btn .ls-pts{font-size:11px;color:var(--muted)}
 .lvl-sheet-btn.on{border-color:var(--acc);background:var(--acc-soft);outline:2px solid var(--acc);outline-offset:-2px}
-.lvl-sheet-btn.on .ls-lv{color:var(--acc)}
+/* 2026-11-23 a11y (Wave 1): removed the old `.lvl-sheet-btn.on .ls-lv{color:var(--acc)}` —
+   it painted the pill text with the accent colour while the .level.<Lv> background kept
+   its own shade, so the SELECTED B2 pill rendered blue text on its blue background
+   (invisible label). The .on state is already signalled by border + outline + acc-soft
+   background; the text stays the .level white (#fff, AA on all 6 shades). */
 .lvl-sheet-btn.clear{min-height:40px;font-size:13px;font-weight:600;color:var(--muted)}
 /* the report table itself: pill + hidden select on mobile */
 .att-table .lvl-cell{min-width:56px}
@@ -1180,6 +1201,11 @@ body.home-active #menu-data-wrap{display:none}
 .rsvg .sector:hover path{fill:#dbeafe}
 .rsvg .sector.sel-inner path{fill:var(--acc-soft);stroke:var(--acc)}
 .rsvg .sector.selected path{fill:var(--acc);stroke:var(--acc)}
+/* 2026-11-23 a11y (Wave 1): visible keyboard focus ring on radial sectors
+   (was outline:none — invisible). A drop-shadow ring on the path, which works
+   for the donut sector shape (a plain outline would follow the bbox, not the
+   arc). Same on the centre close button's circle. */
+.rsvg .sector:focus-visible path{stroke:var(--acc);stroke-width:3;filter:drop-shadow(0 0 4px rgba(37,99,235,.6))}
 .rsvg .sector:focus{outline:none}
 .rsvg .sector text{pointer-events:none}
 .rsvg .sector .lbl{fill:var(--ink);font-weight:600}
@@ -1187,6 +1213,9 @@ body.home-active #menu-data-wrap{display:none}
 .rsvg .center circle{fill:var(--panel);stroke:var(--line);
   filter:drop-shadow(0 3px 10px rgba(15,23,42,.25));transition:fill .12s ease;cursor:pointer}
 .rsvg .center:hover circle{fill:var(--acc-soft)}
+/* 2026-11-23 a11y (Wave 1): visible keyboard focus ring on the radial centre
+   button (was outline:none). */
+.rsvg .center:focus-visible circle{stroke:var(--acc);stroke-width:3;filter:drop-shadow(0 0 4px rgba(37,99,235,.5))}
 .rsvg .center:focus{outline:none}
 .rsvg .center text{pointer-events:none}
 .rsvg .center .center-logo{pointer-events:none}
@@ -1335,7 +1364,7 @@ g.g-exit{pointer-events:none}
     <!-- point 9: background-analysis chip — visible from EVERY view while an
          analysis runs (click → back to the Analyze view) -->
     <div class="run-chip-wrap hide" id="run-chip-wrap">
-      <button class="run-badge" id="run-chip"><span class="dot"></span><span id="run-chip-label">…</span></button>
+      <button class="run-badge" id="run-chip"><span class="dot"></span><span id="run-chip-label" aria-live="polite">…</span></button>
     </div>
     <div class="badges">
       <span class="badge" id="badge-llm"><span class="dot"></span>LLM…</span>
@@ -1382,7 +1411,7 @@ g.g-exit{pointer-events:none}
     <!-- 1 · WHAT -->
     <div class="card" id="what-panel">
       <h2><span class="step-num">1</span><span data-i18n="an.1">What are we assessing?</span></h2>
-      <label data-i18n="an.assignment">Assignment (instruction + source document)</label>
+      <label for="assignment" data-i18n="an.assignment">Assignment (instruction + source document)</label>
       <select id="assignment"><option value="">— ad-hoc —</option></select>
 
       <!-- inherited compact task card (shown when a task is selected) -->
@@ -1403,13 +1432,13 @@ g.g-exit{pointer-events:none}
     <div class="card" id="who-panel">
       <h2><span class="step-num">2</span><span data-i18n="an.2">Student & target level</span></h2>
       <div class="row">
-        <div style="max-width:340px"><label data-i18n="an.student">Student</label>
+        <div style="max-width:340px"><label for="student" data-i18n="an.student">Student</label>
           <select id="student"><option value="">&mdash; none &mdash;</option></select></div>
       </div>
       <!-- P1.1 options avancées: accommodations hidden behind a <details> -->
       <details class="opts-panel" style="margin-top:10px">
         <summary data-i18n="wiz.advOpts">Advanced options</summary>
-        <label data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
+        <label for="accommodations" data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
         <textarea id="accommodations" rows="2" data-i18n-ph="ph.accom" placeholder="e.g. The student is dyslexic &mdash; do not count spelling mistakes as harshly."></textarea>
       </details>
       <!-- target level: inherited (from task) vs override (per student) -->
@@ -1450,7 +1479,7 @@ g.g-exit{pointer-events:none}
 
     <!-- 3 · WORK -->
     <div class="card" id="work-panel">
-      <h2><span class="step-num">3</span><span data-i18n="an.3">The student's work</span><span class="req">*</span></h2>
+      <h2><span class="step-num">3</span><span data-i18n="an.3">The student's work</span><span class="req" aria-hidden="true">*</span></h2>
       <div class="row" style="align-items:flex-end;margin-bottom:6px">
         <div style="flex:0 0 auto">
           <label data-i18n="an.mode">Mode</label>
@@ -1459,7 +1488,7 @@ g.g-exit{pointer-events:none}
             <button data-kind="oral" data-i18n="mode.oral">Oral</button>
           </div>
         </div>
-        <div style="flex:1"><label data-i18n="an.title">Title (optional)</label>
+        <div style="flex:1"><label for="title" data-i18n="an.title">Title (optional)</label>
           <input type="text" id="title" data-i18n-ph="ph.title" placeholder="e.g. Bac blanc 2026 - dossier"></div>
       </div>
       <!-- written inputs (2026-11-23: photos/text swapped to the shared
@@ -1470,7 +1499,7 @@ g.g-exit{pointer-events:none}
       </div>
       <!-- oral inputs -->
       <div class="hide" id="oral-panel">
-        <label data-i18n="an.audio">Audio recording</label>
+        <label for="audio-file" data-i18n="an.audio">Audio recording</label>
         <div class="drop" id="drop-audio">
           <b data-i18n="an.dropAudio">Drop the student's recording</b>
           <span data-i18n="an.audioFormats">wav / mp3 / m4a / ogg / opus / flac · max 100 MB · or click to browse</span>
@@ -1478,7 +1507,7 @@ g.g-exit{pointer-events:none}
         <input type="file" id="audio-file" class="hide" accept="audio/*,video/mp4">
         <div class="muted" id="audio-name" style="margin-top:6px"></div>
         <div class="row" style="max-width:340px;margin-top:12px">
-          <div><label data-i18n="an.studentLanguage">Student language</label>
+          <div><label for="language" data-i18n="an.studentLanguage">Student language</label>
             <select id="language">
               <option value="en" selected>English (verify)</option>
               <option value="">Auto-detect</option>
@@ -1499,8 +1528,8 @@ g.g-exit{pointer-events:none}
       <!-- the rubric is the single most impactful choice for the report: it
            defines the whole output. It now leads the card (UX audit 2026-10-03
            pt.1) instead of sitting beside a text area. -->
-      <label data-i18n="an.rubric" data-i18n-suffix="1" style="font-size:13px">Rubric<span class="req">*</span></label>
-      <select id="rubric" style="max-width:560px"></select>
+      <label for="rubric" data-i18n="an.rubric" data-i18n-suffix="1" style="font-size:13px">Rubric<span class="req" aria-hidden="true">*</span></label>
+      <select id="rubric" aria-required="true" aria-describedby="req-note" style="max-width:560px"></select>
       <div id="rubric-hint" class="muted hide" style="margin-top:4px;font-size:12.5px"></div>
       <div class="muted" style="margin-top:4px" data-i18n="an.rubricNote">The rubric defines the criteria the AI will grade (and the report you'll review).</div>
       <!-- P1.1 options avancées: evaluation notes (long tail) behind a <details> -->
@@ -1512,7 +1541,7 @@ g.g-exit{pointer-events:none}
     </div>
 
     <div class="card an-actions" style="text-align:right;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
-      <div class="muted" style="flex:1 1 100%;order:5;font-size:12.5px;text-align:left;margin-top:2px" data-i18n="an.reqNote"></div>
+      <div class="muted" id="req-note" style="flex:1 1 100%;order:5;font-size:12.5px;text-align:left;margin-top:2px" data-i18n="an.reqNote"></div>
       <button class="btn ghost" style="order:1" id="save-assignment" title="Save the assignment context (instruction / document / evaluation instructions) currently in this form as a reusable assignment">💾 <span data-i18n="an.saveAsAssignment">Save as assignment</span></button>
       <button class="btn" style="order:2" id="run" data-i18n="an.run">Analyze submission</button>
       <button class="btn" style="order:3;background:#1d4ed8" id="run-eval" data-i18n="an.runEval">Evaluate first</button>
@@ -1789,7 +1818,7 @@ g.g-exit{pointer-events:none}
 
 </main>
 
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- confirm dialog (delete / purge, cascade checkbox) -->
 <div id="confirm-overlay" class="hide">
@@ -2067,6 +2096,99 @@ let KIND='written', RUBRICS=[], currenasgnFiles=[], currentAudio=null, currentDo
     currentInstrPhotos=[], currentDocPhotos=[], currentEvalPdf=null;
 let ASSIGNMENTS=[], TDB=null, HIST_SEL=null, _histDebounce=null, _histPendingStudent='', _histPendingAid=null, _histPendingAssignment='';
 let asgnEditId=null, _confirmResolve=null, _detailSub=null, _detailAid=null;
+
+/* ================================================================
+   a11y Wave 1 (2026-11-23): modal focus trap.
+   Every fullscreen / modal overlay must (a) move keyboard focus INTO the
+   dialog when it opens and (b) keep Tab / Shift+Tab cycling within it while
+   open, then restore focus to the trigger on close (WCAG 2.1.2 / 2.4.3).
+   Before this, focus stayed on the page behind the overlay and Tab walked
+   the background DOM (measured: 6×Tab never entered the assignment-detail
+   modal).
+
+   Open/close detection is DELEGATED to a MutationObserver on the 7 overlay
+   containers — no call-site instrumentation. The two visibility mechanisms
+   in this file are `.hide` (class, the .modal-overlay set) and the `hidden`
+   attribute (#eval, #annot); #lvl-sheet flips its own `.show` class.
+   ================================================================ */
+const FOCUS_TRAP = {
+  classSel: '#confirm-overlay,#roster-overlay,#assignment-detail-overlay,#save-assignment-overlay,#assignment-edit-overlay,#job-json-overlay,#lvl-sheet',
+  attrSel:  '#eval,#annot',
+  _raf: 0, _prevFocus: null,
+  isOn(el){
+    if(!el) return false;
+    if(el.hasAttribute('hidden')) return false;
+    if(el.classList.contains('hide')) return false;
+    if(el.id==='lvl-sheet') return el.classList.contains('show');
+    const cs=getComputedStyle(el);
+    return cs.display!=='none';
+  },
+  activeSet(){
+    const out=[];
+    document.querySelectorAll(this.classSel+' '+this.attrSel).forEach(el=>{ if(this.isOn(el)) out.push(el); });
+    return out;
+  },
+  focusable(root){
+    return Array.from(root.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))
+      .filter(el=>el.offsetParent!==null);
+  },
+  top(){
+    const s=this.activeSet();
+    if(!s.length) return null;
+    const top=s.reduce((a,b)=>{
+      const za=parseInt(getComputedStyle(a).zIndex,10)||0, zb=parseInt(getComputedStyle(b).zIndex,10)||0;
+      return zb>za?b:(za>zb?a:(a===document.querySelector(this.attrSel)?a:b));
+    },s[0]);
+    return top;
+  },
+  update(){
+    const s=this.activeSet(), top=this.top();
+    const prevTop = this._lastTop;
+    if(s.length && !prevTop){ this._prevFocus=document.activeElement; }
+    this._lastTop = top;
+    if(!top) return;
+    const f=this.focusable(top);
+    const cur=document.activeElement;
+    const inTop = top.contains(cur);
+    if(!inTop){
+      const el = f[0] || top;
+      try{ el.focus({preventScroll:true}); }catch(e){}
+    }
+    /* restore focus to the trigger when the LAST overlay closes */
+    if(!s.length && this._prevFocus && this._prevFocus!==document.body && this._prevFocus.offsetParent!==undefined){
+      /* only restore if that element is still in the DOM and visible */
+      if(document.contains(this._prevFocus)) { try{ this._prevFocus.focus({preventScroll:true}); }catch(e){} }
+      this._prevFocus=null;
+    }
+  },
+  _schedule(){
+    if(this._raf) return;
+    this._raf = requestAnimationFrame(()=>{ this._raf=0; this.update(); });
+  },
+};
+(function initFocusTrap(){
+  const obs = new MutationObserver(()=>FOCUS_TRAP._schedule());
+  document.querySelectorAll(FOCUS_TRAP.classSel+' '+FOCUS_TRAP.attrSel).forEach(el=>{
+    obs.observe(el, {childList:true, subtree:true, attributes:true, attributeFilter:['class','hidden','style']});
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key!=='Tab') return;
+    const top = FOCUS_TRAP.top();
+    if(!top) return;
+    const f = FOCUS_TRAP.focusable(top);
+    if(!f.length){ e.preventDefault(); return; }
+    const cur = document.activeElement;
+    let i = f.indexOf(cur);
+    if(e.shiftKey){
+      const next = i<=0 ? f[f.length-1] : f[i-1];
+      next.focus({preventScroll:true}); e.preventDefault();
+    } else {
+      const next = i===-1 ? f[0] : (i===f.length-1 ? f[0] : f[i+1]);
+      next.focus({preventScroll:true}); e.preventDefault();
+    }
+  }, true);
+})();
+
 
 /* ================================================================
    i18n — EN / FR
@@ -2567,7 +2689,7 @@ function applyI18n(){
   $$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
   /* P0.5: labels marked data-i18n-suffix get a required-field asterisk
      re-appended after the [data-i18n] pass above rewrites their text. */
-  $$('[data-i18n-suffix]').forEach(el=>{const s=document.createElement('span');s.className='req';s.textContent='*';el.appendChild(s);});
+  $$('[data-i18n-suffix]').forEach(el=>{const s=document.createElement('span');s.className='req';s.setAttribute('aria-hidden','true');s.textContent='*';el.appendChild(s);});
   $$('[data-i18n-ph]').forEach(el=>{el.placeholder=t(el.dataset.i18nPh);});
   // dynamic option labels that can't be static
   const asgnSel=$('#assignment');if(asgnSel&&asgnSel.options[0])asgnSel.options[0].textContent=t('an.adhoc');
@@ -5294,6 +5416,9 @@ function renderMField(host,cfg){
   host.innerHTML='';host.dataset.mfield=cfg.id;
   const row=document.createElement('div');row.className='mrow';
   const lab=document.createElement('label');lab.textContent=t(cfg.labelKey);
+  /* 2026-11-23 a11y (Wave 1): associate the label with the engine-created text
+     textarea so the field has an accessible name (was an unlabelled label). */
+  if(cfg.textId)lab.setAttribute('for',cfg.textId);
   const ctrl=document.createElement('div');ctrl.className='mode-ctrl';ctrl.id='mctrl-'+cfg.id;
   const modes=cfg.modes||['photo','pdf','text'];
   modes.forEach(md=>{
