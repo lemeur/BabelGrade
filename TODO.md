@@ -41,28 +41,31 @@ optional items remain. Verification recipe at the bottom.
    Track regressions with the `scripts/check_word_box_accuracy.py` /
    `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
 
-### UX / a11y audit (2026-11-23) — plan to review 2026-11-24
+### UX / a11y audit (2026-11-23) — 5-wave plan (V1 shipped 2026-11-24)
 
 Full report: `docs/ux-audit-2026-11-23.md` (internal — **not** wired into the
 public GitHub Pages build; screenshots in `docs/ux-audit-1123-assets/`).
 Prism: potentially 3 concurrent sessions (mobile photo + criterion-by-criterion
 validation, desktop management/stats/exports).
 
-- **Wave 1 (P0 bugs + a11y, low effort):** B2 level pill renders EMPTY in the
-  mobile level bottom-sheet when the current level is B2
-  (`.lvl-sheet-btn.on .ls-lv{color:var(--acc)}` overrides `.level.B2`
-  white-on-blue → blue-on-blue); level-pill contrast A1 3.30 / A2 3.74 /
-  B1 2.77 < AA 4.5 (fix: `--lvl-a1 #15803d`, `--lvl-a2 #0f766e`,
-  `--lvl-b1 #0369a1`); modal focus not trapped / not initialized (WCAG 2.4.3);
-  `<html lang>` stuck at `en` under FR/ES/DE UI; 0 `aria-live` (toasts
-  silent); 132 of 430 buttons without accessible name; `outline:none` kills
-  focus visibility on nav + radial sectors; evaluator selects (`#assignment`,
-  `#student`, `#rubric`…) have no associated `<label for>`; required fields
-  signalled by colour-only asterisk.
+- ✅ **Wave 1 (P0 bugs + a11y, low effort) — SHIPPED 2026-11-24, commit `af33fe0`:**
+  all 8 items fixed in `static/index.html` + `tests/test_a11y_wave1.py`
+  (**22/22 PASS** live). Fixed: B2 level pill empty in the mobile bottom-sheet
+  (removed `.lvl-sheet-btn.on .ls-lv{color:var(--acc)}`); level-pill contrast
+  A1/A2/B1 → `#15803d`/`#0f766e`/`#0369a1` (now AA); modal focus trap
+  (`FOCUS_TRAP` helper + MutationObserver on the 7 overlays, Tab cycling +
+  focus restore on close); `<html lang>` follows the UI language;
+  `role=status`/`aria-live` on `#toast` + `#run-chip-label`; `<label for>` on
+  the 7 evaluator fields + `aria-required` on `#rubric`; global
+  `:focus-visible` rings (incl. radial sectors/centre, replacing the invisible
+  `outline:none`); required fields now also signalled textually via
+  `aria-describedby="req-note"` (the i18n `.reqNote`, which gained
+  `id="req-note"`); bonus Wave-2 item: `@media (prefers-reduced-motion)` kills
+  all animations/transitions.
 - **Wave 2 (a11y structural):** keyboard on the home radial menu (L0 sectors
   `tabindex=-1` → boot screen unreachable by keyboard); `th scope`/caption on
-  tables; `prefers-reduced-motion` (21 transitions + 7 animations, none
-  honoured).
+  tables. ~~`prefers-reduced-motion`~~ — ✅ already done as a Wave-1 bonus
+  (commit `af33fe0`, `@media (prefers-reduced-motion: reduce)` in the global CSS).
 - **Wave 3 (desktop ergonomics):** the two near-identical "Analyze with AI" /
   "Evaluate first" CTAs; 5 icon-only row actions on assignments; wizard
   stepper vs all-visible-forms mismatch (recommended: relabel as overview
