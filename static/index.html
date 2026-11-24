@@ -292,6 +292,14 @@ button.btn.ai:disabled{opacity:.55;cursor:default}
 .wiz-chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .wiz-chip{font-size:12px;font-weight:600;color:var(--muted);background:#fff;border:1.5px solid var(--line);
   border-radius:999px;padding:4px 11px;cursor:pointer}
+/* V3-D3 (2026-11-24): the stepper is now a HONEST SUMMARY — the form is one
+   continuous scroll (all 4 panels stay visible), so the chips report
+   COMPLETION state instead of a fake wizard:
+   ○ = empty · ✓ = filled · ● = current scroll position (.on overrides all).
+   CSS-only marks (::before content) so textContent stays clean for tests. */
+.wiz-chip.empty::before{content:"○ "}
+.wiz-chip.done::before{content:"✓ "}
+.wiz-chip.on::before{content:"● "}.wiz-chip.on.done,.wiz-chip.on.empty::before{content:"● "}
 .wiz-chip:hover{border-color:var(--acc);color:var(--acc)}
 .wiz-chip.done{border-color:#94a3b8;color:#334155}
 .wiz-chip.done::before{content:"✓ "}
@@ -512,8 +520,23 @@ tr[data-sub].sel td:first-child,tr[data-sub]:focus-visible td:first-child{box-sh
   font-weight:600;cursor:pointer;margin-left:8px;vertical-align:middle}
 #hist-assignment-chip:hover{filter:brightness(.97)}
 /* clickable Submissions count in the Assignments table */
+/* V3-D2 (2026-11-24): the 5 row actions were a ragged 2×2+1 cluster —
+   now ONE regular line. The td keeps its table-cell display (display:flex
+   on a td would break row alignment); white-space:nowrap stops the
+   inline-block .btn buttons from wrapping, so the column simply grows to
+   fit 5 × 34px. Icon-only + tooltip stays the desktop convention
+   (aria-label ×4 i18n in the template). */
+#assignments td.asg-actions{white-space:nowrap}
+#assignments td.asg-actions .btn{display:inline-block;min-width:34px;padding:4px 0;text-align:center}
+/* V3-D5 (2026-11-24): the dotted "scrolls" affordance used to CRIPPLE the
+   digits (clipped at the box edge) — the button grows on hover instead, so
+   the dotted underline sits on clear padding around the number. */
 .subslink{text-decoration:underline dotted;text-underline-offset:2px}
-.subslink:hover{background:var(--acc-soft)}
+.subslink:hover{background:var(--acc-soft);text-decoration:none;padding:3px 6px;border-radius:6px}
+/* V3-D4 (2026-11-24): the Whisper pill is context-dependent — for a WRITTEN
+   task it must not imply anything is being transcribed; .badge.muted dims it
+   (set by syncWhisperPill() from the Mode toggle, not by the view). */
+.badge.muted{opacity:.55}
 /* assignment stats view (2026-10-11): per-class tables + gaussian level bars */
 #asgd-stats .stat-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
 .stat-class{background:var(--panel);border:1px solid var(--line);border-radius:12px;
@@ -1337,7 +1360,7 @@ g.g-exit{pointer-events:none}
       <input type="file" id="menu-import-file" accept=".csv,text/csv" style="display:none">
     </nav>
     <div class="hdr-controls">
-      <button class="btn sm" id="hdr-home" style="flex:0 0 auto" title="Mode simplifié"><span>◂</span><span class="lbl" data-i18n="home.advBack"> Simplified</span></button>
+      <button class="btn sm" id="hdr-home" style="flex:0 0 auto" data-i18n-title="home.advBackTip"><span>◂</span><span class="lbl" data-i18n="home.advBack"> Simplified</span></button>
       <button class="btn sm" id="hdr-evaluate" style="flex:0 0 auto" data-i18n="hdr.evaluate">✍️ Evaluate</button>
       <div class="menu">
         <button class="lang-tgl" id="lang-tgl"><span class="flag" id="lang-flag">🇬🇧</span></button>
@@ -1352,7 +1375,7 @@ g.g-exit{pointer-events:none}
         </div>
       </div>
       <div class="menu" id="menu-data-wrap">
-        <button id="menu-data-btn">⚙ <span data-i18n="nav.data">Data</span></button>
+        <button id="menu-data-btn" data-i18n-title="nav.dataTip">⚙ <span data-i18n="nav.data">Data</span></button>
         <div class="menu-list hide" id="menu-data">
           <button data-act="export" data-i18n="menu.export">Export students CSV</button>
           <button data-act="import" data-i18n="menu.import">Import students CSV</button>
@@ -1544,8 +1567,8 @@ g.g-exit{pointer-events:none}
     <div class="card an-actions" style="text-align:right;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
       <div class="muted" id="req-note" style="flex:1 1 100%;order:5;font-size:12.5px;text-align:left;margin-top:2px" data-i18n="an.reqNote"></div>
       <button class="btn ghost" style="order:1" id="save-assignment" title="Save the assignment context (instruction / document / evaluation instructions) currently in this form as a reusable assignment">💾 <span data-i18n="an.saveAsAssignment">Save as assignment</span></button>
-      <button class="btn" style="order:2" id="run" data-i18n="an.run">Analyze submission</button>
-      <button class="btn" style="order:3;background:#1d4ed8" id="run-eval" data-i18n="an.runEval">Evaluate first</button>
+      <button class="btn" style="order:2" id="run" data-i18n="an.run" data-i18n-title="an.runTip">Analyze submission</button>
+      <button class="btn ghost" style="order:3" id="run-eval" data-i18n="an.runEval" data-i18n-title="an.runEvalTip">Evaluate first</button>
     </div>
 
     <div class="card hide" id="work">
@@ -2264,8 +2287,8 @@ function wireAuth(){
 }
 const I18N={
  en:{
-  'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.jobs':'Jobs',
-  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
+  'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.dataTip':'Data: export / import students (CSV), reset the database','nav.jobs':'Jobs',
+  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.advBackTip':'Back to the home screen (simplified mode with the radial menu)','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
   'an.assignment':'Assignment (instruction + source document)','an.adhoc':'— ad-hoc (define the context below) —',
@@ -2290,7 +2313,7 @@ const I18N={
   'an.rubric':'Rubric','an.evalNotes':'Evaluation instructions',
   'an.evalNotesPh':'e.g. The student must have understood the ironic tone of the text. The closing must be polite.',
   'an.evalPdf':'…or upload the evaluation instructions as PDF','an.evalNotesHelp':'Tell the model what to check in this specific work — each point is verified one by one with cited evidence.',
-  'an.saveAsAssignment':'Save as assignment','an.run':'Analyze with the AI','an.runEval':'Evaluate first','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.reqNote':'Required: a rubric and the student’s work below (text or photo for written, audio for oral).','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
+  'an.saveAsAssignment':'Save as assignment','an.run':'Analyze with the AI','an.runEval':'Evaluate first','an.runTip':'AI analysis of this submission (level per criterion + attestation + draft feedback).','an.runEvalTip':'Evaluate first, yourself: the AI pre-fills a level per criterion from the evidence — you decide each one.','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.reqNote':'Required: a rubric and the student’s work below (text or photo for written, audio for oral).','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
   'ai.col':'AI','ai.banner':'AI analysis (optional)','ai.bannerAfter':'You evaluated first. Run the AI now: it will confirm your levels or propose its own, and add its feedback.','ai.bannerAiFirst':'The AI already ran. You can re-run it anytime — the new opinion replaces the previous one.',
   'lvl.clear':'Clear',
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
@@ -2328,7 +2351,7 @@ const I18N={
   'assignments.fileLocked':'(locked while editing)','assignments.fileCur':'Current file:','assignments.fileRem':'Remove this file','assignments.fileRestore':'Restore this file',
   'assignments.list':'Assignments','assignments.editBtn':'Save changes','assignments.empty':'No assignments yet — use “New assignment” or “Save as assignment” in the evaluator.',
   'asgn.name':'Name','asgn.level':'Level','asgn.resources':'Resources','asgn.subs':'Submissions','asgn.since':'Since','asgn.subsTitle':'View the productions of this assignment in Evaluations','asgn.details':'👁 Details','asgn.use':'▶ Use','asgn.edit':'✎','asgn.del':'✕','asgn.type':'Type','asgn.all':'— all —','asgn.emptyFiltered':'No assignments match the filter.','asgn.stats':'📊 Stats — results analysis of this assignment','rub.emptyFiltered':'No rubrics match the filter.','st.emptyFiltered':'No students match the filter.','ph.filterName':'Filter by name…','ph.filterTitle':'Filter by title…','td.stats':'📊 Stats','stat.pill':'{n} evaluation(s)','stat.rubrics':'Rubric','stat.mixedRubrics':'Several rubrics were used on this assignment — the criterion rows mix their criteria. Statistics stay per class.','stat.noData':'No evaluation with a filled level yet on this assignment ({n} requested).','stat.loading':'Loading statistics','stat.noLevels':'No level filled yet for this row','stat.unlevelled':'unlevelled','stat.global':'Overall (global level)','stat.students':'{n} student(s)','stat.criterion':'Criterion','stat.distribution':'Distribution','stat.moments':'Moments (0–30 points scale)','stat.momTip':'μ = mean, M = median, σ = standard deviation — on the 0–30 point scale (A1=1, A2=3, B1=5, B2=10, C1=20, C2=30). Criterion rows: the criterion points of each evaluation. Global row: the points of the overall (attested) level of each evaluation.','stat.noData2':'No evaluation with a level yet — points will appear here as the student is assessed.','stat.ai.title':'AI insight','stat.ai.hint':'The AI reads the assignment, each evaluation summary and the reference points, then analyzes the class: level, heterogeneity, what worked well and what caused problems.','stat.ai.run':'✨ Analyze with the AI','stat.ai.none':'No evaluation with a level yet','stat.ai.running':'Analyzing…','stat.ai.cancel':'Cancel','stat.ai.at':'Generated','stat.ai.classLevel':'Class level','stat.ai.heterogeneity':'Heterogeneity','stat.ai.worked':'What worked well','stat.ai.problems':'What caused problems','stat.ai.recommendations':'Recommendations','stat.ai.notes':'Notes','stat.ai.rerun':'Re-run','stat.ai.rerunHint':'Re-runs the analysis on the current evaluations (replaces this insight)','stat.ai.del':'Forget this insight','stat.ai.delConfirm':'Forget the saved AI insight for this assignment?','stat.ai.runFailed':'AI insight failed','stat.ai.cancelled':'AI insight cancelled',
-  'td.use':'▶ Use in the evaluator','td.edit':'Edit','td.instr':'Instruction','td.doc':'Source document','td.eval':'Evaluation instructions','td.noMedia':'text only / none','td.pdf':'PDF','td.ph':'photos','td.pages':'pages','td.audio':'audio',
+  'td.use':'▶ Use in the evaluator','td.edit':'Edit','td.instr':'Instruction','td.doc':'Source document','td.eval':'Evaluation instructions','td.noMedia':'text only / none','td.pdf':'PDF','td.ph':'photo(s)','td.pages':'pages','td.audio':'audio',
   'sat.title':'Save as a reusable assignment','sat.help':'Stores the instruction, source document, evaluation instructions and target level currently in the evaluator form — plus any uploaded photos / PDF / audio — as a new assignment.','sat.ok':'Save assignment',
   'rub.title':'Grading rubrics','rub.editCreate':'Edit / create','rub.cancel':'Cancel','rub.new':'+ New rubric','rub.detail':'Detail','rub.points':'Points','rub.scale':'Point scale per criterion:','rub.noLevels':'Level descriptors not available in this grid.','rub.conv':'Official conversion — note /20 → attestation','rub.convClass':'Class','rub.convTrack':'LVA / LVB','rub.convVise':'Target level','rub.convThr':'Official thresholds (score points)','rub.convPts':'score points','rub.convNote20':'note /20 (ref.)','rub.convNote20Body':'"Note sur 20" scale printed in the official document','rub.convAst':'*= level derived from official thresholds (not printed) — cross-check with the document.','rub.convRef':'Official reference from the LVA/LVB tables — cross-check with the document. The app computes attestation from the /120 score, not from these bands.','rub.id':'Rubric ID','rub.name':'Name','rub.mode':'Mode','rub.criteria':'Criteria','rub.add':'+ Add criterion','rub.save':'Save rubric','rub.delete':'Delete','rub.preset':'preset','rub.custom':'custom','rub.edit':'Edit','rub.noneMode':'No rubric for this mode — create one in the Rubrics tab',
   'st.title':'Students','st.name':'Name','st.classroom':'Classroom','st.add':'Add','st.addTgl':'Add a student','st.lblPurge':'Purge','st.lblExport':'Export','st.lblImport':'Import','st.enrolled':'Enrolled','st.subs':'Submissions','st.since':'Since','st.statsTitle':'📈 Stats — level evolution over time','st.back':'← Back','st.chartGlobal':'Overall evolution (all evaluations)','st.chartTypes':'Per evaluation type (comprehension / expression × written / oral)','st.chartTypesEmpty':'No typed evaluations yet for this student.','st.kindUnknown':'Untyped','st.chartPts':'evaluation(s)','st.chartPtsTip':'μ = mean, med = median — on the 0–30 point scale','st.pillEval':'evaluated / total submissions','st.codeL':'Listening','st.codeR':'Reading','st.codeS':'Speaking','st.codeW':'Writing',
@@ -2352,8 +2375,8 @@ const I18N={
   'roster.title':'Import a class from photos','roster.help':'Photo(s) of the school’s student list — the class name, the school and the students’ names are read automatically, then checked before anything is created.','roster.dropTitle':'Drop the roster photo(s)','roster.dropSub':'png / jpg / webp / heic · up to 10 photos · or click to browse','roster.classCode':'Class code (optional)','roster.extract':'Read the list','roster.running':'Reading the list…','roster.reviewTitle':'Check the extracted list','roster.reviewNote':'Edit any name, untick a row to skip it. Existing students with the same name + class code are updated, not duplicated.','roster.firstName':'First name','roster.lastName':'Last name','roster.school':'School','roster.commit':'Create {n} students','roster.done':'{created} created, {updated} updated{skipped}. The class is ready.','roster.doneSkipped':' and {n} skipped','roster.error':'Extraction failed — retry, or use the CSV import.','roster.cancelled':'Import cancelled','roster.noPhotos':'No photo selected yet','roster.tooMany':'Up to 10 photos — remove some','roster.badType':'Unsupported image type','roster.runningHint':'The AI reads every photo — this can take a minute.','roster.stStudents':'student(s)','st.importPhotos':'Import class','st.importPhotosTtl':'Import a class from the roster photos — the AI reads the student list, you check it, then the students are created',
  },
  fr:{
-  'nav.analyze':'Analyser','nav.history':'Évaluations','nav.assignments':'Sujets','nav.rubrics':'Grilles','hdr.evaluate':'✍️ Évaluer','nav.students':'Élèves','nav.data':'Données',
-  'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique','home.evOnSubject':'Sur sujet','home.evDirect':'Directe','home.prepImportClass':'Importer une classe (photos)',
+  'nav.analyze':'Analyser','nav.history':'Évaluations','nav.assignments':'Sujets','nav.rubrics':'Grilles','hdr.evaluate':'✍️ Évaluer','nav.students':'Élèves','nav.data':'Données','nav.dataTip':'Données : export / import des élèves (CSV), réinitialisation de la base',
+  'home.title':'Que souhaitez-vous faire ?','home.prepare':'Préparer','home.evaluate':'Évaluer','home.analyze':'Analyser','home.advanced':'Mode avancé ▸','home.closeMenu':'Fermer le menu','home.reopen':'Ouvrir le menu','home.advBack':'◂ Simplifié','home.advBackTip':'Retour à l’écran d’accueil (mode simplifié avec le menu radial)','home.prepClass':'Classe / élèves','home.prepSubject':'Sujet','home.anStudent':'Progression d’un élève','home.anAssignment':'Résultats sur un sujet','home.anHistory':'Historique','home.evOnSubject':'Sur sujet','home.evDirect':'Directe','home.prepImportClass':'Importer une classe (photos)',
   'menu.export':'Exporter les élèves (CSV)','menu.import':'Importer les élèves (CSV)','menu.reset':'Réinitialiser la base','menu.wipe':'Réinit. + effacer les fichiers','menu.confirmWipe':'RÉINITIALISER la base ET supprimer tous les fichiers stockés (photos, audio, PDFs) dans data/uploads/ ?\n\nTous les élèves, productions et analyses seront effacés. Irréversible.','menu.confirmReset':'RÉINITIALISER la base ?\n\nTous les élèves, productions et analyses seront effacés (fichiers stockés conservés sur disque). Irréversible.',
   'an.1':'Qu’est-ce qu’on évalue ?','an.2':'Élève & niveau cible','an.3':'Le travail de l’élève','an.4':'Paramètres d’évaluation','an.otherFormats':'Autres formats d’entrée (photos / PDF / audio)','an.rubricNote':'La grille définit les critères notés par l’IA (et le rapport que vous relirez).',
   'an.assignment':'Sujet (la consigne + le document source)','an.adhoc':'— ad-hoc (définir le contexte ci-dessous) —',
@@ -2378,7 +2401,7 @@ const I18N={
   'an.rubric':'Grille','an.evalNotes':'Consignes d’évaluation',
   'an.evalNotesPh':'ex. L’élève a dû comprendre le ton ironique du texte. La conclusion doit être polie.',
   'an.evalPdf':'…ou déposer les consignes d’évaluation en PDF','an.evalNotesHelp':'Indiquez au modèle ce qu’il doit vérifier dans ce travail précis — chaque point est vérifié un par un avec preuve citée.',
-  'an.saveAsAssignment':'Enregistrer en sujet','an.run':"Analyser avec l'IA",'an.runEval':'Évaluer d’abord','an.working':'En cours…','an.keepWorking':'Continuez à travailler — l’analyse se poursuit en arrière-plan.','an.runChip':'Analyse IA en cours','an.runChipDone':'Analyse IA terminée en {n} s','an.runChipErr':'Échec de l’analyse IA','an.runChipTitle':'Revenir à l’analyse','an.reqNote':'Obligatoire : une grille et le travail de l’élève ci-dessous (texte ou photo pour l’écrit, audio pour l’oral).','an.missingWorkWritten':'Ajoutez le travail écrit : collez le texte ou joignez les photos des pages.','an.missingAudio':'Joignez l’enregistrement audio de l’élève.',
+  'an.saveAsAssignment':'Enregistrer en sujet','an.run':"Analyser avec l'IA",'an.runEval':'Évaluer d’abord','an.runTip':'Analyse IA de cette production (niveau par critère + attestation + brouillon de feedback).','an.runEvalTip':'Évaluez d’abord vous-même : l’IA pré-remplit un niveau par critère à partir des preuves — chaque niveau est à trancher.','an.working':'En cours…','an.keepWorking':'Continuez à travailler — l’analyse se poursuit en arrière-plan.','an.runChip':'Analyse IA en cours','an.runChipDone':'Analyse IA terminée en {n} s','an.runChipErr':'Échec de l’analyse IA','an.runChipTitle':'Revenir à l’analyse','an.reqNote':'Obligatoire : une grille et le travail de l’élève ci-dessous (texte ou photo pour l’écrit, audio pour l’oral).','an.missingWorkWritten':'Ajoutez le travail écrit : collez le texte ou joignez les photos des pages.','an.missingAudio':'Joignez l’enregistrement audio de l’élève.',
   'ai.col':'IA','ai.banner':'Analyse IA (optionnelle)','ai.bannerAfter':'Vous avez évalué d’abord. Lancez maintenant l’IA : elle confirmera vos niveaux ou proposera les siens, et ajoutera son feedback.','ai.bannerAiFirst':'L’IA a déjà tourné. Vous pouvez la relancer à tout moment — le nouvel avis remplace le précédent.',
   'lvl.clear':'Effacer',
   'ai.blind':'IA en aveugle','ai.aware':'IA avec vos niveaux','ai.blindHint':'L’IA évalue indépendamment, sans voir vos niveaux.','ai.awareHint':'L’IA voit vos niveaux et doit les confirmer ou les infirmer, critère par critère, avec des preuves.',
@@ -2416,7 +2439,7 @@ const I18N={
   'assignments.fileLocked':'(verrouillé pendant l’édition)','assignments.fileCur':'Fichier actuel :','assignments.fileRem':'Retirer ce fichier','assignments.fileRestore':'Restaurer ce fichier',
   'assignments.list':'Sujets','assignments.editBtn':'Enregistrer les modifications','assignments.empty':'Aucun sujet — utilisez « Nouveau sujet » ou « Enregistrer en sujet » dans l’évaluateur.',
   'asgn.name':'Nom','asgn.level':'Niveau','asgn.resources':'Ressources','asgn.subs':'Productions','asgn.since':'Depuis','asgn.subsTitle':'Voir les productions de ce sujet dans Évaluations','asgn.details':'👁 Détails','asgn.use':'▶ Utiliser','asgn.edit':'✎','asgn.del':'✕','asgn.type':'Mode','asgn.all':'— tous —','asgn.emptyFiltered':'Aucun sujet ne correspond au filtre.','asgn.stats':'📊 Stats — analyse des résultats de ce sujet','rub.emptyFiltered':'Aucune grille ne correspond au filtre.','st.emptyFiltered':'Aucun élève ne correspond au filtre.','ph.filterName':'Filtrer par nom…','ph.filterTitle':'Filtrer par titre…','td.stats':'📊 Stats','stat.pill':'{n} évaluation(s)','stat.rubrics':'Grille','stat.mixedRubrics':'Plusieurs grilles ont servi sur ce sujet — les lignes de critères mélangent les critères de chaque grille. Les statistiques restent par classe.','stat.noData':'Aucune évaluation avec un niveau renseigné sur ce sujet pour l’instant ({n} demandée(s)).','stat.loading':'Chargement des statistiques','stat.noLevels':'Aucun niveau renseigné sur cette ligne','stat.unlevelled':'non noté','stat.global':'Global (niveau général)','stat.students':'{n} élève(s)','stat.criterion':'Critère','stat.distribution':'Distribution','stat.moments':'Moments (échelle 0–30 pts)','stat.momTip':'μ = moyenne, M = médiane, σ = écart type — sur l’échelle 0–30 points (A1=1, A2=3, B1=5, B2=10, C1=20, C2=30). Lignes de critères : les points du critère de chaque évaluation. Ligne globale : les points du niveau global (attesté) de chaque évaluation.','stat.noData2':'Aucune évaluation notée pour l’instant — les points apparaîtront ici au fil des évaluations.','stat.ai.title':'Avis IA','stat.ai.hint':'L’IA lit le sujet, chaque synthèse d’évaluation et les points repères, puis analyse la classe : niveau, hétérogénéité, ce qui a bien fonctionné et ce qui a posé problème.','stat.ai.run':'✨ Analyser avec l’IA','stat.ai.none':'Aucune évaluation notée pour l’instant','stat.ai.running':'Analyse en cours…','stat.ai.cancel':'Annuler','stat.ai.at':'Généré le','stat.ai.classLevel':'Niveau de la classe','stat.ai.heterogeneity':'Hétérogénéité','stat.ai.worked':'Ce qui a bien fonctionné','stat.ai.problems':'Ce qui a posé problème','stat.ai.recommendations':'Recommandations','stat.ai.notes':'Remarques','stat.ai.rerun':'Relancer','stat.ai.rerunHint':'Relance l’analyse sur les évaluations actuelles (remplace cet avis)','stat.ai.del':'Oublier cet avis','stat.ai.delConfirm':'Oublier l’avis IA enregistré pour ce sujet ?','stat.ai.runFailed':'Échec de l’avis IA','stat.ai.cancelled':'Avis IA annulé',
-  'td.use':'▶ Utiliser dans l’évaluateur','td.edit':'Modifier','td.instr':'Consigne','td.doc':'Document source','td.eval':'Consignes d’évaluation','td.noMedia':'texte uniquement / rien','td.pdf':'PDF','td.ph':'photos','td.pages':'pages','td.audio':'audio',
+  'td.use':'▶ Utiliser dans l’évaluateur','td.edit':'Modifier','td.instr':'Consigne','td.doc':'Document source','td.eval':'Consignes d’évaluation','td.noMedia':'texte uniquement / rien','td.pdf':'PDF','td.ph':'photo(s)','td.pages':'pages','td.audio':'audio',
   'sat.title':'Enregistrer comme sujet réutilisable','sat.help':'Enregistre la consigne, le document source, les consignes d’évaluation et le niveau cible actuels du formulaire de l’évaluateur — plus toutes les photos / PDF / audio déposés — comme un nouveau sujet.','sat.ok':'Enregistrer le sujet',
   'rub.title':'Grilles de notation','rub.editCreate':'Modifier / créer','rub.cancel':'Annuler','rub.new':'+ Nouvelle grille','rub.detail':'Détail','rub.points':'Points','rub.scale':'Barème par critère :','rub.noLevels':'Descripteurs de niveaux indisponibles pour cette grille.','rub.conv':'Conversion officielle — note /20 → attestation','rub.convClass':'Classe','rub.convTrack':'LVA / LVB','rub.convVise':'Niveau visé','rub.convThr':'Seuils officiels (points score)','rub.convPts':'points score','rub.convNote20':'note /20 (réf.)','rub.convNote20Body':'échelle « Note sur 20 » imprimée dans le document officiel','rub.convAst':'* = niveau déduit des seuils officiels (non imprimé) — à recouper avec le document.','rub.convRef':'Référence issue des tableaux officiels LVA/LVB — à recouper avec le document. L’app calcule l’attestation sur le score /120, pas sur ces bandes.','rub.id':'ID de la grille','rub.name':'Nom','rub.mode':'Mode','rub.criteria':'Critères','rub.add':'+ Ajouter un critère','rub.save':'Enregistrer la grille','rub.delete':'Supprimer','rub.preset':'prédéfinie','rub.custom':'personnalisée','rub.edit':'Modifier','rub.noneMode':'Pas de grille pour ce mode — créez-en une dans l’onglet Grilles',
   'st.title':'Élèves','st.name':'Nom','st.classroom':'Classe','st.add':'Ajouter','st.addTgl':'Ajouter un élève','st.lblPurge':'Purger','st.lblExport':'Exporter','st.lblImport':'Importer','st.enrolled':'Inscrits','st.subs':'Productions','st.since':'Depuis','st.statsTitle':'📈 Stats — évolution des niveaux dans le temps','st.back':'← Retour','st.chartGlobal':'Évolution globale (toutes évaluations)','st.chartTypes':'Par type d’évaluation (compréhension / expression × écrit / oral)','st.chartTypesEmpty':'Pas encore d’évaluation typée pour cet élève.','st.kindUnknown':'Sans type','st.chartPts':'évaluation(s)','st.chartPtsTip':'μ = moyenne, med = médiane — sur l’échelle 0–30 points','st.pillEval':'évaluations notées / productions au total','st.codeL':'Compréhension orale','st.codeR':'Compréhension écrite','st.codeS':'Expression orale','st.codeW':'Expression écrite',
@@ -2440,8 +2463,8 @@ const I18N={
   'roster.title':'Importer une classe depuis des photos','roster.help':'Photo(s) de la liste des élèves de l’établissement — nom de la classe, école et noms des élèves sont lus automatiquement, puis relus avant toute création.','roster.dropTitle':'Déposez la liste des élèves (photos)','roster.dropSub':'png / jpg / webp / heic · 10 photos max · ou cliquez pour parcourir','roster.classCode':'Code de classe (optionnel)','roster.extract':'Lire la liste','roster.running':'Lecture de la liste…','roster.reviewTitle':'Vérifiez la liste extraite','roster.reviewNote':'Modifiez les noms, décochez une ligne pour l’ignorer. Les élèves déjà connus (même nom + code de classe) sont mis à jour, pas dupliqués.','roster.firstName':'Prénom','roster.lastName':'Nom','roster.school':'École / établissement','roster.commit':'Créer {n} élèves','roster.done':'{created} créés, {updated} mis à jour{skipped}. La classe est prête.','roster.doneSkipped':' et {n} ignorés','roster.error':'Échec de l’extraction — réessayez, ou utilisez l’import CSV.','roster.cancelled':'Import annulé','roster.noPhotos':'Aucune photo sélectionnée pour l’instant','roster.tooMany':'10 photos maximum — retirez-en quelques-unes','roster.badType':'Type d’image non pris en charge','roster.runningHint':'L’IA lit chaque photo — ça peut prendre une minute.','roster.stStudents':'élève(s)','st.importPhotos':'Importer classe','st.importPhotosTtl':'Importer une classe depuis les photos de la liste des élèves — l’IA lit la liste, vous vérifiez, puis les élèves sont créés',
  },
  es:{
-  'nav.analyze':'Analizar','nav.history':'Evaluaciones','nav.assignments':'Tareas','nav.rubrics':'Rúbricas','hdr.evaluate':'✍️ Evaluar','nav.students':'Estudiantes','nav.data':'Datos',
-  'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial','home.evOnSubject':'Sobre una tarea','home.evDirect':'Directa','home.prepImportClass':'Importar clase (fotos)',
+  'nav.analyze':'Analizar','nav.history':'Evaluaciones','nav.assignments':'Tareas','nav.rubrics':'Rúbricas','hdr.evaluate':'✍️ Evaluar','nav.students':'Estudiantes','nav.data':'Datos','nav.dataTip':'Datos: exportar / importar estudiantes (CSV), restablecer la base de datos',
+  'home.title':'¿Qué te gustaría hacer?','home.prepare':'Preparar','home.evaluate':'Evaluar','home.analyze':'Analizar','home.advanced':'Modo avanzado ▸','home.closeMenu':'Cerrar el menú','home.reopen':'Abrir el menú','home.advBack':'◂ Simplificado','home.advBackTip':'Volver a la pantalla de inicio (modo simplificado con el menú radial)','home.prepClass':'Clase / estudiantes','home.prepSubject':'Tarea','home.anStudent':'Progreso de un estudiante','home.anAssignment':'Resultados de una tarea','home.anHistory':'Historial','home.evOnSubject':'Sobre una tarea','home.evDirect':'Directa','home.prepImportClass':'Importar clase (fotos)',
   'menu.export':'Exportar estudiantes (CSV)','menu.import':'Importar estudiantes (CSV)','menu.reset':'Reiniciar la base de datos','menu.wipe':'Reiniciar + borrar archivos','menu.confirmWipe':'¿REINICIAR la base de datos Y borrar todos los archivos guardados (fotos, audio, PDFs) en data/uploads/?\n\nSe borrarán todos los estudiantes, producciones y análisis. No se puede deshacer.','menu.confirmReset':'¿REINICIAR la base de datos?\n\nSe borrarán todos los estudiantes, producciones y análisis (los archivos guardados se conservan en disco). No se puede deshacer.',
   'an.1':'¿Qué estamos evaluando?','an.2':'Estudiante y nivel objetivo','an.3':'El trabajo del estudiante','an.4':'Ajustes de evaluación','an.otherFormats':'Otros formatos de entrada (fotos / PDF / audio)','an.rubricNote':'La rúbrica define los criterios que la IA puntuará (y el informe que revisarás).',
   'an.assignment':'Tarea (consigna + documento fuente)','an.adhoc':'— ad hoc (definir el contexto abajo) —',
@@ -2466,7 +2489,7 @@ const I18N={
   'an.rubric':'Rúbrica','an.evalNotes':'Consignas de evaluación',
   'an.evalNotesPh':'p. ej. El estudiante debe haber captado el tono irónico del texto. El cierre debe ser cortés.',
   'an.evalPdf':'…o sube las consignas de evaluación en PDF','an.evalNotesHelp':'Indica al modelo qué comprobar en este trabajo concreto — cada punto se verifica uno a uno con evidencia citada.',
-  'an.saveAsAssignment':'Guardar como tarea','an.run':'Analizar con la IA','an.runEval':'Evaluar primero','an.working':'Trabajando…','an.keepWorking':'Siga trabajando — el análisis continúa en segundo plano.','an.runChip':'Análisis IA en curso','an.runChipDone':'Análisis IA completado en {n} s','an.runChipErr':'Fallo del análisis IA','an.runChipTitle':'Volver al análisis','an.reqNote':'Obligatorio: una rúbrica y el trabajo del estudiante más abajo (texto o foto para escrito, audio para oral).','an.missingWorkWritten':'Añade el trabajo escrito: pega el texto o adjunta las fotos de las páginas.','an.missingAudio':'Adjunta la grabación de audio del estudiante.',
+  'an.saveAsAssignment':'Guardar como tarea','an.run':'Analizar con la IA','an.runEval':'Evaluar primero','an.runTip':'Análisis IA de esta producción (nivel por criterio + certificación + borrador de feedback).','an.runEvalTip':'Evaluas primero tú: la IA pre-rellena un nivel por criterio a partir de la evidencia — cada nivel lo decides tú.','an.working':'Trabajando…','an.keepWorking':'Siga trabajando — el análisis continúa en segundo plano.','an.runChip':'Análisis IA en curso','an.runChipDone':'Análisis IA completado en {n} s','an.runChipErr':'Fallo del análisis IA','an.runChipTitle':'Volver al análisis','an.reqNote':'Obligatorio: una rúbrica y el trabajo del estudiante más abajo (texto o foto para escrito, audio para oral).','an.missingWorkWritten':'Añade el trabajo escrito: pega el texto o adjunta las fotos de las páginas.','an.missingAudio':'Adjunta la grabación de audio del estudiante.',
   'ai.col':'IA','ai.banner':'Análisis IA (opcional)','ai.bannerAfter':'Has evaluado primero. Ejecuta ahora la IA: confirmará tus niveles o propondrá los suyos, y añadirá su comentario.','ai.bannerAiFirst':'La IA ya se ejecutó. Puedes relanzarla en cualquier momento — la nueva opinión reemplaza a la anterior.',
   'lvl.clear':'Borrar',
   'ai.blind':'IA a ciegas','ai.aware':'IA con tus niveles','ai.blindHint':'La IA evalúa de forma independiente, sin ver tus niveles.','ai.awareHint':'La IA ve tus niveles y debe confirmarlos o refutarlos, criterio a criterio, con evidencia.',
@@ -2504,7 +2527,7 @@ const I18N={
   'assignments.fileLocked':'(bloqueado durante la edición)','assignments.fileCur':'Archivo actual:','assignments.fileRem':'Quitar este archivo','assignments.fileRestore':'Restaurar este archivo',
   'assignments.list':'Tareas','assignments.editBtn':'Guardar cambios','assignments.empty':'Sin tareas — usa «Nueva tarea» o «Guardar como tarea» en el evaluador.',
   'asgn.name':'Nombre','asgn.level':'Nivel','asgn.resources':'Recursos','asgn.subs':'Producciones','asgn.since':'Desde','asgn.subsTitle':'Ver las producciones de esta tarea en Evaluaciones','asgn.details':'👁 Detalles','asgn.use':'▶ Usar','asgn.edit':'✎','asgn.del':'✕','asgn.type':'Tipo','asgn.all':'— todos —','asgn.emptyFiltered':'No hay tareas que coincidan con el filtro.','asgn.stats':'📊 Estadísticas — análisis de los resultados de esta tarea','rub.emptyFiltered':'No hay rúbricas que coincidan con el filtro.','st.emptyFiltered':'No hay estudiantes que coincidan con el filtro.','ph.filterName':'Filtrar por nombre…','ph.filterTitle':'Filtrar por título…','td.stats':'📊 Estadísticas','stat.pill':'{n} evaluación(es)','stat.rubrics':'Rúbrica','stat.mixedRubrics':'Se usaron varias rúbricas en esta tarea — las filas de criterio mezclan los criterios de cada rúbrica. Las estadísticas siguen por clase.','stat.noData':'Todavía no hay ninguna evaluación con un nivel cumplido en esta tarea ({n} solicitada(s)).','stat.loading':'Cargando estadísticas','stat.noLevels':'Aún no hay ningún nivel cumplido en esta fila','stat.unlevelled':'sin nivel','stat.global':'Global (nivel general)','stat.students':'{n} estudiante(s)','stat.criterion':'Criterio','stat.distribution':'Distribución','stat.moments':'Momentos (escala 0–30 pts)','stat.momTip':'μ = media, M = mediana, σ = desviación estándar — en la escala 0–30 puntos (A1=1, A2=3, B1=5, B2=10, C1=20, C2=30). Filas de criterio: los puntos del criterio de cada evaluación. Fila global: los puntos del nivel global (acreditado) de cada evaluación.','stat.noData2':'Todavía no hay ninguna evaluación con nivel — los puntos aparecerán aquí a medida que se evalúe al estudiante.','stat.ai.title':'Aviso de la IA','stat.ai.hint':'La IA lee la tarea, cada resumen de evaluación y los puntos de referencia y analiza la clase: nivel, heterogeneidad, qué ha funcionado bien y qué ha causado problemas.','stat.ai.run':'✨ Analizar con la IA','stat.ai.none':'Aún no hay ninguna evaluación con nivel','stat.ai.running':'Analizando…','stat.ai.cancel':'Cancelar','stat.ai.at':'Generado el','stat.ai.classLevel':'Nivel de la clase','stat.ai.heterogeneity':'Heterogeneidad','stat.ai.worked':'Lo que ha funcionado bien','stat.ai.problems':'Lo que ha causado problemas','stat.ai.recommendations':'Recomendaciones','stat.ai.notes':'Observaciones','stat.ai.rerun':'Relanzar','stat.ai.rerunHint':'Relanza el análisis sobre las evaluaciones actuales (sustituye este aviso)','stat.ai.del':'Olvidar este aviso','stat.ai.delConfirm':'¿Olvidar el aviso de la IA guardado para esta tarea?','stat.ai.runFailed':'Fallo del aviso de la IA','stat.ai.cancelled':'Aviso de la IA cancelado',
-  'td.use':'▶ Usar en el evaluador','td.edit':'Editar','td.instr':'Consigna','td.doc':'Documento fuente','td.eval':'Consignas de evaluación','td.noMedia':'solo texto / nada','td.pdf':'PDF','td.ph':'fotos','td.pages':'páginas','td.audio':'audio',
+  'td.use':'▶ Usar en el evaluador','td.edit':'Editar','td.instr':'Consigna','td.doc':'Documento fuente','td.eval':'Consignas de evaluación','td.noMedia':'solo texto / nada','td.pdf':'PDF','td.ph':'fotografía(s)','td.pages':'páginas','td.audio':'audio',
   'sat.title':'Guardar como tarea reutilizable','sat.help':'Guarda la consigna, el documento fuente, las consignas de evaluación y el nivel objetivo actuales del formulario del evaluador — más las fotos / PDF / audio subidos — como una nueva tarea.','sat.ok':'Guardar tarea',
   'rub.title':'Rúbricas de evaluación','rub.editCreate':'Editar / crear','rub.cancel':'Cancelar','rub.new':'+ Nueva rúbrica','rub.detail':'Detalle','rub.points':'Puntos','rub.scale':'Escala de puntos por criterio:','rub.noLevels':'No hay descriptores de nivel para esta rúbrica.','rub.conv':'Conversión oficial — nota /20 → certificado','rub.convClass':'Curso','rub.convTrack':'LVA / LVB','rub.convVise':'Nivel objetivo','rub.convThr':'Umbrales oficiales (puntos de score)','rub.convPts':'puntos de score','rub.convNote20':'nota /20 (ref.)','rub.convNote20Body':'escala « Note sur 20 » impresa en el documento oficial','rub.convAst':'* = nivel deducido de los umbrales oficiales (no impreso) — compruébelo con el documento.','rub.convRef':'Referencia de las tablas oficiales LVA/LVB — compruébela con el documento. La app calcula el certificado sobre el score /120, no sobre estas bandas.','rub.id':'ID de la rúbrica','rub.name':'Nombre','rub.mode':'Modo','rub.criteria':'Criterios','rub.add':'+ Añadir criterio','rub.save':'Guardar rúbrica','rub.delete':'Borrar','rub.preset':'predefinida','rub.custom':'personalizada','rub.edit':'Editar','rub.noneMode':'Sin rúbrica para este modo — crea una en la pestaña Rúbricas',
   'st.title':'Estudiantes','st.name':'Nombre','st.classroom':'Aula','st.add':'Añadir','st.addTgl':'Añadir un estudiante','st.lblPurge':'Purgar','st.lblExport':'Exportar','st.lblImport':'Importar','st.enrolled':'Matriculados','st.subs':'Producciones','st.since':'Desde','st.statsTitle':'📈 Estadísticas — evolución de los niveles en el tiempo','st.back':'← Volver','st.chartGlobal':'Evolución global (todas las evaluaciones)','st.chartTypes':'Por tipo de evaluación (comprensión / expresión × escrito / oral)','st.chartTypesEmpty':'Todavía no hay evaluaciones tipificadas para este estudiante.','st.kindUnknown':'Sin tipo','st.chartPts':'evaluación(es)','st.chartPtsTip':'μ = media, med = mediana — en la escala 0–30 puntos','st.pillEval':'evaluaciones con nivel / producciones en total','st.codeL':'Comprensión oral','st.codeR':'Comprensión escrita','st.codeS':'Expresión oral','st.codeW':'Expresión escrita',
@@ -2528,8 +2551,8 @@ const I18N={
   'roster.title':'Importa una clase desde fotos','roster.help':'Foto(s) de la lista de estudiantes — el nombre de la clase, el centro y los nombres se leen automáticamente y se comprueban antes de crear nada.','roster.dropTitle':'Suelta las fotos de la lista','roster.dropSub':'png / jpg / webp / heic · máx. 10 fotos · o haz clic para explorar','roster.classCode':'Código de clase (opcional)','roster.extract':'Leer la lista','roster.running':'Leyendo la lista…','roster.reviewTitle':'Comprueba la lista extraída','roster.reviewNote':'Edita cualquier nombre, desmarca una fila para saltarla. Los estudiantes existentes con el mismo nombre + código se actualizan, no se duplican.','roster.firstName':'Nombre','roster.lastName':'Apellidos','roster.school':'Centro','roster.commit':'Crear {n} estudiantes','roster.done':'{created} creados, {updated} actualizados{skipped}. La clase está lista.','roster.doneSkipped':' y {n} omitidos','roster.error':'Error al extraer — reintenta o usa la importación CSV.','roster.cancelled':'Importación cancelada','roster.noPhotos':'Aún no hay ninguna foto','roster.tooMany':'Máximo 10 fotos — elimina algunas','roster.badType':'Tipo de imagen no compatible','roster.runningHint':'La IA lee cada foto — puede tardar un minuto.','roster.stStudents':'estudiante(s)','st.importPhotos':'Importar clase','st.importPhotosTtl':'Importa una clase desde las fotos de la lista de estudiantes — la IA lee la lista, tú compruebas y luego se crean los estudiantes',
  },
  de:{
-  'nav.analyze':'Analysieren','nav.history':'Bewertungen','nav.assignments':'Aufgaben','nav.rubrics':'Rubriken','hdr.evaluate':'✍️ Bewerten','nav.students':'Schüler','nav.data':'Daten',
-  'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf','home.evOnSubject':'Zu einer Aufgabe','home.evDirect':'Direkt','home.prepImportClass':'Klasse importieren (Fotos)',
+  'nav.analyze':'Analysieren','nav.history':'Bewertungen','nav.assignments':'Aufgaben','nav.rubrics':'Rubriken','hdr.evaluate':'✍️ Bewerten','nav.students':'Schüler','nav.data':'Daten','nav.dataTip':'Daten: Schüler:innen exportieren / importieren (CSV), Datenbank zurücksetzen',
+  'home.title':'Was möchtest du tun?','home.prepare':'Vorbereiten','home.evaluate':'Bewerten','home.analyze':'Analysieren','home.advanced':'Erweiterter Modus ▸','home.closeMenu':'Menü schließen','home.reopen':'Menü öffnen','home.advBack':'◂ Vereinfacht','home.advBackTip':'Zurück zur Startansicht (Vereinfachter Modus mit Radialmenü)','home.prepClass':'Klasse / Schüler','home.prepSubject':'Aufgabe','home.anStudent':'Lernfortschritt eines Schülers','home.anAssignment':'Ergebnisse einer Aufgabe','home.anHistory':'Verlauf','home.evOnSubject':'Zu einer Aufgabe','home.evDirect':'Direkt','home.prepImportClass':'Klasse importieren (Fotos)',
   'menu.export':'Schüler:innen CSV exportieren','menu.import':'Schüler:innen CSV importieren','menu.reset':'Datenbank zurücksetzen','menu.wipe':'Zurücksetzen + Dateien löschen','menu.confirmWipe':'DATENBANK ZURÜCKSETZEN und alle gespeicherten Dateien (Fotos, Audio, PDFs) in data/uploads/ löschen?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht. Das kann nicht rückgängig gemacht werden.','menu.confirmReset':'DATENBANK ZURÜCKSETZEN?\n\nAlle Schüler:innen, Einreichungen und Analysen werden gelöscht (gespeicherte Dateien bleiben auf der Platte). Das kann nicht rückgängig gemacht werden.',
   'an.1':'Was bewerten wir?','an.2':'Schüler:in & Zielstufe','an.3':'Die Arbeit der Schüler:in','an.4':'Bewertungseinstellungen','an.otherFormats':'Weitere Eingabeformate (Fotos / PDF / Audio)','an.rubricNote':'Die Rubrik bestimmt die Kriterien, die die KI bewertet (und den Bericht, den Sie prüfen werden).',
   'an.assignment':'Aufgabe (Anleitung + Quelldokument)','an.adhoc':'— Ad-hoc (Kontext unten definieren) —',
@@ -2554,7 +2577,7 @@ const I18N={
   'an.rubric':'Rubrik','an.evalNotes':'Bewertungsanweisungen',
   'an.evalNotesPh':'z. B. Die Schüler:in muss den ironischen Ton des Textes verstanden haben. Der Schluss muss höflich sein.',
   'an.evalPdf':'…oder Bewertungsanweisungen als PDF hochladen','an.evalNotesHelp':'Sag dem Modell, was in dieser konkreten Arbeit zu prüfen ist — jeder Punkt wird einzeln mit zitierter Evidenz geprüft.',
-  'an.saveAsAssignment':'Als Aufgabe speichern','an.run':'Mit der KI analysieren','an.runEval':'Erst bewerten','an.working':'Arbeitet…','an.keepWorking':'Weiterarbeiten — die Analyse läuft im Hintergrund fort.','an.runChip':'KI-Analyse läuft','an.runChipDone':'KI-Analyse in {n} s beendet','an.runChipErr':'KI-Analyse fehlgeschlagen','an.runChipTitle':'Zur Analyse zurückkehren','an.reqNote':'Pflicht: eine Rubrik und die Schüler:innen-Arbeit unten (Text oder Foto für schriftlich, Audio für mündlich).','an.missingWorkWritten':'Füge die schriftliche Arbeit hinzu: Text einfügen oder Seitenfotos anhängen.','an.missingAudio':'Hänge die Audio-Aufnahme der Schüler:in an.',
+  'an.saveAsAssignment':'Als Aufgabe speichern','an.run':'Mit der KI analysieren','an.runEval':'Erst bewerten','an.runTip':'KI-Analyse dieser Einreichung (Niveau pro Kriterium + Attest + Feedback-Entwurf).','an.runEvalTip':'Erst selbst bewerten: die KI schlägt ein Niveau pro Kriterium auf Basis der Beweise vor — jedes Niveau entscheidest du.','an.working':'Arbeitet…','an.keepWorking':'Weiterarbeiten — die Analyse läuft im Hintergrund fort.','an.runChip':'KI-Analyse läuft','an.runChipDone':'KI-Analyse in {n} s beendet','an.runChipErr':'KI-Analyse fehlgeschlagen','an.runChipTitle':'Zur Analyse zurückkehren','an.reqNote':'Pflicht: eine Rubrik und die Schüler:innen-Arbeit unten (Text oder Foto für schriftlich, Audio für mündlich).','an.missingWorkWritten':'Füge die schriftliche Arbeit hinzu: Text einfügen oder Seitenfotos anhängen.','an.missingAudio':'Hänge die Audio-Aufnahme der Schüler:in an.',
   'ai.col':'KI','ai.banner':'KI-Analyse (optional)','ai.bannerAfter':'Sie haben zuerst bewertet. Führen Sie jetzt die KI aus: Sie bestätigt Ihre Stufen oder schlägt eigene vor und ergänzt ihr Feedback.','ai.bannerAiFirst':'Die KI lief bereits. Sie können sie jederzeit erneut ausführen — die neue Meinung ersetzt die vorherige.',
   'lvl.clear':'Leeren',
   'ai.blind':'KI blind','ai.aware':'KI mit Ihren Stufen','ai.blindHint':'Die KI bewertet unabhängig, ohne Ihre Stufen zu sehen.','ai.awareHint':'Die KI sieht Ihre Stufen und muss jede bestätigen oder widerlegen, mit Belegen.',
@@ -2592,7 +2615,7 @@ const I18N={
   'assignments.fileLocked':'(während der Bearbeitung gesperrt)','assignments.fileCur':'Aktuelle Datei:','assignments.fileRem':'Diese Datei entfernen','assignments.fileRestore':'Diese Datei wiederherstellen',
   'assignments.list':'Aufgaben','assignments.editBtn':'Änderungen speichern','assignments.empty':'Noch keine Aufgaben — nutze „Neue Aufgabe” oder „Als Aufgabe speichern” im Bewerter.',
   'asgn.name':'Name','asgn.level':'Stufe','asgn.resources':'Ressourcen','asgn.subs':'Einreichungen','asgn.since':'Seit','asgn.subsTitle':'Die Einreichungen dieser Aufgabe in Bewertungen ansehen','asgn.details':'👁 Details','asgn.use':'▶ Verwenden','asgn.edit':'✎','asgn.del':'✕','asgn.type':'Typ','asgn.all':'— alle —','asgn.emptyFiltered':'Keine Aufgaben entsprechen dem Filter.','asgn.stats':'📊 Statistik — Auswertung der Ergebnisse dieser Aufgabe','rub.emptyFiltered':'Keine Rubriken entsprechen dem Filter.','st.emptyFiltered':'Keine Schüler:innen entsprechen dem Filter.','ph.filterName':'Nach Namen filtern…','ph.filterTitle':'Nach Titel filtern…','td.stats':'📊 Statistik','stat.pill':'{n} Bewertung(en)','stat.rubrics':'Rubrik','stat.mixedRubrics':'Für diese Aufgabe wurden mehrere Rubriken verwendet — die Kriterienzeilen mischen die Kriterien. Die Statistik bleibt pro Klasse.','stat.noData':'Noch keine Bewertung mit gefülltem Niveau für diese Aufgabe ({n} angefragt).','stat.loading':'Statistik wird geladen','stat.noLevels':'Für diese Zeile wurde noch kein Niveau gefüllt','stat.unlevelled':'ohne Niveau','stat.global':'Gesamtniveau','stat.students':'{n} Schüler:innen','stat.criterion':'Kriterium','stat.distribution':'Verteilung','stat.moments':'Momente (Skala 0–30 Pkte)','stat.momTip':'μ = Mittelwert, M = Median, σ = Standardabweichung — auf der 0–30-Punkte-Skala (A1=1, A2=3, B1=5, B2=10, C1=20, C2=30). Kriterienzeilen: die Kriteriumpunkte jeder Bewertung. Gesamtzeile: die Punkte des globalen (attestierten) Niveaus jeder Bewertung.','stat.noData2':'Noch keine Bewertung mit Niveau — die Punkte erscheinen hier, sobald die:r Schüler:in bewertet wird.','stat.ai.title':'KI-Einschätzung','stat.ai.hint':'Die KI liest die Aufgabe, jede Bewertungszusammenfassung und die Bezugspunkte und analysiert die Klasse: Niveau, Heterogenität, was gut geklappt hat und was Probleme bereitet hat.','stat.ai.run':'✨ Mit der KI analysieren','stat.ai.none':'Noch keine Bewertung mit Niveau','stat.ai.running':'Analyse läuft…','stat.ai.cancel':'Abbrechen','stat.ai.at':'Erstellt am','stat.ai.classLevel':'Klassen-Niveau','stat.ai.heterogeneity':'Heterogenität','stat.ai.worked':'Was gut geklappt hat','stat.ai.problems':'Was Probleme bereitet hat','stat.ai.recommendations':'Empfehlungen','stat.ai.notes':'Hinweise','stat.ai.rerun':'Neu ausführen','stat.ai.rerunHint':'Führt die Analyse über die aktuellen Bewertungen neu aus (ersetzt diese Einschätzung)','stat.ai.del':'Diese Einschätzung vergessen','stat.ai.delConfirm':'Die gespeicherte KI-Einschätzung für diese Aufgabe vergessen?','stat.ai.runFailed':'KI-Einschätzung fehlgeschlagen','stat.ai.cancelled':'KI-Einschätzung abgebrochen',
-  'td.use':'▶ Im Bewerter verwenden','td.edit':'Bearbeiten','td.instr':'Anleitung','td.doc':'Quelldokument','td.eval':'Bewertungsanweisungen','td.noMedia':'nur Text / nichts','td.pdf':'PDF','td.ph':'Fotos','td.pages':'Seiten','td.audio':'Audio',
+  'td.use':'▶ Im Bewerter verwenden','td.edit':'Bearbeiten','td.instr':'Anleitung','td.doc':'Quelldokument','td.eval':'Bewertungsanweisungen','td.noMedia':'nur Text / nichts','td.pdf':'PDF','td.ph':'Foto(s)','td.pages':'Seiten','td.audio':'Audio',
   'sat.title':'Als wiederverwendbare Aufgabe speichern','sat.help':'Speichert die aktuelle Anleitung, das Quelldokument, die Bewertungsanweisungen und die Zielstufe aus dem Formular des Bewerter — plus alle hochgeladenen Fotos / PDF / Audio — als neue Aufgabe.','sat.ok':'Aufgabe speichern',
   'rub.title':'Bewertungsrubriken','rub.editCreate':'Bearbeiten / erstellen','rub.cancel':'Abbrechen','rub.new':'+ Neue Rubrik','rub.detail':'Details','rub.points':'Punkte','rub.scale':'Punkte pro Kriterium:','rub.noLevels':'Keine Niveaubeschreibungen für diese Rubrik.','rub.conv':'Offizielle Umrechnung — Note /20 → Zertifikat','rub.convClass':'Klasse','rub.convTrack':'LVA / LVB','rub.convVise':'Zielstufe','rub.convThr':'Offizielle Schwellen (Punkte Score)','rub.convPts':'Punkte Score','rub.convNote20':'Note /20 (Ref.)','rub.convNote20Body':'Skala „Note sur 20" aus dem offiziellen Dokument','rub.convAst':'* = aus den offiziellen Schwellen abgeleitet (nicht gedruckt) — bitte mit dem Dokument abgleichen.','rub.convRef':'Referenz aus den offiziellen LVA/LVB-Tabellen — bitte mit dem Dokument abgleichen. Die App berechnet das Zertifikat über den /120-Score, nicht über diese Banden.','rub.id':'Rubrik-ID','rub.name':'Name','rub.mode':'Modus','rub.criteria':'Kriterien','rub.add':'+ Kriterium hinzufügen','rub.save':'Rubrik speichern','rub.delete':'Löschen','rub.preset':'Preset','rub.custom':'individuell','rub.edit':'Bearbeiten','rub.noneMode':'Keine Rubrik für diesen Modus — erstelle eine im Tab Rubriken',
   'st.title':'Schüler:innen','st.name':'Name','st.classroom':'Klasse','st.add':'Hinzufügen','st.addTgl':'Schüler:in hinzufügen','st.lblPurge':'Bereinigen','st.lblExport':'Export','st.lblImport':'Import','st.enrolled':'Eingetragen','st.subs':'Einreichungen','st.since':'Seit','st.statsTitle':'📈 Statistik — Niveauentwicklung über die Zeit','st.back':'← Zurück','st.chartGlobal':'Gesamte Entwicklung (alle Bewertungen)','st.chartTypes':'Nach Bewertungstyp (Verstehen / Ausdruck × schriftlich / mündlich)','st.chartTypesEmpty':'Für diese:n Schüler:in gibt es noch keine typisierten Bewertungen.','st.kindUnknown':'Ohne Typ','st.chartPts':'Bewertung(en)','st.chartPtsTip':'μ = Mittelwert, med = Median — auf der 0–30-Punkte-Skala','st.pillEval':'bewertete Bewertungen / Einreichungen gesamt','st.codeL':'Hörverstehen','st.codeR':'Leseverstehen','st.codeS':'Schriftlicher Ausdruck (oral)','st.codeW':'Schriftlicher Ausdruck',
@@ -3685,14 +3708,20 @@ function _navTypedTo(entry){
   if(entry.view==='evaluator'){
     NAV_HISTORY[NAV_HISTORY.length-1]={view:'evaluator',sub:null};
     _navHashSeq=++_navHashSeq;history.replaceState({view:'evaluator',sub:null},null,'#evaluator');
-    _evaluatorEnter();
+    navApplyView('evaluator');   /* V3 fix 2026-11-24: navApplyView calls pieClose()
+      — the old direct _evaluatorEnter() left the home radial menu OPEN over the
+      evaluator (backdrop intercepted every click, P1 wizard test). */
     return;
   }
   if(entry.view==='ststats'){
     /* openStudentStats hides all sections + shows its own; back lands on
-       the students list (same as a row click, minus the push). */
+       the students list (same as a row click, minus the push).
+       V3 fix 2026-11-24: pieClose() up front — the old direct openStudentStats()
+       left the home radial menu OPEN over the stats view (typed #ststats/189).
+       The stack entry stays {students} on purpose: back = the students list. */
     NAV_HISTORY[NAV_HISTORY.length-1]={view:'students',sub:null};
-    _navHashSeq=++_navHashSeq;history.replaceState({view:'students',sub:null},null,navHashOf({view:'students',sub:null}));
+    _navHashSeq=++_navHashSeq;history.replaceState({view:'ststats',sub:wantSub},null,navHashOf({view:'ststats',sub:wantSub}));
+    pieClose();
     if(wantSub!=null)openStudentStats(wantSub);else _ststatsEnter();
     return;
   }
@@ -3898,6 +3927,15 @@ $('#menu-import-file').onchange=async()=>{
 };
 
 /* ---------------- health ---------------- */
+/* V3-D4 (2026-11-24): the Whisper pill is only MEANINGFUL for oral work.
+   For a written task it read like the app was transcribing something —
+   .muted dims it (the health() poll keeps the model name + dot intact, it
+   only toggles this class). Called from the Mode toggle + at boot. */
+function syncWhisperPill(){
+  const b=$('#badge-stt');if(!b)return;
+  b.classList.toggle('muted',typeof KIND!=='undefined'&&KIND!=='oral');
+}
+
 async function health(){
   try{const h=await api('/api/health');
     const llm=h.llm,b1=$('#badge-llm'),b2=$('#badge-stt');
@@ -4425,12 +4463,17 @@ function resOf(t){
   return out;
 }
 /* P3.1: render the resource list as tooltip-bearing badges (Sujets table,
-   inherited-assignment card, detail modal). Empty → the td.noMedia muted label. */
+   inherited-assignment card, detail modal). Empty → the td.noMedia muted label.
+   V3-D5 (2026-11-24): the badges were inconsistent ("photos 1" = a count,
+   "Consigne" = a bare category) — now every badge = icon + text, uniform
+   ("📷 2 photo(s)", "✏️ Consigne", "📄 PDF"). */
+const RES_ICON={'td.instr':'✏️','td.pdf':'📄','td.ph':'📷','td.pages':'📄','td.doc':'📚','td.audio':'🎧','td.eval':'📋'};
 function resBadges(items){
   if(!items||!items.length)return `<span class="muted">${t('td.noMedia')}</span>`;
   return items.map(r=>{
-    const lbl=r.count?`${t(r.k)} ${r.count}`:t(r.k);
-    return `<span class="res-badge" title="${esc(lbl)}">${esc(lbl)}</span>`;
+    const lbl=r.count?`${r.count} ${t(r.k)}`:t(r.k);
+    const full=`${RES_ICON[r.k]||'•'} ${lbl}`;
+    return `<span class="res-badge" title="${esc(full)}">${esc(full)}</span>`;
   }).join(' ');
 }
 /* compact inherited-assignment card: replaces the greyed-out form when a task is selected */
@@ -4706,12 +4749,12 @@ function renderAssignmentsTable(){
       <td>${x.submission_count>0
         ?`<button class="btn ghost sm subslink" data-assignsubs="${x.id}" title="${esc(t('asgn.subsTitle'))}">${x.submission_count}</button>`
         :'<span class="muted">0</span>'}</td>
-      <td class="muted">${esc((x.created_at||'').slice(0,10))}</td>
-      <td>${x.submission_count>2?`<button class="btn ghost sm" data-assignstats="${x.id}" title="${esc(t('asgn.stats'))}">📊</button>`:''}
-          <button class="btn ghost sm" data-assignview="${x.id}" title="${t('asgn.details')}">👁</button>
-          <button class="btn ghost sm" data-assignuse="${x.id}" title="${t('asgn.use')}">▶</button>
-          <button class="btn ghost sm" data-assignedit="${x.id}" title="${t('asgn.edit')}">✎</button>
-          <button class="btn danger sm" data-assigndel="${x.id}" data-name="${esc(x.name)}" title="${t('asgn.del')}">✕</button></td></tr>`;
+      <td class="muted" style="white-space:nowrap">${esc((x.created_at||'').slice(0,10))}</td>
+      <td class="asg-actions">${x.submission_count>2?`<button class="btn ghost sm" data-assignstats="${x.id}" title="${esc(t('asgn.stats'))}" aria-label="${esc(t('asgn.stats'))}">📊</button>`:''}
+          <button class="btn ghost sm" data-assignview="${x.id}" title="${esc(t('asgn.details'))}" aria-label="${esc(t('asgn.details'))}">👁</button>
+          <button class="btn ghost sm" data-assignuse="${x.id}" title="${esc(t('asgn.use'))}" aria-label="${esc(t('asgn.use'))}">▶</button>
+          <button class="btn ghost sm" data-assignedit="${x.id}" title="${esc(t('asgn.edit'))}" aria-label="${esc(t('asgn.edit'))}">✎</button>
+          <button class="btn danger sm" data-assigndel="${x.id}" data-name="${esc(x.name)}" title="${esc(t('asgn.del'))}" aria-label="${esc(t('asgn.del'))}">✕</button></td></tr>`;
   }).join('')||`<tr><td colspan="7" class="muted">${ASSIGNMENTS.length?t('asgn.emptyFiltered'):t('assignments.empty')}</td></tr>`;
   _ftlPaint('asg');   /* repaint the 🔍 active-filter count after any re-render */
 }
@@ -5299,9 +5342,21 @@ function wizSync(){
     const r=$(WIZ_PANELS[i]).getBoundingClientRect();
     if(r.top<=140)active=i; else break;
   }
+  /* V3-D3 (2026-11-24): the chips are a SUMMARY, not a wizard — .done now
+     means FILLED (○ empty / ✓ filled); position stays on the scroll-spy .on
+     (all panels remain visible & editable, the P0.5 run guards stay
+     authoritative). Filled = an input that actually feeds the analysis:
+     1 subject · 2 student or target · 3 work (text/photo or audio) · 4 grid. */
+  const filled=[
+    $('#assignment').value!=='',
+    $('#student').value!==''||effectiveTarget()!=='',
+    KIND==='oral'?!!currentAudio:($('#written-text').value.trim()!==''||currenasgnFiles.length>0),
+    !!$('#rubric').value,
+  ];
   $$('.wiz-chip[data-wiz-go]').forEach((c,i)=>{
     c.classList.toggle('on',i===active);
-    c.classList.toggle('done',i<active);
+    c.classList.toggle('done',filled[i]&&i!==active);
+    c.classList.toggle('empty',!filled[i]&&i!==active);
   });
 }
 function wizInit(){
@@ -5309,6 +5364,17 @@ function wizInit(){
     c.onclick=()=>{const p=$(WIZ_PANELS[+c.dataset.wizGo-1]);
       p.scrollIntoView({behavior:'smooth',block:'start'});};
   });
+  /* V3-D3 (2026-11-24): the chips reflect COMPLETION (○/✓/●), so any change to
+     a field that feeds the analysis must repaint them. Bubbling 'change' +
+     'input' on the section cover every <select>/<input>/<textarea> (P1.1's
+     hidden selects included); the rAF-debounced observer catches the
+     mode-field engine's DOM (photo thumbs, audio fstat pill, level widgets).
+     wizSync() is cheap: a few .value/.length reads + rects. */
+  let _wizRaf2=null;
+  const _wizDeb=()=>{if(_wizRaf2)return;_wizRaf2=requestAnimationFrame(()=>{_wizRaf2=null;wizSync();});};
+  $('#view-analyze').addEventListener('change',_wizDeb);
+  $('#view-analyze').addEventListener('input',_wizDeb);
+  new MutationObserver(_wizDeb).observe($('#view-analyze'),{subtree:true,childList:true,characterData:true});
   wizSync();
 }
 
@@ -5319,6 +5385,8 @@ $('#mode-seg').addEventListener('click',e=>{
   $('#written-panel').classList.toggle('hide',KIND!=='written');
   $('#oral-panel').classList.toggle('hide',KIND!=='oral');
   loadRubrics();
+  syncWhisperPill();   /* V3-D4: the Whisper pill is contextual to the channel */
+  wizSync();           /* V3-D3: "work" filled-state depends on the channel */
 });
 
 /* ===== 2026-10-11 UX: mode-field engine (📷 Photo / 📄 PDF / ✏️ Texte / 🎧 Audio) =====
@@ -8936,6 +9004,7 @@ async function bootApp(){
      reconciler does the row click, but it only runs when pending. */
   if(boot.view==='history'&&boot.sub!=null)_navReconcilePending=true;
   navApplyView(boot.view,boot.view==='ststats'?null:boot.sub);
+  syncWhisperPill();   /* V3-D4: dim the Whisper pill for the default written channel */
   await Promise.all([loadRubrics(),loadStudents(),loadRubricList(),loadAssignments()]);
   if(boot.view==='ststats'&&boot.sub!=null)openStudentStats(boot.sub);
   syncAssignmentForm();

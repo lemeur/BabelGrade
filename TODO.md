@@ -83,11 +83,35 @@ validation, desktop management/stats/exports).
   still **57/57** (radial engine regression baseline). ~~A8
   `prefers-reduced-motion`~~ — ✅ already done as a Wave-1 bonus (commit
   `af33fe0`, `@media (prefers-reduced-motion: reduce)` in the global CSS).
-- **Wave 3 (desktop ergonomics):** the two near-identical "Analyze with AI" /
-  "Evaluate first" CTAs; 5 icon-only row actions on assignments; wizard
-  stepper vs all-visible-forms mismatch (recommended: relabel as overview
-  with ✓/●/○, no next/back); opaque "Simplifié"/"Données" buttons; Whisper
-  pill shown for written tasks; Sujets table nits.
+- **Wave 3 (desktop ergonomics) — SHIPPED 2026-11-24 (commit pending):** D1 the two
+  near-identical AI CTAs are differentiated (`#run` solid + `#run-eval` ghost,
+  both with i18n tooltips `an.runTip`/`an.runEvalTip` ×4); D2 the 5 icon-only
+  row actions on the Sujets table now sit in ONE regular row (td keeps
+  table-cell display, `white-space:nowrap`, 34px buttons) with `a11y.*`
+  aria-labels ×4; D3 the 4-step stepper is an HONEST SUMMARY (option b) —
+  chips report completion ○ empty / ✓ filled / ● current via CSS `::before`
+  marks (textContent stays clean), scroll-spy `.on` stays position-only, and
+  a change-driven completion sync repaints on any field change (bubbling
+  `change`/`input` on `#view-analyze` + rAF-debounced MutationObserver for the
+  mode-field engine DOM); D4 « ◂ Simplifié » + « ⚙ Données » tooltips
+  (`home.advBackTip`/`nav.dataTip` ×4) + the Whisper pill is muted on the
+  written channel (`.badge.muted`, `syncWhisperPill()` from the Mode toggle +
+  boot — the health() poll only toggles the class); D5 Sujets nits: DEPUIS
+  nowrap, PRODUCTIONS count no longer clipped (hover affordance instead of
+  overflow), resource badges uniform "icon + text" via `RES_ICON` ×4 i18n.
+  Tests: `tests/test_ux_wave3.py` (**25/25 PASS** live E2E desktop 1280 FR) +
+  P1/P8/wave1/wave2/linear-cursor/p0/p6 re-confirmed. **V3 side-fix (nav):**
+  `_navTypedTo()` called `_evaluatorEnter()`/`openStudentStats()`/`_ststatsEnter()`
+  DIRECTLY, bypassing `navApplyView()` → the home radial menu stayed OPEN over
+  the evaluator/ststats after a typed hash (backdrop intercepted every click —
+  this was the P1-wizard blocker from the previous session). Now `navApplyView`
+  (evaluator) / `pieClose()` up front (ststats, stack entry stays `{students}`
+  so back = students list). Proven by `test_p1_wizard.py` (21/21) + p6/p0 + a
+  typed-deep-link probe (evaluator closes radial, home re-opens it, ststats
+  closes it, back → home with radial). **i18n-test pitfall:** `RES_ICON` reuses
+  7 `td.*` keys as object keys → `test_p0_state_i18n_js.py` now counts key
+  DEFINITIONS within the I18N slice only (whole-file counts would over-count
+  consumer usages).
 - **Wave 4 (mobile ergonomics — design decision):** criterion-by-criterion
   eval forces landscape (full-screen rotate hint in portrait) — decide
   whether to add a native portrait layout (1 criterion, 3×2 level grid);
