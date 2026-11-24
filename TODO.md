@@ -41,7 +41,7 @@ optional items remain. Verification recipe at the bottom.
    Track regressions with the `scripts/check_word_box_accuracy.py` /
    `probe_word_boxes.py` word-box probes and the `data/ocr_test/` fixtures.
 
-### UX / a11y audit (2026-11-23) — 5-wave plan (V1 + V5 shipped 2026-11-24; V2–V4 open)
+### UX / a11y audit (2026-11-23) — 5-wave plan (V1 + V2 + V5 shipped 2026-11-24; V3–V4 open)
 
 Full report: `docs/ux-audit-2026-11-23.md` (internal — **not** wired into the
 public GitHub Pages build; screenshots in `docs/ux-audit-1123-assets/`).
@@ -62,10 +62,27 @@ validation, desktop management/stats/exports).
   `aria-describedby="req-note"` (the i18n `.reqNote`, which gained
   `id="req-note"`); bonus Wave-2 item: `@media (prefers-reduced-motion)` kills
   all animations/transitions.
-- **Wave 2 (a11y structural):** keyboard on the home radial menu (L0 sectors
-  `tabindex=-1` → boot screen unreachable by keyboard); `th scope`/caption on
-  tables. ~~`prefers-reduced-motion`~~ — ✅ already done as a Wave-1 bonus
-  (commit `af33fe0`, `@media (prefers-reduced-motion: reduce)` in the global CSS).
+- **Wave 2 (a11y structural) — SHIPPED 2026-11-24, commit `7b0da2e`:**
+  A5 keyboard on the home radial menu: `#pie-center` is `tabindex=0` (the
+  entry point), `openMenu()` focuses it, `pieClose()` restores focus to
+  `#home-reopen`; the active crown `#rg-N` gets `role=menu` and its sectors
+  `aria-selected` mirroring `.selected` **per level** (a selected L0 verb
+  stays `aria-selected=true` when its L1 sub-crown becomes the active level —
+  the in-place cycle branch and `rBuildLevel` both set it unconditionally).
+  The global keydown handler (arrows/Enter/Escape → `rCycle`/`rExecute`/
+  `pieClose`) was already there; the gap was that nothing was focusable at
+  boot. A3: `a11y.{close,zoomIn,zoomOut,removePhoto,clearSel}` i18n keys ×4 +
+  `applyI18n` now sets `[data-i18n-aria]→aria-label` and `[data-i18n-title]
+  →title`; wired onto the 8 icon-only buttons (close ×5, annoter zoom ×2,
+  remove-photo, clear-sel). A7: `scope="col"` on all 49 `<thead><th>` +
+  `<caption>` (first child) on the 6 key tables (hist/assignments/students/
+  jobs/roster + JS `.stat-table`, the last embedding `t('stat.criterion')`
+  directly since `applyI18n` doesn't re-run on innerHTML re-render); the
+  `tbody` row-header `<th class=rub-det-crit>` correctly left unscoped.
+  Tests: `tests/test_a11y_wave2.py` (**13/13 PASS** live FR) ; `test_p8_home.py`
+  still **57/57** (radial engine regression baseline). ~~A8
+  `prefers-reduced-motion`~~ — ✅ already done as a Wave-1 bonus (commit
+  `af33fe0`, `@media (prefers-reduced-motion: reduce)` in the global CSS).
 - **Wave 3 (desktop ergonomics):** the two near-identical "Analyze with AI" /
   "Evaluate first" CTAs; 5 icon-only row actions on assignments; wizard
   stepper vs all-visible-forms mismatch (recommended: relabel as overview
