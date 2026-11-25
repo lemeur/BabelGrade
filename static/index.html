@@ -1485,20 +1485,20 @@ g.g-exit{pointer-events:none}
            definition (title + instruction + document + eval notes + level) as
            a reusable subject; the run CTAs auto-create it too. -->
       <div class="hide" id="direct-title-row" style="margin-top:2px">
-        <label for="direct-subject-title" data-i18n="an.subjectTitle">Subject title</label>
+        <label for="direct-subject-title" data-i18n="an.subjectTitle">Assignment title</label>
         <div class="row" style="margin-top:4px">
           <div style="flex:1">
-            <input type="text" id="direct-subject-title" data-i18n-ph="an.subjectTitlePh" placeholder="e.g. Bac blanc 2026 — review">
+            <input type="text" id="direct-subject-title" data-i18n-ph="an.subjectTitlePh" placeholder="e.g. Bac blanc 2026 — revised">
           </div>
           <div style="flex:0 0 auto">
-            <button class="btn ghost" id="direct-save-subject" title="Save the subject definition (title + instruction + document + evaluation instructions + target level)" data-i18n-aria="an.saveSubjectBtn">💾</button>
+            <button class="btn ghost" id="direct-save-subject" title="Save the assignment (title + instruction + document + evaluation instructions + target level)" data-i18n-aria="an.saveSubjectBtn">💾</button>
           </div>
         </div>
       </div>
 
       <!-- compact edit link (shown when a task is selected) -->
       <div class="hide" id="assignment-edit-row" style="margin-top:10px">
-        <button class="btn sm ghost" id="assignment-edit-btn">✎ <span data-i18n="an.editSubject">Edit this subject</span></button>
+        <button class="btn sm ghost" id="assignment-edit-btn">✎ <span data-i18n="an.editSubject">Edit this assignment</span></button>
       </div>
 
       <!-- ad-hoc inline context (shown when no task). Each field is a mode controller:
@@ -2317,10 +2317,10 @@ function wireAuth(){
 const I18N={
  en:{
   'nav.analyze':'Analyze','nav.history':'Evaluations','nav.assignments':'Assignments','nav.rubrics':'Rubrics','hdr.evaluate':'✍️ Evaluate','nav.students':'Students','nav.data':'Data','nav.dataTip':'Data: export / import students (CSV), reset the database','nav.jobs':'Jobs',
-  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.advBackTip':'Back to the home screen (simplified mode with the radial menu)','home.prepClass':'Class / students','home.prepSubject':'Subject','home.anStudent':'Student progression','home.anAssignment':'Results for a subject','home.anHistory':'History','home.evOnSubject':'On a subject','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
+  'home.title':'What would you like to do?','home.prepare':'Prepare','home.evaluate':'Evaluate','home.analyze':'Analyze','home.advanced':'Advanced mode ▸','home.closeMenu':'Close the menu','home.reopen':'Open the menu','home.advBack':'◂ Simplified','home.advBackTip':'Back to the home screen (simplified mode with the radial menu)','home.prepClass':'Class / students','home.prepSubject':'Assignment','home.anStudent':'Student progression','home.anAssignment':'Results for an assignment','home.anHistory':'History','home.evOnSubject':'On an assignment','home.evDirect':'Direct','home.prepImportClass':'Import class (photos)',
   'menu.export':'Export students CSV','menu.import':'Import students CSV','menu.reset':'Reset database','menu.wipe':'Reset + wipe files','menu.confirmWipe':'RESET the database AND delete all stored files (photos, audio, PDFs) in data/uploads/?\n\nAll students, submissions and analyses will be erased. This cannot be undone.','menu.confirmReset':'RESET the database?\n\nAll students, submissions and analyses will be erased (stored files kept on disk). This cannot be undone.',
   'an.1':'What are we assessing?','an.2':'Student & target level','an.3':'The student’s work','an.4':'Evaluation settings','an.otherFormats':'Other input formats (photos / PDF / audio)','an.rubricNote':'The rubric defines the criteria the AI will grade (and the report you’ll review).',
-  'an.assignment':'Assignment (instruction + source document)','an.editSubject':'Edit this subject','an.adhoc':'— ad-hoc (define the context below) —','an.subjectTitle':'Subject title','an.subjectTitlePh':'e.g. Bac blanc 2026 — review','an.saveSubjectBtn':'Save the subject (title + instruction + document + evaluation instructions + target level)',
+  'an.assignment':'Assignment (instruction + source document)','an.editSubject':'Edit this assignment','an.adhoc':'— ad-hoc (define the context below) —','an.subjectTitle':'Assignment title','an.subjectTitlePh':'e.g. Bac blanc 2026 — revised','an.saveSubjectBtn':'Save the assignment (title + instruction + document + evaluation instructions + target level)',
   'an.instruction':'Instruction (given to students)','an.docText':'Source document (text)',
   'an.instrPhotos':'…or photo(s) of the assignment','an.instrPdf':'…or upload the instruction as PDF',
   'an.docPhotos':'…or photo(s) of the document','an.docPdf':'…or upload the source document as PDF',
@@ -2342,7 +2342,7 @@ const I18N={
   'an.rubric':'Rubric','an.evalNotes':'Evaluation instructions',
   'an.evalNotesPh':'e.g. The student must have understood the ironic tone of the text. The closing must be polite.',
   'an.evalPdf':'…or upload the evaluation instructions as PDF','an.evalNotesHelp':'Tell the model what to check in this specific work — each point is verified one by one with cited evidence.',
-  'an.saveFailed':'Could not save the subject','an.run':'Analyze with AI','an.runEval':'Evaluate first','an.runTip':'AI analysis of this submission (level per criterion + attestation + draft feedback).','an.runEvalTip':'Evaluate first, yourself: the AI pre-fills a level per criterion from the evidence — you decide each one.','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.reqNote':'Required: a rubric and the student’s work below (text or photo for written, audio for oral).','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
+  'an.saveFailed':'Could not save the assignment','an.run':'Analyze with AI','an.runEval':'Evaluate first','an.runTip':'AI analysis of this submission (level per criterion + attestation + draft feedback).','an.runEvalTip':'Evaluate first, yourself: the AI pre-fills a level per criterion from the evidence — you decide each one.','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.reqNote':'Required: a rubric and the student’s work below (text or photo for written, audio for oral).','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
   'ai.col':'AI','ai.banner':'AI analysis (optional)','ai.bannerAfter':'You evaluated first. Run the AI now: it will confirm your levels or propose its own, and add its feedback.','ai.bannerAiFirst':'The AI already ran. You can re-run it anytime — the new opinion replaces the previous one.',
   'lvl.clear':'Clear',
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
