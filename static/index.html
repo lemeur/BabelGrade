@@ -4551,19 +4551,22 @@ function syncLevelUI(){
   $('#lvl-radios').style.display=hasAssignment?'':'none';
   $('#lvl-plain').style.display=hasAssignment?'none':'';
   if(hasAssignment){
-    const cur=$('#lvl-inherit-val');
-    if(cur&&cur.id){cur.outerHTML=levelPill(assignmentLevel()).replace('class="level','id="lvl-inherit-val" class="level');}
     /* dynamic line (2026-11-25 v2): "Niveau cible B1 (hérité du sujet)" by
-       default, "Niveau cible B1 (spécifique)" when the specific-target
-       checkbox is on. The label is NOT a data-i18n target — syncLevelUI()
-       owns the pill + tail, applyI18n() re-points #lvl-inherit-title and
-       #lvl-inherit-tail in place on a language switch. */
+       default; when the specific-target checkbox is on, the pill shows the
+       EFFECTIVE level ("Niveau cible B2 (spécifique)") — tibo's wording: the
+       line always reflects what will actually be sent to the model. The label
+       is NOT a data-i18n target — syncLevelUI() owns the pill + tail,
+       applyI18n() re-points #lvl-inherit-title / #lvl-inherit-tail in place. */
+    const eff=$('#lvl-override').checked?$('#target-override').value:assignmentLevel();
     const lab=$('#lvl-inherit-lab'), tail=$('#lvl-inherit-tail');
     if(lab){
-      const pill=$('#lvl-inherit-val');
       lab.textContent='';
       lab.append(Object.assign(document.createElement('span'),{id:'lvl-inherit-title',textContent:t('an.targetLevel')}));
-      lab.append(pill||levelPill(assignmentLevel()));
+      const pill=document.createElement('span');
+      pill.id='lvl-inherit-val';
+      if(eff){pill.className='level '+levelClass(eff);pill.textContent=eff;}
+      else{pill.className='muted';pill.textContent=t('an.noTarget');}
+      lab.append(pill);
       if(tail){tail.textContent=$('#lvl-override').checked?t('an.lvlSpecificTail'):t('an.lvlInheritedTail');lab.append(tail);}
     }
     $('#target-override').disabled=!$('#lvl-override').checked;
@@ -4648,7 +4651,7 @@ function paintTypePills(){
 }
 /* instantiate the two evaluator carousels (plain + override) */
 buildLvlCarousel('#lvl-plain-carousel','#target-level',null);
-buildLvlCarousel('#lvl-override-carousel','#target-override',updateLvlDiff);
+buildLvlCarousel('#lvl-override-carousel','#target-override',syncLevelUI);
 /* "Nouveau sujet" editor: target-level carousel + type/channel pill rows */
 buildLvlCarousel('#asg-target-carousel','#asg-target',null);
 buildTypePills('#asg-skill-pills','skill',['','comprehension','expression']);
