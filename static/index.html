@@ -483,6 +483,11 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted
 .mfield .mthumbs .mthumb button.mv{top:auto;bottom:2px;right:auto}
 .mfield .mthumbs .mthumb button:nth-of-type(2){left:2px}
 .mfield .mthumbs .mthumb button:nth-of-type(3){right:2px}
+/* "rotated in lightbox" badge: bottom-center (free spot — number top-left,
+   × top-right, ‹ › bottom corners). */
+.mfield .mthumbs .mthumb .rot-badge{position:absolute;bottom:2px;left:50%;
+  transform:translateX(-50%);background:var(--acc);color:#fff;font-size:10px;
+  font-weight:700;padding:0 4px;border-radius:4px;pointer-events:none}
 @media (hover:hover) and (pointer:fine){
   .mfield .mthumbs .mthumb button.mv{opacity:0;transition:opacity .12s}
   .mfield .mthumbs .mthumb:hover button.mv{opacity:1}
@@ -1373,7 +1378,7 @@ g.g-exit{pointer-events:none}
     <button id="lb-prev" data-i18n-aria="an.lbPrev">‹</button>
     <span class="lb-count" id="lb-count">1 / 1</span>
     <button id="lb-next" data-i18n-aria="an.lbNext">›</button>
-    <button id="lb-rot" data-i18n-aria="an.lbRot180" title="Rotate 180°">↻</button>
+    <button id="lb-rot" data-i18n-aria="an.lbRot90" title="Rotate 90°">↻</button>
   </div>
 </div>
 
@@ -2373,7 +2378,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
   'an.studentTextPh':'Paste the student’s written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly.',
-  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.copyPdf':'Copy as PDF (the model reads the text layer, or scans the pages)','an.dropCopy':'Drop photo(s) of the copy','an.lbPrev':'Previous photo','an.lbNext':'Next photo','an.lbRot180':'Rotate 180°','an.phPrev':'Move photo earlier','an.phNext':'Move photo later',
+  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.copyPdf':'Copy as PDF (the model reads the text layer, or scans the pages)','an.dropCopy':'Drop photo(s) of the copy','an.lbPrev':'Previous photo','an.lbNext':'Next photo','an.lbRot90':'Rotate 90°','an.phPrev':'Move photo earlier','an.phNext':'Move photo later',
   'an.onePerPage':'One photo per page, in reading order · png / jpg / webp / heic · or click to browse',
   'an.textPhotoNote':'Text and photos are mutually exclusive: attach the page photos on their own and the model reads the copy directly. If you provide both, the model treats the photos as the ground truth.',
   'an.audio':'Audio recording','an.dropAudio':'Drop the student’s recording',
@@ -2458,7 +2463,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
   'an.studentTextPh':'Collez ici la production écrite de l’élève. Si la copie est manuscrite, vous pouvez à la place joindre les photos des pages ci-contre — le modèle les lit directement.',
-  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.copyPdf':'Copie en PDF (le modèle lit la couche texte, ou numérise les pages)','an.dropCopy':'Déposer photo(s) de la copie','an.lbPrev':'Photo précédente','an.lbNext':'Photo suivante','an.lbRot180':'Pivoter de 180°','an.phPrev':'Déplacer la photo avant','an.phNext':'Déplacer la photo après',
+  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.copyPdf':'Copie en PDF (le modèle lit la couche texte, ou numérise les pages)','an.dropCopy':'Déposer photo(s) de la copie','an.lbPrev':'Photo précédente','an.lbNext':'Photo suivante','an.lbRot90':'Pivoter de 90°','an.phPrev':'Déplacer la photo avant','an.phNext':'Déplacer la photo après',
   'an.onePerPage':'Une photo par page, dans l’ordre de lecture · png / jpg / webp / heic · ou cliquer pour parcourir',
   'an.textPhotoNote':'Texte et photos sont mutuellement exclusifs : joignez les photos des pages seules et le modèle lit la copie directement. Les deux fournis, le modèle prend les photos comme source de vérité.',
   'an.audio':'Enregistrement audio','an.dropAudio':'Déposer l’enregistrement de l’élève',
@@ -2543,7 +2548,7 @@ const I18N={
   'an.mode':'Modo',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
   'an.studentTextPh':'Pega aquí el trabajo escrito del estudiante. Si la copia es manuscrita, puedes adjuntar fotos de las páginas abajo — el modelo las lee directamente.',
-  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.copyPdf':'Copia en PDF (el modelo lee la capa de texto, o digitaliza las páginas)','an.dropCopy':'Suelta foto(s) de la copia','an.lbPrev':'Foto anterior','an.lbNext':'Foto siguiente','an.lbRot180':'Girar 180°','an.phPrev':'Mover la foto antes','an.phNext':'Mover la foto después',
+  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.copyPdf':'Copia en PDF (el modelo lee la capa de texto, o digitaliza las páginas)','an.dropCopy':'Suelta foto(s) de la copia','an.lbPrev':'Foto anterior','an.lbNext':'Foto siguiente','an.lbRot90':'Girar 90°','an.phPrev':'Mover la foto antes','an.phNext':'Mover la foto después',
   'an.onePerPage':'Una foto por página, en orden de lectura · png / jpg / webp / heic · o haz clic para explorar',
   'an.textPhotoNote':'Texto y fotos son mutuamente excluyentes: adjunta solo las fotos de las páginas y el modelo leerá la copia directamente. Si das ambos, el modelo da la palabra a las fotos.',
   'an.audio':'Grabación de audio','an.dropAudio':'Suelta la grabación del estudiante',
@@ -2628,7 +2633,7 @@ const I18N={
   'an.mode':'Modus',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
   'an.studentTextPh':'Füge hier die schriftliche Arbeit der Schüler:in ein. Wenn das Blatt handschriftlich ist, kannst du stattdessen die Seitenfotos unten anhängen — das Modell liest sie direkt.',
-  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.copyPdf':'Blatt als PDF (das Modell liest die Textschicht oder digitalisiert die Seiten)','an.dropCopy':'Fotos des Blatts ablegen','an.lbPrev':'Vorheriges Foto','an.lbNext':'Nächstes Foto','an.lbRot180':'180° drehen','an.phPrev':'Foto nach vorne verschieben','an.phNext':'Foto nach hinten verschieben',
+  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.copyPdf':'Blatt als PDF (das Modell liest die Textschicht oder digitalisiert die Seiten)','an.dropCopy':'Fotos des Blatts ablegen','an.lbPrev':'Vorheriges Foto','an.lbNext':'Nächstes Foto','an.lbRot90':'90° drehen','an.phPrev':'Foto nach vorne verschieben','an.phNext':'Foto nach hinten verschieben',
   'an.onePerPage':'Ein Foto pro Seite, in Leseordnung · png / jpg / webp / heic · oder klicken zum Durchsuchen',
   'an.textPhotoNote':'Text und Fotos sind sich gegenseitig ausschließend: hänge nur die Seitenfotos an und das Modell liest das Blatt direkt. Bei beiden behandelt das Modell die Fotos als Quelle.',
   'an.audio':'Audioaufnahme','an.dropAudio':'Aufnahme der Schüler:in ablegen',
@@ -5553,19 +5558,25 @@ function mPhotoPanel(host,cfg,render){
     arr.forEach((f,i)=>{
       const wrap=document.createElement('div');wrap.className='mthumb';
       wrap.draggable=true;
-      wrap.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="${i+1}"><span>${i+1}</span>
-        <button title="${esc(t('st.removePhoto'))}" aria-label="${esc(t('a11y.removePhoto'))}" data-mdel="${i}">×</button>
+      /* _rot: photo rotated in the lightbox (1..3 = ×90° cw) — the badge
+         makes it VISIBLE that the stored file differs from the original. */
+      wrap.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="${i+1}"><span>${i+1}</span>`
+        +((f._rot)?`<span class="rot-badge" title="${esc(t('an.lbRot90'))}">↻</span>`:'')
+        +`<button title="${esc(t('st.removePhoto'))}" aria-label="${esc(t('a11y.removePhoto'))}" data-mdel="${i}">×</button>
         <button class="mv" title="${esc(t('an.phPrev'))}" aria-label="${esc(t('an.phPrev'))}" data-mprev="${i}" ${i===0?'disabled':''}>‹</button>
         <button class="mv" title="${esc(t('an.phNext'))}" aria-label="${esc(t('an.phNext'))}" data-mnext="${i}" ${i===arr.length-1?'disabled':''}>›</button>`;
       thumbs.appendChild(wrap);
     });
     /* click on the THUMBNAIL IMAGE → lightbox at that position (the ×/‹/›
-       buttons have their own handlers and stopPropagation). */
+       buttons have their own handlers and stopPropagation). onChanged
+       re-renders the thumb list when the lightbox MUTATES the store
+       (rotate-90°), so the ↻ badge + rotated preview show up at once. */
     arr.forEach((f,i)=>{
       const im=thumbs.querySelector('.mthumb:nth-child('+(i+1)+') img');
       if(!im)return;
       im.style.cursor='zoom-in';
-      im.onclick=()=>lbOpen({getFiles:files,setFiles:a=>{if(cfg.setPhotos)cfg.setPhotos(a);}},i);
+      im.onclick=()=>lbOpen({getFiles:files,
+        setFiles:a=>{if(cfg.setPhotos)cfg.setPhotos(a);renderThumbs();}},i);
     });
     thumbs.querySelectorAll('button[data-mdel]').forEach(b=>b.onclick=e=>{
       e.stopPropagation();const a=files().slice();a.splice(+b.dataset.mdel,1);
@@ -5613,40 +5624,16 @@ function mPhotoPanel(host,cfg,render){
   inp.onchange=e=>{mAddPhotos(cfg,e.target.files,renderThumbs);inp.value='';};
   renderThumbs();
 }
-/* Run the backend's upload-time orientation fix (EXIF + deterministic
-   deskew, app.media._normalize_orientation) on a picked photo and return
-   the UPRIGHT file, so the thumbnail preview — and the later upload — show
-   exactly what the backend will store and what the LLM/OCR will read.
-   The original raw File is kept (as a sibling property) in case the call
-   fails or returns the bytes unchanged; the normalized File is the one
-   that gets uploaded. NEVER breaks the flow: on error the raw file is
-   returned as-is (the backend re-normalizes at /api/analyze time anyway). */
-async function mNormalizePhoto(file){
-  if(!file||!file.type||!file.type.startsWith('image/'))return file;
-  if(file.size>25*1024*1024)return file;   // over cap → backend would 422; keep raw
-  try{
-    const fd=new FormData();fd.append('file',file,file.name);
-    const r=await fetch('/api/media/normalize',{method:'POST',body:fd});
-    if(!r.ok)return file;
-    const changed=r.headers.get('X-Changed')==='1';
-    const blob=await r.blob();
-    if(!blob.size)return file;
-    const nf=new File([blob],file.name,{type:blob.type||file.type,lastModified:Date.now()});
-    nf._rawRaw=file;   // keep the untouched original for potential re-normalization
-    return nf;
-  }catch(e){return file;}
-}
 function mAddPhotos(cfg,fileList,render){
   let arr=naturalFiles(fileList).filter(f=>/^(image\/(png|jpe?g|webp|gif|bmp|tiff?|heic))$/i.test(f.type));
   if(!arr.length)return toast(t('st.photosImages'));
   const cur=(cfg.getPhotos&&cfg.getPhotos())||[];
-  /* (2026-11-25) launch the orientation normalization IMMEDIATELY at
-     selection time (not only at submit): normalize every picked photo in
-     parallel, then append in the same order. Order is preserved even when
-     the calls resolve out of order (Promise.all keeps the input order). */
-  Promise.all(arr.map(mNormalizePhoto)).then(normalized=>{
-    if(cfg.setPhotos)cfg.setPhotos(cur.concat(normalized));render();
-  });
+  /* (2026-11-25) SELECTION IS INSTANT: thumbs appear immediately, no
+     blocking call. The backend still runs the orientation fix (EXIF +
+     deskew) at SUBMIT time, so an unrotated photo is corrected before the
+     LLM reads it anyway. Photos that are clearly wrong can be rotated
+     manually in the lightbox (↻ 90° steps). */
+  if(cfg.setPhotos)cfg.setPhotos(cur.concat(arr));render();
 }
 function mSinglePanel(host,cfg,mode,render){
   const accept=mode==='pdf'?'application/pdf,.pdf':'audio/*,video/mp4';
@@ -5677,14 +5664,14 @@ function mSinglePanel(host,cfg,mode,render){
   renderStat();
 }
 /* ================= photo lightbox (2026-11-25) =================
-   Opened by clicking a mode-panel thumbnail. Full-size preview of the
-   NORMALIZED photo (what the backend stores / the LLM reads), with prev /
-   next / rotate-180. The rotate button rebuilds the stored File via canvas
-   (so the corrected orientation is what actually gets uploaded), and the
-   ‹ › move buttons on the thumbnail list already handle ordering.
-   State: LB = {src:{getFiles,setFiles}, idx, flip:Set<index already rotated>}.
-   The 180° flip is tracked per-position so navigating and coming back keeps
-   the user's correction; closing resets nothing (the store is the source). */
+   Opened by clicking a mode-panel thumbnail. Full-size preview with
+   prev / next / rotate-90°. SELECTION ITSELF IS INSTANT (no blocking
+   call) — the user ROTATES A WRONG PHOTO MANUALLY here when needed.
+   Each stored File carries `_rot` (0..3, ×90° clockwise applied) and
+   `_raw` (the original pixels): every rotation re-renders from the
+   ORIGINAL pixels with the total angle, so repeated rotations never
+   accumulate JPEG re-encode loss. The backend still runs its EXIF +
+   deskew normalization at SUBMIT time as a last-line safety net. */
 let LB={src:null,idx:0};
 function lbOpen(src,idx){
   if(!src||!src.getFiles)return;
@@ -5711,25 +5698,36 @@ function lbPaint(){
   prev&&(prev.style.visibility=arr.length<=1?'hidden':'');
   next&&(next.style.visibility=arr.length<=1?'hidden':'');
 }
-/* Rotate the File at the current position 180° on a canvas and replace it in
-   the store (the corrected file is what gets uploaded + shown). */
-function lbFlip180(){
+/* Rotate the File at the current position +90° (clockwise) on a canvas and
+   replace it in the store — the rotated file is what gets uploaded and
+   shown in the thumbnail afterwards. Re-renders from f._raw (original
+   pixels) with the total angle: 4 clicks = 360° = back to the original
+   pixels without 4 re-encode generations. */
+function lbRot90(){
   const arr=lbFiles();if(!arr.length||!LB.src.setFiles)return;
   const f=arr[LB.idx];
+  const raw=f._raw||f;
+  const total=((f._rot||0)+1)%4;
+  if(total===0){   // 4th click = 360° → restore the ORIGINAL file as-is
+    const a=arr.slice();a[LB.idx]=raw;
+    LB.src.setFiles(a);lbPaint();return;
+  }
   const img=new Image();
-  const url=URL.createObjectURL(f);
+  const url=URL.createObjectURL(raw);
   img.onload=()=>{
+    const swap=total%2===1;   // 90°/270° swap the dimensions
     const c=document.createElement('canvas');
-    c.width=img.width;c.height=img.height;   // 180° keeps the dimensions
+    c.width=swap?img.height:img.width;
+    c.height=swap?img.width:img.height;
     const ctx=c.getContext('2d');
     ctx.translate(c.width/2,c.height/2);
-    ctx.rotate(Math.PI);
+    ctx.rotate(total*Math.PI/2);   // positive = clockwise in canvas coords
     ctx.drawImage(img,-img.width/2,-img.height/2);
     URL.revokeObjectURL(url);
     c.toBlob(b=>{
       if(!b){lbPaint();return;}
-      const nf=new File([b],f.name.replace(/(\.\w+)$/,'.flipped$1'),
-        {type:b.type||f.type,lastModified:Date.now()});
+      const nf=new File([b],f.name,{type:b.type||f.type,lastModified:Date.now()});
+      nf._rot=total;nf._raw=raw;
       const a=arr.slice();a[LB.idx]=nf;
       LB.src.setFiles(a);
       lbPaint();
@@ -5746,7 +5744,7 @@ function lbFlip180(){
     const n=lbFiles().length;LB.idx=(LB.idx-1+n)%n;lbPaint();});
   $('#lb-next').addEventListener('click',e=>{e.stopPropagation();
     const n=lbFiles().length;LB.idx=(LB.idx+1)%n;lbPaint();});
-  $('#lb-rot').addEventListener('click',e=>{e.stopPropagation();lbFlip180();});
+  $('#lb-rot').addEventListener('click',e=>{e.stopPropagation();lbRot90();});
   ov.addEventListener('click',e=>{if(e.target===ov)close();});   // backdrop
   document.addEventListener('keydown',e=>{
     if(!ov.classList.contains('show'))return;

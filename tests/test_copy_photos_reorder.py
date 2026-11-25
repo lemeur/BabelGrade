@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
-"""Card-3 "student work" photo field — 2026-11-25 UX additions, E2E:
+"""Card-3 "student work" photo field — 2026-11-25 UX (v2, commit after 2720af3):
 
-1. ORIENTATION NORMALIZATION AT SELECTION TIME: picking a photo fires
-   POST /api/media/normalize immediately (not at submit), and the STORED
-   File is the upright result (the thumbnail / the later upload show exactly
-   what the backend persists and the LLM/OCR read).
-2. LIGHTBOX: clicking a thumbnail opens a full-size preview (prev/next/close,
-   rotate-180 replaces the stored File).
-3. REORDER: ‹ › move buttons (mobile) AND drag-and-drop (desktop) reorder the
-   reading order, renumbering the badges.
+Tibo's 1st version (normalize-on-select via /api/media/normalize) was REVOKED:
+the deskew estimate is slow on the VM and blocked the whole server, making
+selection feel broken. v2 = tibo's own design:
+
+1. INSTANT SELECTION: picking photos appends them to the store immediately,
+   NO network call (thumbs appear at once; nothing to spin a progress bar).
+2. LIGHTBOX: click a thumbnail → full-size preview + prev/next + manual
+   ROTATE-90° (↻). Each click re-renders from the ORIGINAL pixels with the
+   total angle (no re-encode loss accumulation); 4 clicks restore the
+   original file as-is. Rotated files show a ↻ badge on the thumbnail.
+3. REORDER: ‹ › move buttons (mobile) + drag-and-drop (desktop).
+4. SAFETY NET unchanged: the backend still runs EXIF+deskew normalization at
+   SUBMIT time (_read_image_uploads → media._normalize_orientation), so a
+   photo the user forgot to rotate is still corrected before the LLM reads it.
 
 Runs against the live server (default 127.0.0.1:8090, override BABELGRADE_URL).
-Login tibo / test-pw-9876. Deterministic fixtures are generated into a tempdir
-so the test is self-contained (no /tmp fixtures assumed present).
+Login tibo / test-pw-9876. Fixtures auto-generated (PIL) in a tempdir.
 """
 import os
 import sys
@@ -31,12 +36,7 @@ def chk(name, cond, extra=""):
 
 
 def make_fixtures(tmp: Path):
-    """Create the test photos:
-       upright.jpg      — plain lines, no EXIF orientation (X-Changed: 0)
-       sideways.jpg     — plain lines, EXIF orientation=6 (90° → becomes 1000x800)
-       upside.jpg       — plain lines, EXIF orientation=3 (180°)
-       pa/pb/pc.jpg     — distinct 3-file set for the unambiguous DnD check
-    """
+    """upright.jpg (800x1000, EXIF=1) + pa/pb/pc.jpg (600x800, distinct)."""
     from PIL import Image, ImageDraw
 
     def lines(size, name):
@@ -48,15 +48,10 @@ def make_fixtures(tmp: Path):
         d.text((int(w * 0.1), int(h * 0.03)), name, fill="red")
         return im
 
-    def with_exif(im, orientation, path):
-        exif = im.getexif()
-        exif[0x0112] = orientation
-        im.save(path, exif=exif, quality=90)
-
-    # 800x1000 page, lines
-    with_exif(lines((800, 1000), "upright"), 1, tmp / "upright.jpg")
-    with_exif(lines((800, 1000), "sideways"), 6, tmp / "sideways.jpg")
-    with_exif(lines((800, 1000), "upside"), 3, tmp / "upside.jpg")
+    im = lines((800, 1000), "upright")
+    exif = im.getexif()
+    exif[0x0112] = 1
+    im.save(tmp / "upright.jpg", exif=exif, quality=90)
     for n in ("pa", "pb", "pc"):
         lines((600, 800), n).save(tmp / f"{n}.jpg", quality=90)
 
@@ -65,7 +60,7 @@ with sync_playwright() as pw:
     tmpdir = Path(tempfile.mkdtemp(prefix="bg_photos_"))
     make_fixtures(tmpdir)
     UPRIGHT = str(tmpdir / "upright.jpg")
-    SIDEWAYS = str(tmpdir / "sideways.jpg")
+    SIDE = str(tmpdir / "pa.jpg")
     PA = str(tmpdir / "pa.jpg")
     PB = str(tmpdir / "pb.jpg")
     PC = str(tmpdir / "pc.jpg")
@@ -87,18 +82,16 @@ with sync_playwright() as pw:
     page.on("response", lambda r: norm_calls.append(r.url)
             if "/api/media/normalize" in r.url else None)
 
-    # enter the evaluate view (card-3 photo field lives here)
     page.evaluate("goEvaluate()")
     page.wait_for_timeout(400)
 
-    # --- 1) functions + lightbox DOM present
+    # --- 1) functions + lightbox DOM
     fns = page.evaluate("""() => ({
       lbOpen: typeof window.lbOpen==='function',
       lbClose: typeof window.lbClose==='function',
-      lbFlip180: typeof window.lbFlip180==='function',
-      mNormalizePhoto: typeof window.mNormalizePhoto==='function',
+      lbRot90: typeof window.lbRot90==='function',
       mAddPhotos: typeof window.mAddPhotos==='function'})""")
-    chk("functions defined", all(fns.values()), fns)
+    chk("functions defined (lbRot90)", all(fns.values()), fns)
 
     lb = page.evaluate("""() => {
       const ov=document.getElementById('lightbox');
@@ -118,35 +111,36 @@ with sync_playwright() as pw:
         imgfile: !!h.querySelector('#img-file') };}""")
     chk("card-3 photo panel (photo default mode)", mf["exists"] and mf.get("imgfile"), mf)
 
-    # --- 2) select 2 photos → normalization fires AT SELECTION + upright result
-    page.set_input_files("#img-file", [UPRIGHT, SIDEWAYS])
-    page.wait_for_selector("#mfield-copy .mthumb", timeout=15000)
-    page.wait_for_timeout(1200)
+    # --- 2) INSTANT selection: 2 thumbs within a short window, NO normalize call
+    t0 = page.evaluate("Date.now()")
+    page.set_input_files("#img-file", [UPRIGHT, SIDE])
+    page.wait_for_selector("#mfield-copy .mthumb", timeout=5000)
+    page.wait_for_timeout(300)
+    dt = page.evaluate("Date.now()") - t0
     n_thumbs = page.eval_on_selector_all("#mfield-copy .mthumb", "els=>els.length")
-    chk("2 thumbs after select", n_thumbs == 2, f"got {n_thumbs}")
-    chk("normalize fired at selection (>=2 calls)", len(norm_calls) >= 2,
+    chk("2 thumbs INSTANTLY after select", n_thumbs == 2, f"got {n_thumbs} in {dt}ms")
+    chk("selection is fast (< 1000 ms, no heavy processing)", dt < 1000, f"{dt} ms")
+    chk("NO /api/media/normalize call at selection", len(norm_calls) == 0,
         f"{len(norm_calls)} calls")
 
-    dims = page.evaluate("""() => new Promise(resolve=>{
-      const f=currenasgnFiles.find(x=>/sideways/.test(x.name));
-      if(!f) return resolve(null);
-      const im=new Image();
-      im.onload=()=>resolve({w:im.width,h:im.height});
-      im.onerror=()=>resolve(null);
-      im.src=URL.createObjectURL(f);})""")
-    chk("sideways photo stored upright (1000x800 after EXIF 90°)",
-        dims and dims["w"] == 1000 and dims["h"] == 800, dims)
+    # stored files are the RAW picks (nothing pre-processed on the client)
+    raw = page.evaluate("""() => currenasgnFiles.every(f=>!f._rot && !f._rawRaw)
+        && currenasgnFiles.map(f=>f.name)""")
+    chk("stored files are raw (no _rot/_rawRaw yet)",
+        isinstance(raw, list) and len(raw) == 2, raw)
 
-    # --- 3) per-thumb controls: × / ‹ / ›, draggable
+    # --- 3) per-thumb controls
     btns = page.evaluate("""() => {
       const t=document.querySelector('#mfield-copy .mthumb');
       if(!t) return null;
       return { del: !!t.querySelector('button[data-mdel]'),
         prev: !!t.querySelector('button[data-mprev]'),
         next: !!t.querySelector('button[data-mnext]'),
-        draggable: t.draggable };}""")
-    chk("thumb buttons (×/‹/›)", btns and btns["del"] and btns["prev"] and btns["next"], btns)
-    chk("thumb draggable", bool(btns and btns["draggable"]))
+        draggable: t.draggable,
+        noBadge: !t.querySelector('.rot-badge') };}""")
+    chk("thumb buttons (×/‹/›) + draggable",
+        btns and btns["del"] and btns["prev"] and btns["next"] and btns["draggable"], btns)
+    chk("no ↻ badge before any rotation", bool(btns and btns["noBadge"]))
 
     order = page.evaluate("""() => {
       const ts=document.querySelectorAll('#mfield-copy .mthumb');
@@ -161,17 +155,17 @@ with sync_playwright() as pw:
     names_before = page.evaluate("""() => currenasgnFiles.map(f=>f.name)""")
     page.evaluate("""() => {
       document.querySelectorAll('#mfield-copy .mthumb button[data-mnext]')[0].click(); }""")
-    page.wait_for_timeout(300)
+    page.wait_for_timeout(200)
     names_after = page.evaluate("""() => currenasgnFiles.map(f=>f.name)""")
     chk("reorder via › moves first thumb to last",
         len(names_after) == 2 and names_after[0] != names_before[0]
         and names_after[-1] == names_before[0],
         f"before={names_before} after={names_after}")
     badges = page.evaluate(
-        """() => [...document.querySelectorAll('#mfield-copy .mthumb span')].map(s=>s.textContent)""")
-    chk("badges renumbered [1,2]", badges == ["1", "2"], badges)
+        """() => [...document.querySelectorAll('#mfield-copy .mthumb span:not(.rot-badge)')].map(s=>s.textContent)""")
+    chk("number badges renumbered [1,2]", badges == ["1", "2"], badges)
 
-    # --- 5) lightbox: open on click, navigate, rotate-180, close
+    # --- 5) lightbox: open, navigate, rotate-90° cycle, close
     page.evaluate("""() => { document.querySelector('#mfield-copy .mthumb img').click(); }""")
     page.wait_for_selector("#lightbox.show", timeout=5000)
     chk("lightbox opens on thumb click",
@@ -185,13 +179,39 @@ with sync_playwright() as pw:
     page.click("#lb-prev"); page.wait_for_timeout(150)
     chk("lightbox prev → 1 / 2", page.text_content("#lb-count") == "1 / 2",
         page.text_content("#lb-count"))
-    before_flip = page.evaluate("""() => currenasgnFiles.map(f=>f.name)""")
-    page.click("#lb-rot"); page.wait_for_timeout(900)
-    after_flip = page.evaluate("""() => currenasgnFiles.map(f=>f.name)""")
-    chk("rotate-180 replaces the stored File (.flipped)",
-        any("flipped" in n for n in after_flip)
-        and not any("flipped" in n for n in before_flip),
-        f"before={before_flip} after={after_flip}")
+
+    # rotate-90°: 800x1000 → 1000x800, _rot=1, badge appears
+    dim0 = page.evaluate("""() => new Promise(r=>{const f=currenasgnFiles[0];
+      const im=new Image();im.onload=()=>r({w:im.width,h:im.height});
+      im.src=URL.createObjectURL(f);})""")
+    page.click("#lb-rot"); page.wait_for_timeout(600)
+    dim1 = page.evaluate("""() => new Promise(r=>{const f=currenasgnFiles[0];
+      const im=new Image();im.onload=()=>r({w:im.width,h:im.height});
+      im.src=URL.createObjectURL(f);})""")
+    rot_state = page.evaluate("""() => {
+      const f=currenasgnFiles[0];
+      const badge=!!document.querySelector('#mfield-copy .mthumb .rot-badge');
+      return {rot:f._rot||0, hasRaw:!!f._raw, badge};}""")
+    chk("rotate 90° swaps dimensions (800x1000 → 1000x800)",
+        dim0 and dim1 and dim0["w"] == 800 and dim0["h"] == 1000
+        and dim1["w"] == 1000 and dim1["h"] == 800,
+        f"{dim0} → {dim1}")
+    chk("rotated file carries _rot=1 + _raw + ↻ badge",
+        rot_state["rot"] == 1 and rot_state["hasRaw"] and rot_state["badge"], rot_state)
+
+    # rotate 3 more times → back to original (360°), badge gone
+    for _ in range(3):
+        page.click("#lb-rot"); page.wait_for_timeout(450)
+    back = page.evaluate("""() => {
+      const f=currenasgnFiles[0];
+      return {rot:f._rot||0, badge:!!document.querySelector('#mfield-copy .mthumb .rot-badge')};}""")
+    dim2 = page.evaluate("""() => new Promise(r=>{const f=currenasgnFiles[0];
+      const im=new Image();im.onload=()=>r({w:im.width,h:im.height});
+      im.src=URL.createObjectURL(f);})""")
+    chk("4 rotations = 360° → original restored (badge off, 800x1000)",
+        back["rot"] == 0 and not back["badge"] and dim2["w"] == 800 and dim2["h"] == 1000,
+        f"{back} {dim2}")
+
     page.keyboard.press("Escape"); page.wait_for_timeout(200)
     chk("lightbox closes on Esc",
         not page.evaluate("""() => document.getElementById('lightbox').classList.contains('show')"""))
@@ -199,14 +219,14 @@ with sync_playwright() as pw:
     # --- 6) × removes a thumb
     page.evaluate("""() => {
       document.querySelector('#mfield-copy .mthumb button[data-mdel]').click(); }""")
-    page.wait_for_timeout(300)
+    page.wait_for_timeout(200)
     chk("× removes a thumb",
         page.eval_on_selector_all("#mfield-copy .mthumb", "els=>els.length") == 1)
 
-    # --- 7) drag-and-drop reorder with 3 distinct files (unambiguous)
+    # --- 7) drag-and-drop reorder with 3 distinct files
     page.evaluate("""() => { currenasgnFiles.length=0; }""")
     page.set_input_files("#img-file", [PA, PB, PC])
-    page.wait_for_timeout(1400)
+    page.wait_for_timeout(500)
     n3 = page.eval_on_selector_all("#mfield-copy .mthumb", "els=>els.length")
     if n3 >= 3:
         ob = page.evaluate("""() => currenasgnFiles.map(f=>f.name)""")
@@ -215,7 +235,7 @@ with sync_playwright() as pw:
           const ts=document.querySelectorAll('#mfield-copy .mthumb');
           ts[0].classList.add('mdrag');
           ts[2].dispatchEvent(new Event('drop',{bubbles:true})); }""")
-        page.wait_for_timeout(300)
+        page.wait_for_timeout(200)
         page.evaluate("""() => {
           document.querySelectorAll('#mfield-copy .mthumb.mdrag')
             .forEach(e=>e.classList.remove('mdrag')); }""")
