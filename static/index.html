@@ -4661,8 +4661,13 @@ $('#assignment-edit-btn').addEventListener('click',()=>{
   const tk=selectedAssignment();
   if(tk)openAssignmentEditor(tk.id);
 });
-$('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;$('#who-opts').open=false;updateLvlDiff();});
-$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;$('#who-opts').open=true;updateLvlDiff();});
+/* 2026-11-25 fix: the radio change must re-run syncLevelUI — it is what
+   enables/dims the override carousel (opacity + pointer-events + select
+   disabled). Without it, picking "or level" left the pills greyed out.
+   (No auto-close of the section: tibo wants it to stay open when switching
+   back to the inherited level.) */
+$('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;syncLevelUI();});
+$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;syncLevelUI();});
 $('#target-override').addEventListener('change',updateLvlDiff);
 
 /* assignment exercise type (2026-10-10): skill (comprehension|expression) +
