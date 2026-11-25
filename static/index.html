@@ -468,12 +468,25 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted
 .mfield .mphotos:hover,.mfield .mphotos.over{border-color:var(--acc);color:var(--acc);background:var(--acc-soft)}
 .mfield .mphotos b{display:block;color:var(--ink);margin-bottom:3px;font-size:13px}
 .mfield .mthumbs{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
-.mfield .mthumbs .mthumb{position:relative;width:70px}
+.mfield .mthumbs .mthumb{position:relative;width:70px;cursor:grab}
+.mfield .mthumbs .mthumb:active{cursor:grabbing}
+.mfield .mthumbs .mthumb.mdrag{opacity:.35}
+.mfield .mthumbs .mthumb.mover{outline:2px solid var(--acc);outline-offset:1px}
 .mfield .mthumbs .mthumb img{width:70px;height:56px;object-fit:cover;border:1px solid var(--line);border-radius:6px;display:block}
 .mfield .mthumbs .mthumb span{position:absolute;top:2px;left:2px;background:rgba(0,0,0,.72);color:#fff;
   font-size:10px;font-weight:700;padding:0 5px;border-radius:4px}
 .mfield .mthumbs .mthumb button{position:absolute;top:2px;right:2px;width:17px;height:17px;border:0;
   border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:11px;line-height:17px;cursor:pointer}
+/* move buttons sit BELOW the badge; × stays top-right. DOM order inside
+   .mthumb: <img>, <span>, <button ×>, <button ‹>, <button ›> — position by
+   button index, not by class (the × is the FIRST button). */
+.mfield .mthumbs .mthumb button.mv{top:auto;bottom:2px;right:auto}
+.mfield .mthumbs .mthumb button:nth-of-type(2){left:2px}
+.mfield .mthumbs .mthumb button:nth-of-type(3){right:2px}
+@media (hover:hover) and (pointer:fine){
+  .mfield .mthumbs .mthumb button.mv{opacity:0;transition:opacity .12s}
+  .mfield .mthumbs .mthumb:hover button.mv{opacity:1}
+}
 /* pdf / audio panels: single-file drop area */
 .mfield .msingle{border:2px dashed var(--line);border-radius:10px;padding:12px;text-align:center;
   color:var(--muted);cursor:pointer;transition:.15s;font-size:13px}
@@ -483,6 +496,21 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted
 .mfield textarea{width:100%;box-sizing:border-box}
 /* compact status line used inside a mode panel */
 .mstat{margin-top:6px;font-size:12.5px}
+/* ---- photo lightbox: click a mode-panel thumbnail → full-size preview ----
+   z-90 = above the modals (z-80) and #eval/#annot (z-80), below the auth
+   gate (z-80 is the modal layer; the gate is also 80 but never open while
+   authenticated). */
+#lightbox{position:fixed;inset:0;background:rgba(15,23,42,.88);z-index:90;
+  display:none;align-items:center;justify-content:center;flex-direction:column}
+#lightbox.show{display:flex}
+#lightbox img{max-width:94vw;max-height:78vh;object-fit:contain;
+  border-radius:8px;box-shadow:0 18px 60px rgba(0,0,0,.5);background:#fff}
+#lightbox .lb-bar{display:flex;align-items:center;gap:10px;margin-top:14px;color:#e2e8f0}
+#lightbox .lb-count{font-size:14px;font-weight:700;min-width:54px;text-align:center}
+#lightbox button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);
+  color:#fff;border-radius:8px;width:38px;height:38px;font-size:16px;cursor:pointer;line-height:1}
+#lightbox button:hover{background:rgba(255,255,255,.25)}
+#lightbox .lb-close{position:absolute;top:14px;right:16px;width:40px;height:40px;font-size:18px}
 /* ---- resource badges (Sujets list + detail modal) ---- */
 .res{display:inline-flex;gap:5px;align-items:center;font-size:12.5px;background:var(--acc-soft);
   color:var(--acc);border-radius:999px;padding:3px 10px;font-weight:600}
@@ -1336,6 +1364,18 @@ g.g-exit{pointer-events:none}
 <!-- point 10: print-only root — the attestation sheet lives here; display:none
      on screen, display:block under @media print (body>*:not(#print-root) hidden). -->
 <div id="print-root" style="display:none"></div>
+<!-- Photo lightbox: opened by clicking any mode-panel thumbnail (click on
+     the image itself; the × / ‹ / › buttons stopPropagation). -->
+<div id="lightbox" role="dialog" aria-modal="true">
+  <button class="lb-close" id="lb-close" title="Close" data-i18n-aria="a11y.close">✕</button>
+  <img id="lb-img" src="" alt="">
+  <div class="lb-bar">
+    <button id="lb-prev" data-i18n-aria="an.lbPrev">‹</button>
+    <span class="lb-count" id="lb-count">1 / 1</span>
+    <button id="lb-next" data-i18n-aria="an.lbNext">›</button>
+    <button id="lb-rot" data-i18n-aria="an.lbRot180" title="Rotate 180°">↻</button>
+  </div>
+</div>
 
 <!-- Radial menu overlay for the home view (2026-10-27, v3: crowns of SVG
      sectors, each level confined to its parent's angular sector). Crowns
@@ -2165,14 +2205,14 @@ let asgnEditId=null, _confirmResolve=null, _detailSub=null, _detailAid=null;
    attribute (#eval, #annot); #lvl-sheet flips its own `.show` class.
    ================================================================ */
 const FOCUS_TRAP = {
-  classSel: '#confirm-overlay,#roster-overlay,#assignment-detail-overlay,#assignment-edit-overlay,#job-json-overlay,#lvl-sheet',
+  classSel: '#confirm-overlay,#roster-overlay,#assignment-detail-overlay,#assignment-edit-overlay,#job-json-overlay,#lvl-sheet,#lightbox',
   attrSel:  '#eval,#annot',
   _raf: 0, _prevFocus: null,
   isOn(el){
     if(!el) return false;
     if(el.hasAttribute('hidden')) return false;
     if(el.classList.contains('hide')) return false;
-    if(el.id==='lvl-sheet') return el.classList.contains('show');
+    if(el.id==='lvl-sheet'||el.id==='lightbox') return el.classList.contains('show');
     const cs=getComputedStyle(el);
     return cs.display!=='none';
   },
@@ -2333,7 +2373,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
   'an.studentTextPh':'Paste the student’s written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly.',
-  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.copyPdf':'Copy as PDF (the model reads the text layer, or scans the pages)','an.dropCopy':'Drop photo(s) of the copy',
+  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.copyPdf':'Copy as PDF (the model reads the text layer, or scans the pages)','an.dropCopy':'Drop photo(s) of the copy','an.lbPrev':'Previous photo','an.lbNext':'Next photo','an.lbRot180':'Rotate 180°','an.phPrev':'Move photo earlier','an.phNext':'Move photo later',
   'an.onePerPage':'One photo per page, in reading order · png / jpg / webp / heic · or click to browse',
   'an.textPhotoNote':'Text and photos are mutually exclusive: attach the page photos on their own and the model reads the copy directly. If you provide both, the model treats the photos as the ground truth.',
   'an.audio':'Audio recording','an.dropAudio':'Drop the student’s recording',
@@ -2418,7 +2458,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
   'an.studentTextPh':'Collez ici la production écrite de l’élève. Si la copie est manuscrite, vous pouvez à la place joindre les photos des pages ci-contre — le modèle les lit directement.',
-  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.copyPdf':'Copie en PDF (le modèle lit la couche texte, ou numérise les pages)','an.dropCopy':'Déposer photo(s) de la copie',
+  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.copyPdf':'Copie en PDF (le modèle lit la couche texte, ou numérise les pages)','an.dropCopy':'Déposer photo(s) de la copie','an.lbPrev':'Photo précédente','an.lbNext':'Photo suivante','an.lbRot180':'Pivoter de 180°','an.phPrev':'Déplacer la photo avant','an.phNext':'Déplacer la photo après',
   'an.onePerPage':'Une photo par page, dans l’ordre de lecture · png / jpg / webp / heic · ou cliquer pour parcourir',
   'an.textPhotoNote':'Texte et photos sont mutuellement exclusifs : joignez les photos des pages seules et le modèle lit la copie directement. Les deux fournis, le modèle prend les photos comme source de vérité.',
   'an.audio':'Enregistrement audio','an.dropAudio':'Déposer l’enregistrement de l’élève',
@@ -2503,7 +2543,7 @@ const I18N={
   'an.mode':'Modo',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
   'an.studentTextPh':'Pega aquí el trabajo escrito del estudiante. Si la copia es manuscrita, puedes adjuntar fotos de las páginas abajo — el modelo las lee directamente.',
-  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.copyPdf':'Copia en PDF (el modelo lee la capa de texto, o digitaliza las páginas)','an.dropCopy':'Suelta foto(s) de la copia',
+  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.copyPdf':'Copia en PDF (el modelo lee la capa de texto, o digitaliza las páginas)','an.dropCopy':'Suelta foto(s) de la copia','an.lbPrev':'Foto anterior','an.lbNext':'Foto siguiente','an.lbRot180':'Girar 180°','an.phPrev':'Mover la foto antes','an.phNext':'Mover la foto después',
   'an.onePerPage':'Una foto por página, en orden de lectura · png / jpg / webp / heic · o haz clic para explorar',
   'an.textPhotoNote':'Texto y fotos son mutuamente excluyentes: adjunta solo las fotos de las páginas y el modelo leerá la copia directamente. Si das ambos, el modelo da la palabra a las fotos.',
   'an.audio':'Grabación de audio','an.dropAudio':'Suelta la grabación del estudiante',
@@ -2588,7 +2628,7 @@ const I18N={
   'an.mode':'Modus',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
   'an.studentTextPh':'Füge hier die schriftliche Arbeit der Schüler:in ein. Wenn das Blatt handschriftlich ist, kannst du stattdessen die Seitenfotos unten anhängen — das Modell liest sie direkt.',
-  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.copyPdf':'Blatt als PDF (das Modell liest die Textschicht oder digitalisiert die Seiten)','an.dropCopy':'Fotos des Blatts ablegen',
+  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.copyPdf':'Blatt als PDF (das Modell liest die Textschicht oder digitalisiert die Seiten)','an.dropCopy':'Fotos des Blatts ablegen','an.lbPrev':'Vorheriges Foto','an.lbNext':'Nächstes Foto','an.lbRot180':'180° drehen','an.phPrev':'Foto nach vorne verschieben','an.phNext':'Foto nach hinten verschieben',
   'an.onePerPage':'Ein Foto pro Seite, in Leseordnung · png / jpg / webp / heic · oder klicken zum Durchsuchen',
   'an.textPhotoNote':'Text und Fotos sind sich gegenseitig ausschließend: hänge nur die Seitenfotos an und das Modell liest das Blatt direkt. Bei beiden behandelt das Modell die Fotos als Quelle.',
   'an.audio':'Audioaufnahme','an.dropAudio':'Aufnahme der Schüler:in ablegen',
@@ -5501,34 +5541,112 @@ function mPhotoPanel(host,cfg,render){
   inp.setAttribute('capture','environment');
   host.appendChild(drop);host.appendChild(thumbs);host.appendChild(stat);host.appendChild(inp);
   function files(){return (cfg.getPhotos&&cfg.getPhotos())||[];}
+  function movePhoto(from,to){
+    const a=files().slice();
+    if(from<0||from>=a.length||to<0||to>=a.length)return;
+    const [f]=a.splice(from,1);a.splice(to,0,f);
+    if(cfg.setPhotos)cfg.setPhotos(a);renderThumbs();
+  }
   function renderThumbs(){
     const arr=files();
     thumbs.innerHTML='';
     arr.forEach((f,i)=>{
       const wrap=document.createElement('div');wrap.className='mthumb';
+      wrap.draggable=true;
       wrap.innerHTML=`<img src="${URL.createObjectURL(f)}" alt="${i+1}"><span>${i+1}</span>
-        <button title="${esc(t('st.removePhoto'))}" data-mdel="${i}">×</button>`;
+        <button title="${esc(t('st.removePhoto'))}" aria-label="${esc(t('a11y.removePhoto'))}" data-mdel="${i}">×</button>
+        <button class="mv" title="${esc(t('an.phPrev'))}" aria-label="${esc(t('an.phPrev'))}" data-mprev="${i}" ${i===0?'disabled':''}>‹</button>
+        <button class="mv" title="${esc(t('an.phNext'))}" aria-label="${esc(t('an.phNext'))}" data-mnext="${i}" ${i===arr.length-1?'disabled':''}>›</button>`;
       thumbs.appendChild(wrap);
+    });
+    /* click on the THUMBNAIL IMAGE → lightbox at that position (the ×/‹/›
+       buttons have their own handlers and stopPropagation). */
+    arr.forEach((f,i)=>{
+      const im=thumbs.querySelector('.mthumb:nth-child('+(i+1)+') img');
+      if(!im)return;
+      im.style.cursor='zoom-in';
+      im.onclick=()=>lbOpen({getFiles:files,setFiles:a=>{if(cfg.setPhotos)cfg.setPhotos(a);}},i);
     });
     thumbs.querySelectorAll('button[data-mdel]').forEach(b=>b.onclick=e=>{
       e.stopPropagation();const a=files().slice();a.splice(+b.dataset.mdel,1);
       if(cfg.setPhotos)cfg.setPhotos(a);renderThumbs();
       if(!a.length&&cfg.onClear)cfg.onClear('photo');});
+    thumbs.querySelectorAll('button[data-mprev]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();movePhoto(+b.dataset.mprev,+b.dataset.mprev-1);});
+    thumbs.querySelectorAll('button[data-mnext]').forEach(b=>b.onclick=e=>{
+      e.stopPropagation();movePhoto(+b.dataset.mnext,+b.dataset.mnext+1);});
+    /* drag & drop reordering (desktop; the ‹ › buttons cover mobile).
+       The dragged element is the one carrying .mdrag at drop time; both
+       indices are read from the live children order (stable: no re-render
+       happens mid-drag, since reorder only fires on drop). */
+    thumbs.querySelectorAll('.mthumb').forEach(w=>{
+      w.addEventListener('dragstart',e=>{
+        w.classList.add('mdrag');
+        e.dataTransfer.effectAllowed='move';
+        try{e.dataTransfer.setData('text/plain','');}catch(_){}
+      });
+      w.addEventListener('dragend',()=>{w.classList.remove('mdrag');
+        thumbs.querySelectorAll('.mover').forEach(x=>x.classList.remove('mover'));});
+      w.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';
+        w.classList.add('mover');});
+      w.addEventListener('dragleave',()=>w.classList.remove('mover'));
+      w.addEventListener('drop',e=>{
+        e.preventDefault();e.stopPropagation();w.classList.remove('mover');
+        const dragEl=thumbs.querySelector('.mdrag');
+        if(!dragEl||dragEl===w)return;
+        const kids=[...thumbs.children];
+        const fi=kids.indexOf(dragEl),ti=kids.indexOf(w);
+        if(fi<0||ti<0)return;
+        movePhoto(fi,ti);
+      });
+    });
     paintFstat(stat,arr.length?`${arr.length} ${t('st.photosN')}`:'',
       ()=>{if(cfg.setPhotos)cfg.setPhotos([]);renderThumbs();if(cfg.onClear)cfg.onClear('photo');});
   }
   drop.onclick=()=>inp.click();
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};
   drop.ondragleave=()=>drop.classList.remove('over');
+  /* dropping NEW files on the dropzone vs REORDERING existing thumbs:
+     dragover on .mphotos only fires for external files (thumbs live OUTSIDE
+     the dropzone div), so the two never collide. */
   drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');mAddPhotos(cfg,e.dataTransfer.files,renderThumbs);};
   inp.onchange=e=>{mAddPhotos(cfg,e.target.files,renderThumbs);inp.value='';};
   renderThumbs();
+}
+/* Run the backend's upload-time orientation fix (EXIF + deterministic
+   deskew, app.media._normalize_orientation) on a picked photo and return
+   the UPRIGHT file, so the thumbnail preview — and the later upload — show
+   exactly what the backend will store and what the LLM/OCR will read.
+   The original raw File is kept (as a sibling property) in case the call
+   fails or returns the bytes unchanged; the normalized File is the one
+   that gets uploaded. NEVER breaks the flow: on error the raw file is
+   returned as-is (the backend re-normalizes at /api/analyze time anyway). */
+async function mNormalizePhoto(file){
+  if(!file||!file.type||!file.type.startsWith('image/'))return file;
+  if(file.size>25*1024*1024)return file;   // over cap → backend would 422; keep raw
+  try{
+    const fd=new FormData();fd.append('file',file,file.name);
+    const r=await fetch('/api/media/normalize',{method:'POST',body:fd});
+    if(!r.ok)return file;
+    const changed=r.headers.get('X-Changed')==='1';
+    const blob=await r.blob();
+    if(!blob.size)return file;
+    const nf=new File([blob],file.name,{type:blob.type||file.type,lastModified:Date.now()});
+    nf._rawRaw=file;   // keep the untouched original for potential re-normalization
+    return nf;
+  }catch(e){return file;}
 }
 function mAddPhotos(cfg,fileList,render){
   let arr=naturalFiles(fileList).filter(f=>/^(image\/(png|jpe?g|webp|gif|bmp|tiff?|heic))$/i.test(f.type));
   if(!arr.length)return toast(t('st.photosImages'));
   const cur=(cfg.getPhotos&&cfg.getPhotos())||[];
-  if(cfg.setPhotos)cfg.setPhotos(cur.concat(arr));render();
+  /* (2026-11-25) launch the orientation normalization IMMEDIATELY at
+     selection time (not only at submit): normalize every picked photo in
+     parallel, then append in the same order. Order is preserved even when
+     the calls resolve out of order (Promise.all keeps the input order). */
+  Promise.all(arr.map(mNormalizePhoto)).then(normalized=>{
+    if(cfg.setPhotos)cfg.setPhotos(cur.concat(normalized));render();
+  });
 }
 function mSinglePanel(host,cfg,mode,render){
   const accept=mode==='pdf'?'application/pdf,.pdf':'audio/*,video/mp4';
@@ -5558,6 +5676,85 @@ function mSinglePanel(host,cfg,mode,render){
   inp.onchange=e=>{const f=e.target.files[0];if(f){set(f);renderStat();}inp.value='';};
   renderStat();
 }
+/* ================= photo lightbox (2026-11-25) =================
+   Opened by clicking a mode-panel thumbnail. Full-size preview of the
+   NORMALIZED photo (what the backend stores / the LLM reads), with prev /
+   next / rotate-180. The rotate button rebuilds the stored File via canvas
+   (so the corrected orientation is what actually gets uploaded), and the
+   ‹ › move buttons on the thumbnail list already handle ordering.
+   State: LB = {src:{getFiles,setFiles}, idx, flip:Set<index already rotated>}.
+   The 180° flip is tracked per-position so navigating and coming back keeps
+   the user's correction; closing resets nothing (the store is the source). */
+let LB={src:null,idx:0};
+function lbOpen(src,idx){
+  if(!src||!src.getFiles)return;
+  LB={src,idx:idx||0};
+  $('#lightbox').classList.add('show');
+  lbPaint();
+}
+function lbClose(){$('#lightbox').classList.remove('show');LB={src:null,idx:0};}
+function lbFiles(){return LB.src&&LB.src.getFiles?LB.src.getFiles():[];}
+function lbPaint(){
+  const arr=lbFiles();
+  if(!arr.length){lbClose();return;}
+  if(LB.idx<0||LB.idx>=arr.length)LB.idx=0;
+  const f=arr[LB.idx];
+  const im=$('#lb-img');
+  const old=im.getAttribute('src');
+  if(old&&old.startsWith('blob:'))URL.revokeObjectURL(old);
+  im.src=URL.createObjectURL(f);
+  im.alt=f.name||String(LB.idx+1);
+  $('#lb-count').textContent=(LB.idx+1)+' / '+arr.length;
+  const prev=$('#lb-prev'),next=$('#lb-next');
+  if(prev)prev.disabled=arr.length<=1;
+  if(next)next.disabled=arr.length<=1;
+  prev&&(prev.style.visibility=arr.length<=1?'hidden':'');
+  next&&(next.style.visibility=arr.length<=1?'hidden':'');
+}
+/* Rotate the File at the current position 180° on a canvas and replace it in
+   the store (the corrected file is what gets uploaded + shown). */
+function lbFlip180(){
+  const arr=lbFiles();if(!arr.length||!LB.src.setFiles)return;
+  const f=arr[LB.idx];
+  const img=new Image();
+  const url=URL.createObjectURL(f);
+  img.onload=()=>{
+    const c=document.createElement('canvas');
+    c.width=img.width;c.height=img.height;   // 180° keeps the dimensions
+    const ctx=c.getContext('2d');
+    ctx.translate(c.width/2,c.height/2);
+    ctx.rotate(Math.PI);
+    ctx.drawImage(img,-img.width/2,-img.height/2);
+    URL.revokeObjectURL(url);
+    c.toBlob(b=>{
+      if(!b){lbPaint();return;}
+      const nf=new File([b],f.name.replace(/(\.\w+)$/,'.flipped$1'),
+        {type:b.type||f.type,lastModified:Date.now()});
+      const a=arr.slice();a[LB.idx]=nf;
+      LB.src.setFiles(a);
+      lbPaint();
+    },f.type&&f.type==='image/png'?'image/png':'image/jpeg',0.92);
+  };
+  img.onerror=()=>{URL.revokeObjectURL(url);};
+  img.src=url;
+}
+(function initLightbox(){
+  const ov=$('#lightbox');
+  const close=()=>lbClose();
+  $('#lb-close').addEventListener('click',e=>{e.stopPropagation();close();});
+  $('#lb-prev').addEventListener('click',e=>{e.stopPropagation();
+    const n=lbFiles().length;LB.idx=(LB.idx-1+n)%n;lbPaint();});
+  $('#lb-next').addEventListener('click',e=>{e.stopPropagation();
+    const n=lbFiles().length;LB.idx=(LB.idx+1)%n;lbPaint();});
+  $('#lb-rot').addEventListener('click',e=>{e.stopPropagation();lbFlip180();});
+  ov.addEventListener('click',e=>{if(e.target===ov)close();});   // backdrop
+  document.addEventListener('keydown',e=>{
+    if(!ov.classList.contains('show'))return;
+    if(e.key==='Escape'){e.preventDefault();close();}
+    else if(e.key==='ArrowLeft'){const n=lbFiles().length;if(n>1){LB.idx=(LB.idx-1+n)%n;lbPaint();}}
+    else if(e.key==='ArrowRight'){const n=lbFiles().length;if(n>1){LB.idx=(LB.idx+1)%n;lbPaint();}}
+  });
+})();
 function mTextPanel(host,cfg){
   const old=$('#'+cfg.textId);
   let ta;
