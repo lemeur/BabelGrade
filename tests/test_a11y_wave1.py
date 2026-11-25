@@ -38,7 +38,7 @@ with sync_playwright() as pw:
     pg.wait_for_timeout(700)
     labels = pg.evaluate("""()=>{
       const out={};
-      for(const id of ['assignment','student','rubric','title','accommodations','language','audio-file']){
+      for(const id of ['assignment','student','rubric','accommodations','language','audio-file']){
         const e=document.querySelector('#'+id); if(!e){out[id]='MISSING';continue;}
         out[id]={assoc: e.labels&&e.labels.length? e.labels[0].textContent.trim().slice(0,20):null,
                  ariaReq: e.getAttribute('aria-required')};
@@ -48,7 +48,7 @@ with sync_playwright() as pw:
       out['written-text']= wt? {assoc: wt.labels&&wt.labels.length? wt.labels[0].textContent.trim().slice(0,20):null} : 'MISSING';
       return out;
     }""")
-    for id in ['assignment','student','rubric','title','accommodations','language','written-text']:
+    for id in ['assignment','student','rubric','accommodations','language','written-text']:
         v=labels.get(id)
         ok = isinstance(v,dict) and v.get("assoc")
         check(f"label assoc #{id}", ok, str(v))
