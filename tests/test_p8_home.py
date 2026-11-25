@@ -185,6 +185,39 @@ with sync_playwright() as p:
     check("geometry: L0 Évaluer ≈ [-150°,-30°] (top sector)",
           l0e and l0e[0] <= -148 and l0e[1] >= -32 and l0e[1] <= -28, l0e)
 
+    # --- resize: the menu must RE-CENTRE on #home-anchor (2026-11-25, tibo) ---
+    #     #home-center's height is vh-based, so resizing moves the anchor; the
+    #     crowns used to stay stuck on the centre captured at openMenu().
+    def centres():
+        return pg.evaluate("""() => {
+          const s = document.querySelector('#pie-stage svg.rsvg');
+          const a = document.getElementById('home-anchor');
+          const r1 = s.getBoundingClientRect(), r2 = a.getBoundingClientRect();
+          return [r1.left + r1.width/2, r1.top + r1.height/2,
+                  r2.left + r2.width/2, r2.top + r2.height/2];
+        }""")
+    c0 = centres()
+    check("resize: boot svg centred on anchor (1280x900)",
+          abs(c0[0] - c0[2]) < 2 and abs(c0[1] - c0[3]) < 2, c0)
+    pg.set_viewport_size({"width": 900, "height": 1300})
+    pg.wait_for_timeout(500)   # > the 150 ms debounce
+    c1 = centres()
+    check("resize 900x1300: svg re-centred on anchor",
+          abs(c1[0] - c1[2]) < 2 and abs(c1[1] - c1[3]) < 2, c1)
+    pg.set_viewport_size({"width": 1400, "height": 520})
+    pg.wait_for_timeout(500)
+    c2 = centres()
+    check("resize 1400x520: svg re-centred on anchor",
+          abs(c2[0] - c2[2]) < 2 and abs(c2[1] - c2[3]) < 2, c2)
+    pg.set_viewport_size({"width": 1280, "height": 900})
+    pg.wait_for_timeout(500)
+    c3 = centres()
+    check("resize back 1280x900: svg re-centred on anchor",
+          abs(c3[0] - c3[2]) < 2 and abs(c3[1] - c3[3]) < 2, c3)
+    # the resize re-render replays the fan-in (stagger up to ~940 ms after the
+    # 150 ms debounce) — let it settle before the click-based checks below.
+    pg.wait_for_timeout(1200)
+
     # --- click Préparer → its L1 crown (Classe/Sujet); NO item pre-selected ---
     click_sector(pg, "#rg-0 .sector[data-idx='2']")   # Préparer (bottom-left)
     pg.wait_for_timeout(1500)
@@ -419,6 +452,18 @@ with sync_playwright() as p:
           m.evaluate("document.documentElement.scrollWidth"))
     check("390: svg + sectors in viewport",
           s["svgIn"] and all(i["inVp"] for c in s["sectors"] for i in c["items"]), s)
+    # mobile resize: same re-centring invariant (vh-based anchor, 2026-11-25)
+    m.set_viewport_size({"width": 390, "height": 700})
+    m.wait_for_timeout(500)
+    cm = m.evaluate("""() => {
+      const sv = document.querySelector('#pie-stage svg.rsvg');
+      const a = document.getElementById('home-anchor');
+      const r1 = sv.getBoundingClientRect(), r2 = a.getBoundingClientRect();
+      return [r1.left + r1.width/2, r1.top + r1.height/2,
+              r2.left + r2.width/2, r2.top + r2.height/2];
+    }""")
+    check("390: resize to 700h → svg re-centred on anchor",
+          abs(cm[0] - cm[2]) < 2 and abs(cm[1] - cm[3]) < 2, cm)
     m.screenshot(path="tests/home_390.png")
     click_sector(m, "#rg-0 .sector[data-idx='1']")   # Analyser
     m.wait_for_timeout(1800)

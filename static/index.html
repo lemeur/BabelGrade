@@ -3342,6 +3342,11 @@ window.addEventListener('resize',()=>{
   if(!RST.open)return;clearTimeout(rResizeT);
   rResizeT=setTimeout(()=>{
     if(!RST.open)return;
+    /* Re-measure the anchor: #home-center's height is vh-based, so a viewport
+       resize MOVES the anchor — re-centre on it (same as openMenu) before
+       the re-render, else the crowns stay stuck on the old centre. */
+    const a=$('#home-anchor');
+    if(a){const r=a.getBoundingClientRect();RST.cx=r.left+r.width/2;RST.cy=r.top+r.height/2;}
     RST.svg.remove();RST.svg=null;
     rRender();
   },150);
