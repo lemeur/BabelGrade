@@ -119,7 +119,7 @@ with sync_playwright() as pw:
       adv: [...document.querySelectorAll('#view-analyze details.opts-panel summary')].map(s=>s.textContent.trim())})""")
     check("FR: chip labels translated", st["labels"][0] == "Sujet" and "Élève" in st["labels"][1]
           and st["labels"][3] == "Grille", st["labels"])
-    check("FR: advanced options labels translated", "Options avancées" in st["adv"][0]
+    check("FR: advanced options labels translated", "Niveau spécifique et aménagements" in st["adv"][0]
           and "Consignes" in st["adv"][1], st["adv"])
     pg.evaluate("() => { document.querySelector('#rubric').value=''; }")
     pg.click('#run')
@@ -132,7 +132,7 @@ with sync_playwright() as pw:
 
     # ---------- static: i18n balance ----------
     html = open(os.path.join(OUT, "..", "static", "index.html"), encoding="utf-8").read()
-    keys = ["wiz.title","wiz.s1","wiz.s2","wiz.s3","wiz.s4","wiz.advOpts","wiz.evalNotes"]
+    keys = ["wiz.title","wiz.s1","wiz.s2","wiz.s3","wiz.s4","wiz.specificOpts","wiz.evalNotes"]
     counts = {k: len(re.findall(r"'\s*" + re.escape(k) + r"\s*'\s*:", html)) for k in keys}
     check("i18n: 7 wiz.* keys defined 4x", all(v == 4 for v in counts.values()), counts)
 

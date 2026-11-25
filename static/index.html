@@ -490,12 +490,14 @@ th{font-size:12px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted
 .res-badge{display:inline-block;font-size:12px;font-weight:600;color:var(--acc);
   background:var(--acc-soft);border-radius:999px;padding:2px 9px;cursor:help;
   white-space:nowrap}
-/* ---- level: inherited vs override ---- */
+/* ---- level: inherited vs override (2026-11-25: the override row lives in
+   the "Specific level & accommodations" details, so the styles cover BOTH
+   containers) ---- */
 .lvl-block{background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:12px 14px}
-.lvl-block .lvl-opt{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--ink);
+.lvl-block .lvl-opt,.opts-panel .lvl-opt{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:600;color:var(--ink);
   text-transform:none;letter-spacing:0;margin:4px 0}
-.lvl-block .lvl-opt input{width:auto}
-.lvl-block .diff{color:var(--warn);font-weight:700;font-size:13px}
+.lvl-block .lvl-opt input,.opts-panel .lvl-opt input{width:auto}
+.lvl-block .diff,.opts-panel .diff{color:var(--warn);font-weight:700;font-size:13px}
 /* ---- history: selected row + detail header ---- */
 tr[data-sub]{cursor:pointer;outline:none}
 tr[data-sub]:hover,tr[data-sub]:focus-visible{background:#f8fafc}
@@ -1496,33 +1498,18 @@ g.g-exit{pointer-events:none}
         <div style="max-width:340px"><label for="student" data-i18n="an.student">Student</label>
           <select id="student"><option value="">&mdash; none &mdash;</option></select></div>
       </div>
-      <!-- P1.1 options avancées: accommodations hidden behind a <details> -->
-      <details class="opts-panel" style="margin-top:10px">
-        <summary data-i18n="wiz.advOpts">Advanced options</summary>
-        <label for="accommodations" data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
-        <textarea id="accommodations" rows="2" data-i18n-ph="ph.accom" placeholder="e.g. The student is dyslexic &mdash; do not count spelling mistakes as harshly."></textarea>
-      </details>
-      <!-- target level: inherited (from task) vs override (per student) -->
+      <!-- target level (2026-11-25): inherited from the subject by default,
+           shown RIGHT ABOVE the advanced options; the per-student override
+           ("ou bien niveau … (pour cet élève)") moved INSIDE the advanced
+           section below -->
       <div class="lvl-block" style="margin-top:14px" id="lvl-block">
         <div id="lvl-radios" style="display:none">
-          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-            <b style="font-size:13px;text-transform:uppercase;letter-spacing:.4px;color:var(--muted)" data-i18n="an.targetLevel">Target level</b>
-            <label class="lvl-opt" id="lvl-inherit-lab">
-              <input type="radio" name="lvl-mode" id="lvl-inherit" checked>
-              <span data-i18n="an.inheritFromAssignment">Inherit from assignment</span>
-              <span id="lvl-inherit-val" class="level other">—</span>
-            </label>
-            <label class="lvl-opt">
-              <input type="radio" name="lvl-mode" id="lvl-override">
-              <span data-i18n="an.overrideForStudent">Override for this student</span>
-              <select id="target-override" class="hide" style="position:absolute;left:-9999px" disabled>
-                <option value="">No target</option><option value="A1">A1</option><option value="A2">A2</option>
-                <option value="B1">B1</option><option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
-              </select>
-              <div id="lvl-override-carousel" class="lvl-carousel" style="flex:1;min-width:220px;max-width:420px"></div>
-              <span class="diff" id="lvl-diff"></span>
-            </label>
-          </div>
+          <label class="lvl-opt" id="lvl-inherit-lab">
+            <input type="radio" name="lvl-mode" id="lvl-inherit" checked>
+            <span data-i18n="an.targetLevel">Target level</span>
+            <span id="lvl-inherit-val" class="level other">—</span>
+            <span class="muted" data-i18n="an.lvlInheritedTail">(inherited from the assignment)</span>
+          </label>
         </div>
         <!-- no-task mode: level carousel (the #target-level select stays as the
              hidden value source; the carousel drives it) -->
@@ -1536,6 +1523,24 @@ g.g-exit{pointer-events:none}
           </select>
         </div>
       </div>
+      <!-- 2026-11-25: specific level for THIS student + accommodations, tucked
+           inside the advanced section (was the "Options avancées" details) -->
+      <details class="opts-panel" style="margin-top:14px" id="who-opts">
+        <summary data-i18n="wiz.specificOpts">Specific level &amp; accommodations</summary>
+        <label class="lvl-opt" id="lvl-override-lab" style="margin-top:8px">
+          <input type="radio" name="lvl-mode" id="lvl-override">
+          <span data-i18n="an.lvlOverridePrefix">or level</span>
+          <select id="target-override" class="hide" style="position:absolute;left:-9999px" disabled>
+            <option value="">No target</option><option value="A1">A1</option><option value="A2">A2</option>
+            <option value="B1">B1</option><option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
+          </select>
+          <div id="lvl-override-carousel" class="lvl-carousel" style="flex:1;min-width:200px;max-width:420px"></div>
+          <span data-i18n="an.lvlOverrideTail">(for this student)</span>
+          <span class="diff" id="lvl-diff"></span>
+        </label>
+        <label for="accommodations" data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
+        <textarea id="accommodations" rows="2" data-i18n-ph="ph.accom" placeholder="e.g. The student is dyslexic &mdash; do not count spelling mistakes as harshly."></textarea>
+      </details>
     </div>
 
     <!-- 3 · WORK -->
@@ -2336,7 +2341,7 @@ const I18N={
   'an.readDirect':'the model reads them directly','an.orBrowse':'or click to browse',
   'an.student':'Student','an.none':'— none —','an.accommodations':'Accommodations for this student',
   'an.accomPlaceholder':'e.g. The student is dyslexic — do not count spelling mistakes as harshly.',
-  'an.targetLevel':'Target level','an.inheritFromAssignment':'Inherit from assignment','an.overrideForStudent':'Override for this student',
+  'an.targetLevel':'Target level','an.lvlInheritedTail':'(inherited from the assignment)','an.lvlOverridePrefix':'or level','an.lvlOverrideTail':'(for this student)',
   'an.noTarget':'No target','an.noTargetPlain':'No target (assess only)',
   'an.mode':'Mode','an.title':'Title (optional)','an.titlePh':'e.g. Bac blanc 2026 - dossier',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
@@ -2356,7 +2361,7 @@ const I18N={
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
   'ai.run':'Run AI analysis','ai.rerun':'Re-run AI (replaces this opinion)','ai.rerunHint':'New analysis: the opinion below will be replaced by the next one (only the last one is kept).',
   'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.',
-  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.title':'New evaluation','wiz.s1':'Assignment','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.advOpts':'Advanced options','wiz.evalNotes':'Evaluation instructions (optional)',
+  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.title':'New evaluation','wiz.s1':'Assignment','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.specificOpts':'Specific level & accommodations','wiz.evalNotes':'Evaluation instructions (optional)',
 'tip.att':'Attests a CEFR level (A1\u2013C2) from the official /120 grid (B.O. LVA/LVB). It is a recommendation \u2014 the teacher makes the final call.','tip.modalite':'Modality = whether the assessment covers comprehension or expression. The official point thresholds differ between the two.','tip.note20':'Hand-entered /20 mark. Reference only \u2014 the attested level is never computed from the /20.','tip.vsTarget':'Compares the attested level with the target level of the assignment.','tip.aiCol':'AI opinion per criterion: \u2713 if it matches your level, \u2260 if it differs.','tip.just':'AI justification + verbatim quotes from the production (evidence).','tip.points':'Points out of 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Overall level computed from the /120 grid (official thresholds).','tip.critGrid':'The six official sub-scores (comprehension or expression) make up the /120 total; the level is read from the official B.O. grid.',
   'an.assignmentTarget':'Assignment target','an.overrideDiff':'differs from the assignment',
   'an.savedMedia':'stored assignment materials were sent to the model',
@@ -2422,7 +2427,7 @@ const I18N={
   'an.readDirect':'le modèle les lit directement','an.orBrowse':'ou cliquer pour parcourir',
   'an.student':'Élève','an.none':'— aucun —','an.accommodations':'Aménagements pour cet élève',
   'an.accomPlaceholder':'ex. L’élève est dyslexique — ne pas compter les fautes d’orthographe aussi lourdement.',
-  'an.targetLevel':'Niveau cible','an.inheritFromAssignment':'Hériter du sujet','an.overrideForStudent':'Surcharger pour cet élève',
+  'an.targetLevel':'Niveau cible','an.lvlInheritedTail':'(hérité du sujet)','an.lvlOverridePrefix':'ou bien niveau','an.lvlOverrideTail':'(pour cet élève)',
   'an.noTarget':'Sans niveau','an.noTargetPlain':'Sans niveau (évaluer seulement)',
   'an.mode':'Mode','an.title':'Titre (optionnel)','an.titlePh':'ex. Bac blanc 2026 - dossier',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
@@ -2442,7 +2447,7 @@ const I18N={
   'ai.blind':'IA en aveugle','ai.aware':'IA avec vos niveaux','ai.blindHint':'L’IA évalue indépendamment, sans voir vos niveaux.','ai.awareHint':'L’IA voit vos niveaux et doit les confirmer ou les infirmer, critère par critère, avec des preuves.',
   'ai.run':'Lancer l’analyse IA','ai.rerun':'↻ Relancer l’IA (remplace cet avis)','ai.rerunHint':'Nouvelle analyse : l’avis ci-dessous sera remplacé par le prochain (le seul conservé).',
   'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.',
-  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.title':'Nouvelle évaluation','wiz.s1':'Sujet','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.advOpts':'Options avancées','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
+  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.title':'Nouvelle évaluation','wiz.s1':'Sujet','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.specificOpts':'Niveau spécifique et aménagements','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
 'tip.att':'Atteste un niveau CECRL (A1\u2013C2) à partir de la grille officielle /120 (B.O. LVA/LVB). C’est une recommandation \u2014 l’enseignant tranche en dernier.','tip.modalite':'Modalité = la compétence évaluée : réception (compréhension) ou production (expression). Les seuils de points officiels diffèrent selon la modalité.','tip.note20':'Note /20 saisie à la main. À titre de référence uniquement \u2014 le niveau attesté ne se calcule jamais à partir du /20.','tip.vsTarget':'Compare le niveau attesté avec le niveau cible du sujet.','tip.aiCol':'Avis IA par critère : \u2713 s’il coïncide avec votre niveau, \u2260 s’il diffère.','tip.just':'Justification de l’IA + citations littérales de la production (preuves).','tip.points':'Points sur 120 : A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Niveau global calculé sur la grille /120 (seuils officiels).','tip.critGrid':'Les six sous-critères officiels (réception ou production) composent le /120 ; le niveau se lit sur la grille B.O. officielle.',
   'an.assignmentTarget':'Niveau du sujet','an.overrideDiff':'diffère du sujet',
   'an.savedMedia':'les ressources stockées du sujet ont été envoyées au modèle',
@@ -2508,7 +2513,7 @@ const I18N={
   'an.readDirect':'el modelo las lee directamente','an.orBrowse':'o haz clic para explorar',
   'an.student':'Estudiante','an.none':'— ninguno —','an.accommodations':'Adaptaciones para este estudiante',
   'an.accomPlaceholder':'p. ej. El estudiante es disléxico: no castigues demasiado las erratas.',
-  'an.targetLevel':'Nivel objetivo','an.inheritFromAssignment':'Heredar de la tarea','an.overrideForStudent':'Sobrescribir para este estudiante',
+  'an.targetLevel':'Nivel objetivo','an.lvlInheritedTail':'(heredado de la tarea)','an.lvlOverridePrefix':'o bien nivel','an.lvlOverrideTail':'(para este estudiante)',
   'an.noTarget':'Sin nivel','an.noTargetPlain':'Sin nivel (solo evaluar)',
   'an.mode':'Modo','an.title':'Título (opcional)','an.titlePh':'p. ej. Bachillerato 2026 - dossier',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
@@ -2528,7 +2533,7 @@ const I18N={
   'ai.blind':'IA a ciegas','ai.aware':'IA con tus niveles','ai.blindHint':'La IA evalúa de forma independiente, sin ver tus niveles.','ai.awareHint':'La IA ve tus niveles y debe confirmarlos o refutarlos, criterio a criterio, con evidencia.',
   'ai.run':'Ejecutar análisis IA','ai.rerun':'↻ Relanzar IA (reemplaza esta opinión)','ai.rerunHint':'Nuevo análisis: la opinión de abajo será reemplazada por la siguiente (solo se conserva la última).',
   'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.',
-  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.title':'Nueva evaluación','wiz.s1':'Tarea','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.advOpts':'Opciones avanzadas','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
+  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.title':'Nueva evaluación','wiz.s1':'Tarea','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.specificOpts':'Nivel específico y adaptaciones','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
 'tip.att':'Certifica un nivel MCER (A1–C2) a partir de la cuadrícula oficial /120 (B.O. LVA/LVB). Es una recomendación: el docente toma la decisión final.','tip.modalite':'Modalidad = si la evaluación cubre comprensión o expresión. Los umbrales de puntos oficiales difieren entre ambas.','tip.note20':'Nota /20 introducida a mano. Solo como referencia: el nivel certificado nunca se calcula a partir del /20.','tip.vsTarget':'Compara el nivel certificado con el nivel objetivo de la tarea.','tip.aiCol':'Opinión IA por criterio: ✓ si coincide con su nivel, ≠ si difiere.','tip.just':'Justificación de la IA + citas literales de la producción (pruebas).','tip.points':'Puntos sobre 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Nivel global calculado sobre la cuadrícula /120 (umbrales oficiales).','tip.critGrid':'Los seis subcriterios oficiales (comprensión o expresión) componen el /120; el nivel se lee en la rejilla oficial B.O.',
   'an.assignmentTarget':'Nivel de la tarea','an.overrideDiff':'difiere de la tarea',
   'an.savedMedia':'los materiales guardados de la tarea se enviaron al modelo',
@@ -2594,7 +2599,7 @@ const I18N={
   'an.readDirect':'das Modell liest sie direkt','an.orBrowse':'oder klicken zum Durchsuchen',
   'an.student':'Schüler:in','an.none':'— keine:r —','an.accommodations':'Bewertungsanpassungen für diese:n Schüler:in',
   'an.accomPlaceholder':'z. B. Die Schüler:in hat Lese-Rechtschreib-Schwäche — Rechtschreibfehler nicht zu streng werten.',
-  'an.targetLevel':'Zielstufe','an.inheritFromAssignment':'Von Aufgabe übernehmen','an.overrideForStudent':'Für diese:n Schüler:in überschreiben',
+  'an.targetLevel':'Zielstufe','an.lvlInheritedTail':'(übernommen von der Aufgabe)','an.lvlOverridePrefix':'oder Stufe','an.lvlOverrideTail':'(für diese:n Schüler:in)',
   'an.noTarget':'Ohne Ziel','an.noTargetPlain':'Ohne Ziel (nur bewerten)',
   'an.mode':'Modus','an.title':'Titel (optional)','an.titlePh':'z. B. Mock-BAC 2026 – Dossier',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
@@ -2614,7 +2619,7 @@ const I18N={
   'ai.blind':'KI blind','ai.aware':'KI mit Ihren Stufen','ai.blindHint':'Die KI bewertet unabhängig, ohne Ihre Stufen zu sehen.','ai.awareHint':'Die KI sieht Ihre Stufen und muss jede bestätigen oder widerlegen, mit Belegen.',
   'ai.run':'KI-Analyse starten','ai.rerun':'↻ KI erneut ausführen (ersetzt diese Meinung)','ai.rerunHint':'Neue Analyse: die Meinung unten wird durch die nächste ersetzt (nur die letzte wird behalten).',
   'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.',
-  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.title':'Neue Bewertung','wiz.s1':'Aufgabe','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.advOpts':'Erweiterte Optionen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
+  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.title':'Neue Bewertung','wiz.s1':'Aufgabe','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.specificOpts':'Spezifisches Niveau & Anpassungen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
 'tip.att':'Attestiert ein GER-Niveau (A1–C2) aus dem offiziellen /120-Raster (B.O. LVA/LVB). Es ist eine Empfehlung — die Lehrkraft entscheidet letztinstanzlich.','tip.modalite':'Modalität = ob die Bewertung Rezeption (Verstehen) oder Produktion (Ausdrücken) betrifft. Die offiziellen Punkteschwellen unterscheiden sich.','tip.note20':'Von Hand eingetragene Note von 20. Nur als Referenz — das attestierte Niveau wird niemals aus der /20 berechnet.','tip.vsTarget':'Vergleicht das attestierte Niveau mit dem Zielniveau der Aufgabe.','tip.aiCol':'KI-Meinung pro Kriterium: ✓ bei Übereinstimmung mit Ihrer Stufe, ≠ bei Abweichung.','tip.just':'KI-Begründung + wörtliche Zitate aus der Produktion (Belege).','tip.points':'Punkte von 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Gesamtstufe, berechnet aus dem /120-Raster (offizielle Schwellen).','tip.critGrid':'Die sechs offiziellen Teilpunkte (Rezeption oder Produktion) ergeben die 120; die Stufe wird aus dem offiziellen B.O.-Raster abgelesen.',
   'an.assignmentTarget':'Ziel der Aufgabe','an.overrideDiff':'weicht von der Aufgabe ab',
   'an.savedMedia':'die gespeicherten Materialien der Aufgabe wurden an das Modell gesendet',
@@ -4656,8 +4661,8 @@ $('#assignment-edit-btn').addEventListener('click',()=>{
   const tk=selectedAssignment();
   if(tk)openAssignmentEditor(tk.id);
 });
-$('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;updateLvlDiff();});
-$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;updateLvlDiff();});
+$('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;$('#who-opts').open=false;updateLvlDiff();});
+$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;$('#who-opts').open=true;updateLvlDiff();});
 $('#target-override').addEventListener('change',updateLvlDiff);
 
 /* assignment exercise type (2026-10-10): skill (comprehension|expression) +
