@@ -1498,17 +1498,17 @@ g.g-exit{pointer-events:none}
         <div style="max-width:340px"><label for="student" data-i18n="an.student">Student</label>
           <select id="student"><option value="">&mdash; none &mdash;</option></select></div>
       </div>
-      <!-- target level (2026-11-25): inherited from the subject by default,
-           shown RIGHT ABOVE the advanced options; the per-student override
-           ("ou bien niveau … (pour cet élève)") moved INSIDE the advanced
-           section below -->
+      <!-- target level (2026-11-25 v2): the inherited level is INFORMATION
+           (no radio), shown above the advanced section; the per-student
+           override is a CHECKBOX inside the section, so it can be unchecked.
+           "Niveau cible B1" gains the "(spécifique)" tail when the override
+           is on. The tail label is dynamic → not a data-i18n target. -->
       <div class="lvl-block" style="margin-top:14px" id="lvl-block">
         <div id="lvl-radios" style="display:none">
           <label class="lvl-opt" id="lvl-inherit-lab">
-            <input type="radio" name="lvl-mode" id="lvl-inherit" checked>
-            <span data-i18n="an.targetLevel">Target level</span>
+            <span id="lvl-inherit-title">Target level</span>
             <span id="lvl-inherit-val" class="level other">—</span>
-            <span class="muted" data-i18n="an.lvlInheritedTail">(inherited from the assignment)</span>
+            <span class="muted" id="lvl-inherit-tail">(inherited from the assignment)</span>
           </label>
         </div>
         <!-- no-task mode: level carousel (the #target-level select stays as the
@@ -1528,8 +1528,8 @@ g.g-exit{pointer-events:none}
       <details class="opts-panel" style="margin-top:14px" id="who-opts">
         <summary data-i18n="wiz.specificOpts">Specific level &amp; accommodations</summary>
         <label class="lvl-opt" id="lvl-override-lab" style="margin-top:8px">
-          <input type="radio" name="lvl-mode" id="lvl-override">
-          <span data-i18n="an.lvlOverridePrefix">or level</span>
+          <input type="checkbox" id="lvl-override">
+          <span data-i18n="an.specificTargetLevel">Specific target level</span>
           <select id="target-override" class="hide" style="position:absolute;left:-9999px" disabled>
             <option value="">No target</option><option value="A1">A1</option><option value="A2">A2</option>
             <option value="B1">B1</option><option value="B2">B2</option><option value="C1">C1</option><option value="C2">C2</option>
@@ -2341,7 +2341,7 @@ const I18N={
   'an.readDirect':'the model reads them directly','an.orBrowse':'or click to browse',
   'an.student':'Student','an.none':'— none —','an.accommodations':'Accommodations for this student',
   'an.accomPlaceholder':'e.g. The student is dyslexic — do not count spelling mistakes as harshly.',
-  'an.targetLevel':'Target level','an.lvlInheritedTail':'(inherited from the assignment)','an.lvlOverridePrefix':'or level','an.lvlOverrideTail':'(for this student)',
+  'an.targetLevel':'Target level','an.lvlInheritedTail':'(inherited from the assignment)','an.specificTargetLevel':'Specific target level','an.lvlSpecificTail':'(specific)','an.lvlOverrideTail':'(for this student)',
   'an.noTarget':'No target','an.noTargetPlain':'No target (assess only)',
   'an.mode':'Mode','an.title':'Title (optional)','an.titlePh':'e.g. Bac blanc 2026 - dossier',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
@@ -2427,7 +2427,7 @@ const I18N={
   'an.readDirect':'le modèle les lit directement','an.orBrowse':'ou cliquer pour parcourir',
   'an.student':'Élève','an.none':'— aucun —','an.accommodations':'Aménagements pour cet élève',
   'an.accomPlaceholder':'ex. L’élève est dyslexique — ne pas compter les fautes d’orthographe aussi lourdement.',
-  'an.targetLevel':'Niveau cible','an.lvlInheritedTail':'(hérité du sujet)','an.lvlOverridePrefix':'ou bien niveau','an.lvlOverrideTail':'(pour cet élève)',
+  'an.targetLevel':'Niveau cible','an.lvlInheritedTail':'(hérité du sujet)','an.specificTargetLevel':'Niveau cible spécifique','an.lvlSpecificTail':'(spécifique)','an.lvlOverrideTail':'(pour cet élève)',
   'an.noTarget':'Sans niveau','an.noTargetPlain':'Sans niveau (évaluer seulement)',
   'an.mode':'Mode','an.title':'Titre (optionnel)','an.titlePh':'ex. Bac blanc 2026 - dossier',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
@@ -2513,7 +2513,7 @@ const I18N={
   'an.readDirect':'el modelo las lee directamente','an.orBrowse':'o haz clic para explorar',
   'an.student':'Estudiante','an.none':'— ninguno —','an.accommodations':'Adaptaciones para este estudiante',
   'an.accomPlaceholder':'p. ej. El estudiante es disléxico: no castigues demasiado las erratas.',
-  'an.targetLevel':'Nivel objetivo','an.lvlInheritedTail':'(heredado de la tarea)','an.lvlOverridePrefix':'o bien nivel','an.lvlOverrideTail':'(para este estudiante)',
+  'an.targetLevel':'Nivel objetivo','an.lvlInheritedTail':'(heredado de la tarea)','an.specificTargetLevel':'Nivel objetivo específico','an.lvlSpecificTail':'(específico)','an.lvlOverrideTail':'(para este estudiante)',
   'an.noTarget':'Sin nivel','an.noTargetPlain':'Sin nivel (solo evaluar)',
   'an.mode':'Modo','an.title':'Título (opcional)','an.titlePh':'p. ej. Bachillerato 2026 - dossier',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
@@ -2599,7 +2599,7 @@ const I18N={
   'an.readDirect':'das Modell liest sie direkt','an.orBrowse':'oder klicken zum Durchsuchen',
   'an.student':'Schüler:in','an.none':'— keine:r —','an.accommodations':'Bewertungsanpassungen für diese:n Schüler:in',
   'an.accomPlaceholder':'z. B. Die Schüler:in hat Lese-Rechtschreib-Schwäche — Rechtschreibfehler nicht zu streng werten.',
-  'an.targetLevel':'Zielstufe','an.lvlInheritedTail':'(übernommen von der Aufgabe)','an.lvlOverridePrefix':'oder Stufe','an.lvlOverrideTail':'(für diese:n Schüler:in)',
+  'an.targetLevel':'Zielstufe','an.lvlInheritedTail':'(übernommen von der Aufgabe)','an.specificTargetLevel':'Spezifische Zielstufe','an.lvlSpecificTail':'(spezifisch)','an.lvlOverrideTail':'(für diese:n Schüler:in)',
   'an.noTarget':'Ohne Ziel','an.noTargetPlain':'Ohne Ziel (nur bewerten)',
   'an.mode':'Modus','an.title':'Titel (optional)','an.titlePh':'z. B. Mock-BAC 2026 – Dossier',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
@@ -2745,6 +2745,11 @@ function renderLangMenu(){
 function applyI18n(){
   document.documentElement.lang=LANG;
   $$('[data-i18n]').forEach(el=>{el.textContent=t(el.dataset.i18n);});
+  /* 2026-11-25 v2: the inherited-level line is dynamic (NOT a data-i18n
+     target — "Niveau cible B1 (hérité du sujet)" vs "… B2 (spécifique)"):
+     re-point its two text spans in place on a language switch. */
+  const lT=$('#lvl-inherit-title');if(lT)lT.textContent=t('an.targetLevel');
+  const lE=$('#lvl-inherit-tail');if(lE)lE.textContent=$('#lvl-override').checked?t('an.lvlSpecificTail'):t('an.lvlInheritedTail');
   /* P0.5: labels marked data-i18n-suffix get a required-field asterisk
      re-appended after the [data-i18n] pass above rewrites their text. */
   $$('[data-i18n-suffix]').forEach(el=>{const s=document.createElement('span');s.className='req';s.setAttribute('aria-hidden','true');s.textContent='*';el.appendChild(s);});
@@ -4548,6 +4553,19 @@ function syncLevelUI(){
   if(hasAssignment){
     const cur=$('#lvl-inherit-val');
     if(cur&&cur.id){cur.outerHTML=levelPill(assignmentLevel()).replace('class="level','id="lvl-inherit-val" class="level');}
+    /* dynamic line (2026-11-25 v2): "Niveau cible B1 (hérité du sujet)" by
+       default, "Niveau cible B1 (spécifique)" when the specific-target
+       checkbox is on. The label is NOT a data-i18n target — syncLevelUI()
+       owns the pill + tail, applyI18n() re-points #lvl-inherit-title and
+       #lvl-inherit-tail in place on a language switch. */
+    const lab=$('#lvl-inherit-lab'), tail=$('#lvl-inherit-tail');
+    if(lab){
+      const pill=$('#lvl-inherit-val');
+      lab.textContent='';
+      lab.append(Object.assign(document.createElement('span'),{id:'lvl-inherit-title',textContent:t('an.targetLevel')}));
+      lab.append(pill||levelPill(assignmentLevel()));
+      if(tail){tail.textContent=$('#lvl-override').checked?t('an.lvlSpecificTail'):t('an.lvlInheritedTail');lab.append(tail);}
+    }
     $('#target-override').disabled=!$('#lvl-override').checked;
     $('#lvl-override-carousel').style.pointerEvents=$('#lvl-override').checked?'':'none';
     $('#lvl-override-carousel').style.opacity=$('#lvl-override').checked?'':.45;
@@ -4661,13 +4679,11 @@ $('#assignment-edit-btn').addEventListener('click',()=>{
   const tk=selectedAssignment();
   if(tk)openAssignmentEditor(tk.id);
 });
-/* 2026-11-25 fix: the radio change must re-run syncLevelUI — it is what
-   enables/dims the override carousel (opacity + pointer-events + select
-   disabled). Without it, picking "or level" left the pills greyed out.
-   (No auto-close of the section: tibo wants it to stay open when switching
-   back to the inherited level.) */
-$('#lvl-inherit').addEventListener('change',()=>{$('#target-override').disabled=true;syncLevelUI();});
-$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=false;syncLevelUI();});
+/* 2026-11-25 v2: the override is a CHECKBOX (can be unchecked); the inherited
+   line is plain information. Checking/unchecking must re-run syncLevelUI —
+   it is what enables/dims the override carousel (opacity + pointer-events +
+   select disabled) and rewrites the dynamic tail "(spécifique)". */
+$('#lvl-override').addEventListener('change',()=>{$('#target-override').disabled=!$('#lvl-override').checked;syncLevelUI();});
 $('#target-override').addEventListener('change',updateLvlDiff);
 
 /* assignment exercise type (2026-10-10): skill (comprehension|expression) +
