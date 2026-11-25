@@ -31,7 +31,9 @@ Deux façons de travailler :
 
 1. **Analyser** (icône ✏️ en haut) : ouvrez le panneau d'analyse.
 2. Choisissez le **type** de production : écrit / oral (audio) / document.
-3. Collez le **texte** (ou déposez photos / PDF / audio).
+3. Collez le **texte**, déposez des **photos**, ou joignez le **travail de
+   l'élève en PDF** (bouton 📄 — non sélectionné par défaut) : le modèle lit
+   la couche texte d'un PDF tapé, ou numérise les pages d'un PDF scanné.
 4. Choisissez la **grille** — c'est le choix le plus important : il détermine
    la structure du rapport (attestation LVA/LVB, Bac écrit/oral, BTS…).
 5. Définissez le **niveau cible** (ex. B2) et l'élève (facultatif).
