@@ -10,10 +10,10 @@ V4.1/M1  native portrait layout for criterion-by-criterion eval
   W3  landscape phone (844×390): NO .ev-port → the old 3-col layout
   W4  desktop (1280): no .ev-port → full A1→C2 scale
 
-M2       two photo sources on mobile (2026-11-25 rev: camera-first single
-         input replaced by explicit 📸 camera + 🖼 gallery buttons)
-  W5  the copy/instr/doc photo inputs (#img-file…) are plain pickers
-      (NO capture) + a separate #img-file-cam carries capture="environment"
+M2       photo picker = native choice (2026-11-25 final: the OS picker offers
+         camera AND gallery — no app-side capture attr, no extra buttons)
+  W5  the copy/instr/doc photo inputs (#img-file…) are plain multiple
+      pickers (NO capture) and no camera-side buttons/input exist
 
 M3       sticky-bottom action bar on the evaluator form
   W6  .card.an-actions is position:sticky bottom on mobile, visible &
@@ -131,20 +131,19 @@ def main():
         if pg.evaluate("document.querySelector('#ev-exitbar').classList.contains('show')"):
             pg.click("#ev-exit-discard"); pg.wait_for_timeout(300)
 
-        # ---- M2 (2026-11-25 rev): two photo sources on mobile — camera button
-        #      (separate input with capture) + gallery button/dropzone (plain
-        #      picker). The original #img-file inputs are NO LONGER capture. ----
+        # ---- M2 (2026-11-25 final): one plain photo input per field — the OS
+        #      picker itself offers camera + gallery (iOS "Prendre une photo"/
+        #      "Choisir dans la Photothèque", Android "Appareil photo" entry),
+        #      so no app-side capture attr / buttons / second input. ----
         pg.evaluate("location.hash='#evaluator'"); pg.wait_for_selector("#view-analyze:not(.hide)", timeout=20000)
         pg.wait_for_timeout(400)
         caps = pg.evaluate("""()=>[...['img-file','instrphotos-file','docphotos-file']
             .map(id=>{const e=document.getElementById(id);return e?e.getAttribute('capture'):null;})]""")
         check("W5 M2: copy/instr/doc photo inputs are plain pickers (no capture)",
               all(c is None for c in caps), str(caps))
-        cam = pg.evaluate("""()=>{const e=document.getElementById('img-file-cam');
-            return e?{cap:e.getAttribute('capture'),
-              srcs:!!document.querySelector('#mfield-copy .m-srcs')}:null;}""")
-        check("W5 M2b: mobile camera input (capture=environment) + source buttons present",
-              cam and cam["cap"] == "environment" and cam["srcs"], str(cam))
+        noCam = pg.evaluate("""()=>!document.getElementById('img-file-cam')
+            && !document.querySelector('.m-srcs')""")
+        check("W5 M2b: no camera-side input / source buttons in the photo panel", noCam)
 
         # ---- M3: sticky-bottom action bar on the evaluator form ----
         pg.evaluate("window.scrollTo({top:0})"); pg.wait_for_timeout(250)
