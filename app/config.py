@@ -15,6 +15,11 @@ MAX_AUDIO_BYTES = 100 * 1024 * 1024
 MAX_DOC_PDF_BYTES = 25 * 1024 * 1024
 MAX_DOC_PDF_PAGES = 20
 MAX_PAGES = 20  # same cap as the photo uploader
+# The student's work may also be a single PDF (2026-11-25): a handwritten
+# copy exported/scanned as PDF, or a typed submission. Same 25 MB / 20 page
+# caps as the task-context PDFs.
+MAX_COPY_PDF_BYTES = 25 * 1024 * 1024
+MAX_COPY_PDF_PAGES = 20
 
 _SET_NULL = object()  # sentinel: force a column to NULL in teacher-update SQL
 ALLOWED_IMAGE = {"png", "jpg", "jpeg", "webp", "gif", "bmp", "tiff", "heic"}

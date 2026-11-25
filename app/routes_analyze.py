@@ -13,7 +13,7 @@ from fastapi import APIRouter, Form, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 
 from . import assess, config, db, jobs
-from .config import ALLOWED_AUDIO, MAX_AUDIO_BYTES
+from .config import ALLOWED_AUDIO, MAX_AUDIO_BYTES, MAX_COPY_PDF_BYTES
 from .media import _default_title, _ext, _read_image_uploads, _resolve_assignment_materials
 import uuid
 from typing import List
@@ -23,7 +23,7 @@ router = APIRouter()
 
 async def _stage_submission_payloads(
         kind: str, written_text: str, rubric_id: str,
-        image, images, audio,
+        image, images, audio, written_pdf,
         instruction, instruction_pdf, instruction_photos,
         doc_text, doc_audio, doc_pdf, doc_photos,
         eval_notes, eval_notes_pdf, eval_notes_photos,
@@ -69,25 +69,42 @@ async def _stage_submission_payloads(
         (config.UPLOAD_DIR / audio_name).write_bytes(data)
     else:
         audio_name = None
+        copy_pdf_name = None
         uploads = list(images or [])
         if image and image.filename:
             uploads.append(image)
         image_data_urls, image_paths = await _read_image_uploads(uploads)
-        if not written_text.strip() and not image_data_urls:
-            raise HTTPException(422, "provide written text or page photo(s)")
+        # 2026-11-25: the student's work may also be a single PDF (typed copy,
+        # scanned/printed copy exported as PDF). Staged here (name only) — the
+        # worker renders it: text layer -> written text, scanned pages ->
+        # page images (same pipeline as a task-context PDF).
+        copy_pdf_name = None
+        if written_pdf and written_pdf.filename:
+            ext = _ext(written_pdf.filename)
+            if ext != "pdf":
+                raise HTTPException(422, "student work file must be a .pdf")
+            data = await written_pdf.read()
+            if len(data) > MAX_COPY_PDF_BYTES:
+                raise HTTPException(422, "student work PDF too large (max 25 MB)")
+            copy_pdf_name = f"pdf-{uuid.uuid4().hex}.pdf"
+            (config.UPLOAD_DIR / copy_pdf_name).write_bytes(data)
+        if not written_text.strip() and not image_data_urls and not copy_pdf_name:
+            raise HTTPException(422, "provide written text or page photo(s) or the PDF")
 
     student_name = db.get_student(student_id)["name"] if student_id else ""
     # (2026-10-14) media ownership: the uploaded files (audio / page
-    # photos) are recorded on the submission IMMEDIATELY — not only when
-    # the job finishes — so /api/files ownership enforcement is airtight
-    # even for queued/in-flight submissions. The worker re-writes the same
-    # meta at completion (no change to stored values).
+    # photos / work PDF) are recorded on the submission IMMEDIATELY — not
+    # only when the job finishes — so /api/files ownership enforcement is
+    # airtight even for queued/in-flight submissions. The worker re-writes
+    # the same meta at completion (no change to stored values).
     initial_meta: dict = {}
     if audio_name:
         initial_meta["audio_name"] = audio_name
     if image_paths:
         initial_meta["page_paths"] = image_paths
         initial_meta["page_count"] = len(image_paths)
+    if copy_pdf_name:
+        initial_meta["copy_pdf_name"] = copy_pdf_name
     sub_id = db.create_submission(
         kind=kind, source_type="pending",
         payload_path="",
@@ -122,6 +139,7 @@ async def _stage_submission_payloads(
         "written_text": written_text or "",
         "image_names": image_paths,
         "audio_name": audio_name,
+        "copy_pdf_name": copy_pdf_name,
         "accommodations": (accommodations or "").strip(),
         "ui_language": assess._ui_language(ui_lang),
         # ad-hoc material names (ignored when assignment_id is set)
@@ -316,6 +334,7 @@ async def analyze(written_text: str = Form(""),
                   image: UploadFile | None = None,
                   images: List[UploadFile] = Form([]),
                   audio: UploadFile | None = None,
+                  written_pdf: UploadFile | None = None,
                   doc_audio: UploadFile | None = None,
                   instruction_pdf: UploadFile | None = None,
                   doc_pdf: UploadFile | None = None,
@@ -332,7 +351,7 @@ async def analyze(written_text: str = Form(""),
     done|error|cancelled). Legacy blocking endpoint removed: the async
     queue is now the only analyze path."""
     staged = await _stage_submission_payloads(
-        kind, written_text, rubric_id, image, images, audio,
+        kind, written_text, rubric_id, image, images, audio, written_pdf,
         instruction, instruction_pdf, instruction_photos,
         doc_text, doc_audio, doc_pdf, doc_photos,
         eval_notes, eval_notes_pdf, eval_notes_photos,
@@ -361,6 +380,7 @@ async def analyze_stream(written_text: str = Form(""),
                          image: UploadFile | None = None,
                          images: List[UploadFile] = Form([]),
                          audio: UploadFile | None = None,
+                         written_pdf: UploadFile | None = None,
                          doc_audio: UploadFile | None = None,
                          instruction_pdf: UploadFile | None = None,
                          doc_pdf: UploadFile | None = None,
@@ -374,7 +394,7 @@ async def analyze_stream(written_text: str = Form(""),
     """SSE wrapper around the async analyze job (legacy URL kept for
     compatibility): enqueues the job, then streams its live events."""
     staged = await _stage_submission_payloads(
-        kind, written_text, rubric_id, image, images, audio,
+        kind, written_text, rubric_id, image, images, audio, written_pdf,
         instruction, instruction_pdf, instruction_photos,
         doc_text, doc_audio, doc_pdf, doc_photos,
         eval_notes, eval_notes_pdf, eval_notes_photos,
@@ -404,6 +424,7 @@ async def evaluate(written_text: str = Form(""),
                    image: UploadFile | None = None,
                    images: List[UploadFile] = Form([]),
                    audio: UploadFile | None = None,
+                   written_pdf: UploadFile | None = None,
                    doc_audio: UploadFile | None = None,
                    instruction_pdf: UploadFile | None = None,
                    doc_pdf: UploadFile | None = None,
@@ -418,7 +439,7 @@ async def evaluate(written_text: str = Form(""),
     oral audio in the worker), then create the empty skeleton matrix. No LLM.
     Returns the job handle; follow it at `follow_url`."""
     staged = await _stage_submission_payloads(
-        kind, written_text, rubric_id, image, images, audio,
+        kind, written_text, rubric_id, image, images, audio, written_pdf,
         instruction, instruction_pdf, instruction_photos,
         doc_text, doc_audio, doc_pdf, doc_photos,
         eval_notes, eval_notes_pdf, eval_notes_photos,

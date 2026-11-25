@@ -255,6 +255,28 @@ def _extract_pdf_file(pdf_path: Path, label: str, page_prefix: str) -> tuple[str
     return text, page_urls, page_names
 
 
+def _student_work_pdf(p: dict) -> tuple[str, list, list]:
+    """Render the student's work PDF (2026-11-25): (text, page_data_urls,
+    page_names).
+
+    A student may hand in the copy as a single PDF instead of page photos.
+    Same pipeline as a task-context PDF: if the PDF carries a text layer,
+    its text becomes the written work; if it is scanned (no text layer),
+    its pages are rendered to JPEGs in uploads and used like page photos.
+    The rendered page names are returned so they can replace the submission's
+    page_paths (Annoter OCR + media ownership follow from there).
+    """
+    name = p.get("copy_pdf_name")
+    if not name:
+        return "", [], []
+    pp = config.UPLOAD_DIR / name
+    if not pp.is_file():
+        return "", [], []
+    text, page_urls, page_names = _extract_pdf_file(
+        pp, "student work", f"pdf-{name[4:36]}")
+    return text, page_urls, page_names
+
+
 # --------------------------------------------------------------------- report
 def _copy_text_basis(sub_id: int | None) -> dict | None:
     """What the teacher can READ about a written copy in the report.
@@ -413,10 +435,20 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
         transcript = await asyncio.to_thread(
             whisper.transcribe, str(config.UPLOAD_DIR / audio_name), lang)
     else:
-        if not written_text and not image_names:
-            raise ValueError("provide written text or page photo(s)")
+        if not written_text and not image_names and not p.get("copy_pdf_name"):
+            raise ValueError("provide written text or page photo(s) or the PDF")
         if image_names:
             image_data_urls = _data_urls_from_names(image_names)
+        # 2026-11-25: work-as-PDF. A text-layer PDF supplements the written
+        # text; a scanned PDF renders its pages to JPEGs that act as the
+        # page photos (they replace image_names so they are persisted as
+        # page_paths -> Annoter OCR + media ownership follow from there).
+        pdf_text, pdf_urls, pdf_names = _student_work_pdf(p)
+        if pdf_text:
+            written_text = (written_text + "\n\n" + pdf_text).strip()
+        if pdf_urls:
+            image_data_urls = pdf_urls
+            image_names = pdf_names
 
     # ---- persistence: submission + analysis already created by the request
     # handler (ids carried in the job row); fill them in now. ----
@@ -430,10 +462,9 @@ async def _stage_and_run_analyze(job_id: int, js: JobStream, payload: dict) -> N
                          language=(transcript["language"] if transcript else p.get("language") or ""),
                          duration_s=(transcript["duration_s"] if transcript else None),
                          target_level=effective_target,
-                         payload_meta=({**({"audio_name": audio_name} if kind == "oral" else {}),
-                                        **({"page_paths": image_names,
-                                            "page_count": len(image_names)}
-                                           if image_names else {})}) or None,
+                         payload_meta=_submission_payload_meta(kind, audio_name,
+                                                               image_names,
+                                                               p.get("copy_pdf_name")),
                          context=m._strip_persist_context(assignment_context)
                          if assignment else _strip_ctx(assignment_context),
                          eval_notes=m._strip_persist_eval_notes(eval_notes)
@@ -553,10 +584,20 @@ async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> 
         transcript = await asyncio.to_thread(
             whisper.transcribe, str(config.UPLOAD_DIR / audio_name), lang)
     else:
-        if not written_text and not image_names:
-            raise ValueError("provide written text or page photo(s)")
+        if not written_text and not image_names and not p.get("copy_pdf_name"):
+            raise ValueError("provide written text or page photo(s) or the PDF")
         if image_names:
             image_data_urls = _data_urls_from_names(image_names)
+        # 2026-11-25: work-as-PDF. A text-layer PDF supplements the written
+        # text; a scanned PDF renders its pages to JPEGs that act as the
+        # page photos (they replace image_names so they are persisted as
+        # page_paths -> Annoter OCR + media ownership follow from there).
+        pdf_text, pdf_urls, pdf_names = _student_work_pdf(p)
+        if pdf_text:
+            written_text = (written_text + "\n\n" + pdf_text).strip()
+        if pdf_urls:
+            image_data_urls = pdf_urls
+            image_names = pdf_names
 
     sub_id = db.job_get(job_id).get("submission_id")
     analysis_id = db.job_get(job_id).get("analysis_id")
@@ -567,10 +608,9 @@ async def _stage_and_run_evaluate(job_id: int, js: JobStream, payload: dict) -> 
                          language=(transcript["language"] if transcript else p.get("language") or ""),
                          duration_s=(transcript["duration_s"] if transcript else None),
                          target_level=effective_target,
-                         payload_meta=({**({"audio_name": audio_name} if kind == "oral" else {}),
-                                        **({"page_paths": image_names,
-                                            "page_count": len(image_names)}
-                                           if image_names else {})}) or None,
+                         payload_meta=_submission_payload_meta(kind, audio_name,
+                                                               image_names,
+                                                               p.get("copy_pdf_name")),
                          context=m._strip_persist_context(assignment_context)
                          if assignment else _strip_ctx(assignment_context),
                          eval_notes=m._strip_persist_eval_notes(eval_notes)
@@ -887,6 +927,24 @@ async def _run_llm_stream(job_id: int, js: JobStream, messages: list) -> tuple[s
 
 
 # --------------------------------------------------------------------- helpers
+def _submission_payload_meta(kind: str, audio_name, image_names: list,
+                             copy_pdf_name) -> dict | None:
+    """The submission's stored payload_meta (media file names) at the end of
+    a worker run. Written copies: page photos (page_paths) + the work PDF
+    (copy_pdf_name, kept on disk so run_ai / reanalyze can re-read it);
+    oral: the audio file. None when there is nothing to persist."""
+    meta: dict = {}
+    if kind == "oral" and audio_name:
+        meta["audio_name"] = audio_name
+    if kind != "oral":
+        if image_names:
+            meta["page_paths"] = image_names
+            meta["page_count"] = len(image_names)
+        if copy_pdf_name:
+            meta["copy_pdf_name"] = copy_pdf_name
+    return meta or None
+
+
 def _payload_of(kind, written_text, image_data_urls, transcript, image_names):
     if kind == "oral" and transcript:
         return transcript["text"], "audio"

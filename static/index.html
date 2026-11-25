@@ -2145,6 +2145,7 @@ const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const esc=v=>(v??'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let KIND='written', RUBRICS=[], currenasgnFiles=[], currentAudio=null, currentDocAudio=null,
     currentDocPdf=null, currentInstrPdf=null,
+    currentCopyPdf=null,
     currentInstrPhotos=[], currentDocPhotos=[], currentEvalPdf=null;
 let ASSIGNMENTS=[], TDB=null, HIST_SEL=null, _histDebounce=null, _histPendingStudent='', _histPendingAid=null, _histPendingAssignment='';
 let asgnEditId=null, _confirmResolve=null, _detailSub=null, _detailAid=null;
@@ -2332,7 +2333,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Student’s text (optional if you attach the copy photos)',
   'an.studentTextPh':'Paste the student’s written work here. If the copy is handwritten you can instead attach the page photos below — the model reads them directly.',
-  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.dropCopy':'Drop photo(s) of the copy',
+  'an.copyWork':'Copy of the work','an.copyPhotos':'Copy photos (the model OCRs them directly)','an.copyPdf':'Copy as PDF (the model reads the text layer, or scans the pages)','an.dropCopy':'Drop photo(s) of the copy',
   'an.onePerPage':'One photo per page, in reading order · png / jpg / webp / heic · or click to browse',
   'an.textPhotoNote':'Text and photos are mutually exclusive: attach the page photos on their own and the model reads the copy directly. If you provide both, the model treats the photos as the ground truth.',
   'an.audio':'Audio recording','an.dropAudio':'Drop the student’s recording',
@@ -2417,7 +2418,7 @@ const I18N={
   'an.mode':'Mode',
   'an.studentText':'Texte de l’élève (optionnel si vous joignez les photos de la copie)',
   'an.studentTextPh':'Collez ici la production écrite de l’élève. Si la copie est manuscrite, vous pouvez à la place joindre les photos des pages ci-contre — le modèle les lit directement.',
-  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.dropCopy':'Déposer photo(s) de la copie',
+  'an.copyWork':'La copie de l’élève','an.copyPhotos':'Photos de la copie (le modèle fait l’OCR directement)','an.copyPdf':'Copie en PDF (le modèle lit la couche texte, ou numérise les pages)','an.dropCopy':'Déposer photo(s) de la copie',
   'an.onePerPage':'Une photo par page, dans l’ordre de lecture · png / jpg / webp / heic · ou cliquer pour parcourir',
   'an.textPhotoNote':'Texte et photos sont mutuellement exclusifs : joignez les photos des pages seules et le modèle lit la copie directement. Les deux fournis, le modèle prend les photos comme source de vérité.',
   'an.audio':'Enregistrement audio','an.dropAudio':'Déposer l’enregistrement de l’élève',
@@ -2502,7 +2503,7 @@ const I18N={
   'an.mode':'Modo',
   'an.studentText':'Texto del estudiante (opcional si adjuntas fotos de la copia)',
   'an.studentTextPh':'Pega aquí el trabajo escrito del estudiante. Si la copia es manuscrita, puedes adjuntar fotos de las páginas abajo — el modelo las lee directamente.',
-  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.dropCopy':'Suelta foto(s) de la copia',
+  'an.copyWork':'La copia del estudiante','an.copyPhotos':'Fotos de la copia (el modelo hace la OCR directamente)','an.copyPdf':'Copia en PDF (el modelo lee la capa de texto, o digitaliza las páginas)','an.dropCopy':'Suelta foto(s) de la copia',
   'an.onePerPage':'Una foto por página, en orden de lectura · png / jpg / webp / heic · o haz clic para explorar',
   'an.textPhotoNote':'Texto y fotos son mutuamente excluyentes: adjunta solo las fotos de las páginas y el modelo leerá la copia directamente. Si das ambos, el modelo da la palabra a las fotos.',
   'an.audio':'Grabación de audio','an.dropAudio':'Suelta la grabación del estudiante',
@@ -2587,7 +2588,7 @@ const I18N={
   'an.mode':'Modus',
   'an.studentText':'Text der Schüler:in (optional, wenn du Fotos des Blatts anhängst)',
   'an.studentTextPh':'Füge hier die schriftliche Arbeit der Schüler:in ein. Wenn das Blatt handschriftlich ist, kannst du stattdessen die Seitenfotos unten anhängen — das Modell liest sie direkt.',
-  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.dropCopy':'Fotos des Blatts ablegen',
+  'an.copyWork':'Die Arbeit (Kopie)','an.copyPhotos':'Fotos des Blatts (das Modell macht das OCR direkt)','an.copyPdf':'Blatt als PDF (das Modell liest die Textschicht oder digitalisiert die Seiten)','an.dropCopy':'Fotos des Blatts ablegen',
   'an.onePerPage':'Ein Foto pro Seite, in Leseordnung · png / jpg / webp / heic · oder klicken zum Durchsuchen',
   'an.textPhotoNote':'Text und Fotos sind sich gegenseitig ausschließend: hänge nur die Seitenfotos an und das Modell liest das Blatt direkt. Bei beiden behandelt das Modell die Fotos als Quelle.',
   'an.audio':'Audioaufnahme','an.dropAudio':'Aufnahme der Schüler:in ablegen',
@@ -5413,7 +5414,7 @@ function wizSync(){
   const filled=[
     $('#assignment').value!=='',
     $('#student').value!==''||effectiveTarget()!=='',
-    KIND==='oral'?!!currentAudio:($('#written-text').value.trim()!==''||currenasgnFiles.length>0),
+    KIND==='oral'?!!currentAudio:($('#written-text').value.trim()!==''||currenasgnFiles.length>0||!!currentCopyPdf),
     !!$('#rubric').value,
   ];
   $$('.wiz-chip[data-wiz-go]').forEach((c,i)=>{
@@ -5624,16 +5625,19 @@ document.addEventListener('click',e=>{
 });
 /* ad-hoc evaluator fields. Reuse the ORIGINAL input ids + current*
    state vars so the run / save-as / run-eval handlers keep working unchanged.
-   Card 3 "student work" copy field (photo + text) uses the same engine
-   (2026-11-23) — photo is the default mode. */
-function renderAdhocMFields(){
-  /* card 3 written-work: photo / text (like the "Nouveau sujet" editor) */
-  renderMField($('#mfield-copy'),{
-    id:'copy',labelKey:'an.copyWork',modes:['photo','text'],
-    textId:'written-text',phKey:'ph.written',
-    photoInput:'img-file',photoLabel:'an.copyPhotos',
-    getPhotos:()=>currenasgnFiles,setPhotos:a=>currenasgnFiles=a,
-  });
+   Card 3 "student work" copy field (photo / pdf / text) uses the same engine
+   (2026-11-23; 2026-11-25 +pdf) — photo is the default mode; the PDF option
+   is NOT preselected, it activates only when a work PDF is attached. */
+  function renderAdhocMFields(){
+   /* card 3 written-work: photo / pdf / text (like the "Nouveau sujet" editor) */
+   renderMField($('#mfield-copy'),{
+     id:'copy',labelKey:'an.copyWork',modes:['photo','pdf','text'],
+     textId:'written-text',phKey:'ph.written',
+     photoInput:'img-file',photoLabel:'an.copyPhotos',
+     getPhotos:()=>currenasgnFiles,setPhotos:a=>currenasgnFiles=a,
+     pdfInput:'copypdf-file',pdfLabel:'an.copyPdf',
+     getPDF:()=>currentCopyPdf,setPDF:f=>currentCopyPdf=f,
+   });
   renderMField($('#mfield-instr'),{
     id:'instr',labelKey:'an.instruction',modes:['photo','pdf','text'],
     textId:'instruction',phKey:'ph.instr',
@@ -5760,6 +5764,10 @@ $('#student').addEventListener('change',function(){
   currenasgnFiles.length=0;
   const tf=$('#img-file');if(tf)tf.value='';
   const wt=$('#written-text');if(wt)wt.value='';
+  if(currentCopyPdf){
+    currentCopyPdf=null;
+    const cf=$('#copypdf-file');if(cf)cf.value='';
+  }
   if(currentAudio){
     currentAudio=null;
     const af=$('#audio-file');if(af)af.value='';
@@ -5818,6 +5826,7 @@ $('#run').onclick=async()=>{
   if(currentDocAudio)fd.append('doc_audio',currentDocAudio);
   if(currentDocPdf)fd.append('doc_pdf',currentDocPdf);
   if(currentInstrPdf)fd.append('instruction_pdf',currentInstrPdf);
+  if(currentCopyPdf)fd.append('written_pdf',currentCopyPdf);
   fd.append('eval_notes',$('#eval-notes').value);
   if(currentEvalPdf)fd.append('eval_notes_pdf',currentEvalPdf);
   currentInstrPhotos.forEach(f=>fd.append('instruction_photos',f));
@@ -5827,7 +5836,7 @@ $('#run').onclick=async()=>{
     if(!currentAudio)return _reqFlash('#work-panel','an.missingAudio');
     fd.append('audio',currentAudio);
   }
-  if(KIND==='written'&&!$('#written-text').value.trim()&&!currenasgnFiles.length)
+  if(KIND==='written'&&!$('#written-text').value.trim()&&!currenasgnFiles.length&&!currentCopyPdf)
     return _reqFlash('#work-panel','an.missingWorkWritten');
   /* point 9: the run is DECOUPLED from the view — #run stays enabled, the
      teacher may navigate away; the SSE keeps streaming in the background. */
@@ -6628,7 +6637,7 @@ $('#run-eval').onclick=async()=>{
      is created/selected before the run, so it always carries an assignment_id. */
   const _asgn2=await ensureDirectSubject();
   if(!_asgn2)return;
-  if(KIND==='written'&&!$('#written-text').value.trim()&&!currenasgnFiles.length)
+  if(KIND==='written'&&!$('#written-text').value.trim()&&!currenasgnFiles.length&&!currentCopyPdf)
     return _reqFlash('#work-panel','an.missingWorkWritten');
   if(KIND==='oral'&&!currentAudio)return _reqFlash('#work-panel','an.missingAudio');
   const fd=new FormData();
@@ -6645,6 +6654,7 @@ $('#run-eval').onclick=async()=>{
   if(currentDocAudio)fd.append('doc_audio',currentDocAudio);
   if(currentDocPdf)fd.append('doc_pdf',currentDocPdf);
   if(currentInstrPdf)fd.append('instruction_pdf',currentInstrPdf);
+  if(currentCopyPdf)fd.append('written_pdf',currentCopyPdf);
   fd.append('eval_notes',$('#eval-notes').value);
   if(currentEvalPdf)fd.append('eval_notes_pdf',currentEvalPdf);
   currentInstrPhotos.forEach(f=>fd.append('instruction_photos',f));
