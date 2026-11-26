@@ -36,6 +36,7 @@ ASSETS_SRC = ROOT / "docs" / "assets"
 
 try:
     import markdown  # type: ignore
+    from markdown.extensions.toc import TocExtension
 except ImportError:
     sys.exit("python-markdown missing: pip install markdown (hermes venv has it)")
 
@@ -96,9 +97,30 @@ main{max-width:1060px;margin:0 auto;padding:30px 20px 60px}
 .md hr{border:none;border-top:1px solid var(--line);margin:20px 0}
 .md .mermaid{background:#fff;border:1px solid var(--line);border-radius:10px;
  padding:14px;margin:14px 0;text-align:center;overflow-x:auto}
+/* ---- document layout: sticky TOC sidebar + scroll-spy (user guide) ---- */
+html{scroll-behavior:smooth}
+.md h2,.md h3{scroll-margin-top:84px}
+.doc{display:grid;grid-template-columns:252px minmax(0,1fr);gap:26px;align-items:start}
+.doc-toc{position:sticky;top:74px;max-height:calc(100vh - 96px);overflow:auto;
+ background:var(--panel);border:1px solid var(--line);border-radius:14px;
+ padding:14px 10px}
+.doc-toc-head{font-weight:700;font-size:11.5px;letter-spacing:.5px;
+ text-transform:uppercase;color:var(--muted);margin:2px 8px 8px}
+.doc-toc .toc ul{list-style:none;padding:0;margin:0}
+.doc-toc .toc a{display:block;padding:5px 10px;border-radius:7px;color:var(--muted);
+ font-size:13.5px;font-weight:500;text-decoration:none;border-left:2px solid transparent;
+ margin:1px 0}
+.doc-toc .toc a:hover{color:var(--acc);background:var(--acc-soft)}
+.doc-toc .toc a.on{color:var(--acc);background:var(--acc-soft);
+ border-left-color:var(--acc);font-weight:650}
+.doc-toc .toc li ul{margin:1px 0 1px 8px;padding-left:6px}
+.doc-toc .toc li li a{padding:4px 10px 4px 20px;font-size:12.5px}
 footer{max-width:1060px;margin:0 auto;padding:0 20px 40px;color:var(--muted);
  font-size:13px;text-align:center}
 footer a{color:var(--acc);text-decoration:none}
+@media(max-width:880px){
+ .doc{grid-template-columns:1fr;gap:16px}
+ .doc-toc{position:static;max-height:300px}}
 @media(max-width:640px){
  .md{padding:20px 16px}.hero{padding:30px 18px}.hero h1{font-size:27px}}
 """
@@ -151,11 +173,70 @@ mermaid.run({ querySelector: ".mermaid", suppressErrors: true });
 </script>
 """
 
+# Scroll-spy: highlight the TOC entry of the section in view (user guide only).
+# Robust approach: on scroll, the active section is the last heading whose top
+# has crossed above the band-top line; if none, the first section.
+SCROLL_SPY = """<script>
+(function () {
+  var links = document.querySelectorAll('.doc-toc .toc a[href^="#"]');
+  if (!links.length) return;
+  var pairs = [];
+  links.forEach(function (a) {
+    var el = document.getElementById(a.getAttribute('href').slice(1));
+    if (el) pairs.push({ el: el, a: a });
+  });
+  if (!pairs.length) return;
+  var BAND_TOP = 120;  // px from viewport top: a heading above this line is "current"
+  var activeA = null;
+  function update() {
+    var cur = null;
+    for (var i = 0; i < pairs.length; i++) {
+      var top = pairs[i].el.getBoundingClientRect().top;
+      if (top <= BAND_TOP) cur = pairs[i];  // last heading above the band
+    }
+    if (!cur) cur = pairs[0];  // at the very top, the first section is active
+    if (cur.a === activeA) return;
+    if (activeA) activeA.classList.remove('on');
+    activeA = cur.a;
+    activeA.classList.add('on');
+    var toc = activeA.closest('.doc-toc');
+    if (toc && activeA.offsetTop > toc.scrollTop + 60) {
+      toc.scrollTo({ top: activeA.offsetTop - 80, behavior: 'smooth' });
+    }
+  }
+  window.addEventListener('scroll', update, { passive: true });
+  window.addEventListener('resize', update, { passive: true });
+  update();
+})();
+</script>
+"""
 
-def md_to_body(md: str) -> tuple[str, bool]:
-    """markdown -> HTML; returns (body_html, has_mermaid)."""
+
+def md_to_body(md: str, toc: bool = False) -> tuple[str, bool, str]:
+    """markdown -> HTML; returns (body_html, has_mermaid, toc_html).
+
+    When toc=True, h2/h3 are given stable ids and a <div class="toc"> is
+    extracted out of the body (it lands in the sidebar)."""
     has_mermaid = bool(re.search(r"^```mermaid", md, re.M))
-    html = markdown.markdown(md, extensions=["tables", "fenced_code"])
+    exts: list = ["tables", "fenced_code"]
+    toc_html = ""
+    if toc:
+        mdo = markdown.Markdown(extensions=exts + [TocExtension(permalink=False, toc_depth=2)])
+        html = mdo.convert(md)
+        toc_html = mdo.toc  # the extension stores the <div class="toc"> here
+        # the H1 entry wraps the whole h2 list in a nested <ul>; unwrap it so
+        # the sidebar starts flat at the first section
+        if toc_html:
+            h1m = re.search(r'<h1[^>]+id="([^"]+)"', html)
+            if h1m:
+                unwrapped = re.sub(
+                    r'<li>\s*<a href="#' + re.escape(h1m.group(1)) + r'">.*?</a>\s*<ul>\s*(.*?)\s*</ul>\s*</li>',
+                    r'\1', toc_html, count=1, flags=re.S)
+                toc_html = unwrapped if unwrapped != toc_html else re.sub(
+                    r'<li>\s*<a href="#' + re.escape(h1m.group(1)) + r'">.*?</a>\s*</li>\s*',
+                    '', toc_html, count=1, flags=re.S)
+    else:
+        html = markdown.markdown(md, extensions=exts)
     # repo-relative links -> site-relative
     html = html.replace('src="docs/readme/', 'src="readme/')
     html = html.replace('href="docs/readme/', 'href="readme/')
@@ -172,7 +253,7 @@ def md_to_body(md: str) -> tuple[str, bool]:
                      (".github/workflows/ci.yml", "https://github.com/lemeur/BabelGrade/blob/main/.github/workflows/ci.yml"),
                      ("src=\"static/logo.png\"", "src=\"logo.svg\"")):
         html = html.replace(src, dst)
-    return html, has_mermaid
+    return html, has_mermaid, toc_html
 
 
 def on(flag: bool) -> str:
@@ -233,17 +314,25 @@ def build():
     (OUT / "index.html").write_text(
         page("BabelGrade — évaluation CEFR locale", landing, False, active="home"), encoding="utf-8")
 
-    # --- user guide
+    # --- user guide (document layout: sticky TOC sidebar + scroll-spy)
     md = USER_DOC.read_text(encoding="utf-8")
-    html, mm = md_to_body(md)
+    html, mm, toc_html = md_to_body(md, toc=True)
+    if toc_html:
+        toc_side = (f'<aside class="doc-toc"><div class="doc-toc-head">Sommaire</div>'
+                    f'{toc_html}</aside>')
+    else:
+        toc_side = ""
+    body = (f'<div class="doc">\n{toc_side}\n'
+            f'<div class="md">\n{html}</div>\n</div>'
+            f'{SCROLL_SPY}')
     (OUT / "userguide.html").write_text(
-        page("Guide utilisateur — BabelGrade", f'<div class="md">\n{html}</div>', mm, active="guide"),
+        page("Guide utilisateur — BabelGrade", body, mm, active="guide"),
         encoding="utf-8")
 
     # --- dev docs (English source docs -> lang en)
     for slug, src in DEV_DOCS.items():
         md = src.read_text(encoding="utf-8")
-        html, mm = md_to_body(md)
+        html, mm, _ = md_to_body(md)
         title = re.match(r"^#\s+(.+)$", md, re.M)
         title = f"{title.group(1).strip()} — BabelGrade" if title else f"{slug} — BabelGrade"
         (OUT / f"{slug}.html").write_text(
