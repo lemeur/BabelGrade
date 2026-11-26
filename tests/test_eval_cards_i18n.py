@@ -1,16 +1,25 @@
 #!/usr/bin/env python3
-"""Eval-mode level cards follow the UI language (2026-11-23).
+"""Eval-mode level cards follow the UI language (2026-11-23) + human-readable
+diff synthesis (2026-11-26).
 
-Before this fix the Mode Évaluation overlay cards showed the CANONICAL FRENCH
+Before 2026-11-23 the Mode Évaluation overlay cards showed the CANONICAL FRENCH
 per-level descriptors (crit.levels from the rubric) even when the UI language
 was EN/ES/DE — only the gap chips and criterion names were translated.
+
+Since 2026-11-26 the SIDE cards no longer show the full descriptor with a
+word-level <mark> diff (tibo: "très difficile à lire"). They now show a
+human-readable SYNTHESIS — two short labelled phrases (what this level ADDS /
+what it LACKS vs the entered centre level, computed by evDiffPhrases) — with
+the full official descriptor available in a collapsible <details> below.
 
 Checks (Playwright, live server on :8090, login tibo):
   E1  overlay opens in EN, full 6-card scale (wide desktop)
   E2  centre card descriptor == the EN translated per-level segment (exact)
-  E3  every side card contains the translated segment words + diff <mark>s
+  E3  every side card = diff synthesis (>=1 .ds-line, labelled, compact) +
+      a <details> carrying the full translated descriptor
   E4  gap chips carry the translated word (title), not the canonical French one
-  E5  language switch EN→FR live: cards re-render, centre desc == canonical FR
+  E5  language switch EN→FR live: cards re-render, centre desc == canonical FR,
+      side cards stay synthesised
   E6  language switch FR→DE live: centre desc == DE translation
   E7  no JS console errors
 
@@ -45,12 +54,15 @@ pg.fill("#auth-username", T.USERNAME); pg.fill("#auth-password", T.pw())
 pg.click("#auth-login-btn"); pg.wait_for_timeout(900)
 
 # --- pick a populated written att-exp-ecrite analysis -------------------------
-# (the list endpoint omits rubric_id → match on the canonical French name)
+# (the list endpoint omits rubric_id → match on the canonical French name).
+# Must be a 4-criterion att-exp-ecrite (NOT the 3-criterion att-comp) AND carry
+# a level (overall_level), otherwise the eval overlay has no centre to diff from.
 aid = pg.evaluate("""async()=>{const r=await fetch('/api/analyses');const j=await r.json();
   const rows=Array.isArray(j)?j:(j.items||[]);
-  const c=rows.filter(x=>(x.rubric_name||'').startsWith('Attestation')&&x.kind==='written');
+  const c=rows.filter(x=>(x.rubric_name||'').includes('Expression écrite')
+                         &&x.kind==='written'&&x.overall_level);
   return c.length?c[0].analysis_id:null;}""")
-check("found a written att-exp-ecrite analysis", aid, f"(aid={aid})")
+check("found a populated written att-exp-ecrite analysis", aid, f"(aid={aid})")
 if not aid:
     print("\nRESULT: ABORT (no analysis) —", FAILS); b.close(); pw.stop(); sys.exit(1)
 
@@ -80,7 +92,7 @@ pg.wait_for_timeout(400)
 cards = pg.evaluate("() => document.querySelectorAll('#ev-cols .ev-col[data-lv]').length")
 check("E1 six level cards (wide scale)", cards==6, f"(n={cards})")
 
-# --- E2/E3/E4: descriptors + diff marks + gap chips in EN ---------------------
+# --- E2/E3/E4: descriptors + diff synthesis + gap chips in EN -----------------
 res = pg.evaluate("""()=>{
   const rubricId=window.__last.d.rubric_id;
   const rub=document.createElement('div');
@@ -94,17 +106,30 @@ res = pg.evaluate("""()=>{
   const en=(lv)=>gi.lvdescs[fr(lv)]!=null?gi.lvdescs[fr(lv)]:fr(lv);
   const centre=document.querySelector(`#ev-cols .ev-col[data-lv="${L}"] .desc`);
   const out={centreText:centre?centre.textContent.trim():null, centreExpected:en(L),
-             sideOk:0, sideBad:[], chipOk:0, chipBad:[], marks:0};
+             sideOk:0, sideBad:[], fullOk:0, fullBad:[], dsLines:0, chipOk:0, chipBad:[]};
   document.querySelectorAll('#ev-cols .ev-col[data-lv]').forEach(col=>{
     const lv=col.dataset.lv;
     if(lv===L)return;
+    // 2026-11-26: side card = synthesis of the differing phrases, NOT the full
+    // word-diffed descriptor. Check: at least one labelled .ds-line, the
+    // synthesis text is compact, and the <details> full descriptor is the
+    // TRANSLATED segment.
     const d=col.querySelector('.desc');
-    const txt=d?d.textContent.trim():'';
+    const lines=[...d.querySelectorAll('.ds-line')];
     const exp=en(lv);
-    const firstWords=exp.split(/\\s+/).slice(0,4).join(' ');
-    if(!txt.includes(firstWords))out.sideBad.push(lv+' :: '+txt.slice(0,60)+' !~ '+exp.slice(0,60));
-    else out.sideOk++;
-    out.marks+=(d?d.querySelectorAll('mark').length:0);
+    const det=d?d.querySelector('.ds-full p'):null;
+    const detTxt=det?det.textContent.trim():'';
+    // 2026-11-26: the synthesis is HUMAN-READABLE = 1 or 2 labelled short
+    // phrases (a "+ adds" and/or a "- lacks" line), NOT the full word-diffed
+    // paragraph. Structure is the check: lines present, labelled, and the
+    // full official descriptor stays available translated in <details>.
+    const labelled=lines.filter(l=>/^[+\u2212]/.test(l.textContent.trim())).length;
+    if(lines.length>=1&&lines.length<=2&&labelled===lines.length){
+      out.sideOk++;
+    } else out.sideBad.push(lv+' bad structure: '+lines.length+' lines, '+labelled+' labelled');
+    out.dsLines+=lines.length;
+    if(detTxt===exp)out.fullOk++;
+    else out.fullBad.push(lv+' full !~ '+detTxt.slice(0,60)+' !~ '+exp.slice(0,60));
   });
   document.querySelectorAll('#ev-cols .ev-col .gap-chip[title]').forEach(ch=>{
     const col=ch.closest('.ev-col[data-lv]');
@@ -122,9 +147,11 @@ else:
     check("E2 centre card descriptor is the EN translation (exact)",
           res["centreText"]==res["centreExpected"],
           f"(got {res['centreText']!r} want {res['centreExpected']!r})")
-    check("E3 side cards carry translated text", res["sideOk"]==5 and not res["sideBad"],
+    check("E3 side cards are compact diff syntheses", res["sideOk"]==5 and not res["sideBad"],
           f"(ok={res['sideOk']} bad={res['sideBad']})")
-    check("E3 inline diff marks present on side cards", res["marks"]>=5, f"(marks={res['marks']})")
+    check("E3 side syntheses carry labelled lines", res["dsLines"]>=5, f"(dsLines={res['dsLines']})")
+    check("E3 full descriptor available in <details> (translated)", res["fullOk"]==5 and not res["fullBad"],
+          f"(ok={res['fullOk']} bad={res['fullBad']})")
     check("E4 gap chips translated (EN, not canonical FR)", res["chipOk"]>=4 and not res["chipBad"],
           f"(ok={res['chipOk']} bad={res['chipBad']})")
 
@@ -145,8 +172,8 @@ fr_res = pg.evaluate("""()=>{
 check("E5 language switch to FR live", fr_res["lang"]=="fr", f"(lang={fr_res['lang']})")
 check("E5 centre card back to canonical French", fr_res["centreText"]==fr_res["expected"],
       f"(got {fr_res['centreText']!r} want {fr_res['expected']!r})")
-fr_marks = pg.evaluate("() => document.querySelectorAll('#ev-cols .desc mark').length")
-check("E5 side cards still diff-marked in FR", fr_marks>=5, f"(marks={fr_marks})")
+fr_lines = pg.evaluate("() => document.querySelectorAll('#ev-cols .desc .ds-line').length")
+check("E5 side cards stay synthesised in FR", fr_lines>=5, f"(dsLines={fr_lines})")
 
 # --- E6: FR→DE live ------------------------------------------------------------
 pg.evaluate("""()=>{const btn=[...document.querySelectorAll('[data-lang]')].find(x=>x.dataset.lang==='de');
