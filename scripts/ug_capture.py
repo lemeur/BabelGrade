@@ -62,7 +62,10 @@ def annotate(name, shots, boxes):
     path, cw, ch = last
     im = Image.open(path)
     dr = ImageDraw.Draw(im, "RGBA")
-    px = lambda v: int(v * DSF)
+
+    def px(v):
+        return int(v * DSF)
+
     r = int(14 * DSF * 0.72)
     for n in sorted(boxes):
         label, (x, y, w, h), mode = boxes[n]
