@@ -45,6 +45,42 @@ def find_font():
 FONT = find_font()
 
 
+def seed_annotate_demo(ctx, sub_id: int) -> int:
+    """Idempotently create the 2 demo annotations shown in the userguide §7
+    shot (analysis 482 / submission 492 = synthetic fixture copy).
+
+    The docs must NOT ship a real student's handwritten photo, so the §7
+    screenshot uses the synthetic fixture copy. That shot only looks right
+    when 2 repères are already saved (highlighted lines + a non-empty
+    "Annotations (2)" list). This seeds them via the app's own API so the
+    capture stays reproducible after a DB reset. No-op when >=2 annotations
+    already exist on the submission.
+
+    Spans are word-index based (global index into the page's word list, same
+    order as the frontend tokenization); the quote is derived server-side.
+    Returns the annotation count afterwards.
+    """
+    api = ctx.request
+    r = api.get(f"{BASE}/api/submissions/{sub_id}/annotations")
+    if r.status != 200:
+        return 0
+    cur = len(r.json().get("annotations", []))
+    if cur >= 2:
+        return cur
+    demo = [
+        {"span": {"page": 0, "start_word": 21, "end_word": 28}, "sticker": "thumbs-up",
+         "level": "B1", "note": "Très belle nuance : « balanced tone » est bien repéré et nuancé."},
+        {"span": {"page": 0, "start_word": 52, "end_word": 60}, "sticker": "star",
+         "level": "B2", "note": "Belle analyse de la structure : le connecteur « yet » est identifié et justifié."},
+    ]
+    for d in demo:
+        body = dict(d)
+        body["kind"] = "written"
+        api.post(f"{BASE}/api/submissions/{sub_id}/annotations", json=body)
+    r = api.get(f"{BASE}/api/submissions/{sub_id}/annotations")
+    return len(r.json().get("annotations", [])) if r.status == 200 else 0
+
+
 def annotate(name, shots, boxes):
     """shots: list of (path, css_w, css_h); boxes: {n: (label, [x,y,w,h], mode)}
     Draws small numbered badges (no label chips) on the LAST shot; the legend
@@ -57,6 +93,10 @@ def annotate(name, shots, boxes):
     mode = 'top':      badge in the top   margin, connector to (x + w*0.5, y)
     mode = 'on':       badge centered ON the element (no connector) — for small
                        header pills where there is no free margin
+    mode = 'below':    badge BELOW the element, connector up to (x + w*0.5, y + h)
+    mode = 'edge':     badge on the element's RIGHT EDGE (no connector) — for wide
+                       buttons whose label is centred, so the badge sits on the
+                       button's empty right portion instead of covering the label
     """
     last = shots[-1]
     path, cw, ch = last
@@ -75,6 +115,35 @@ def annotate(name, shots, boxes):
             cy = int(px(y + h * 0.5))
             cx = max(r + 4, min(im.width - r - 4, cx))
             cy = max(r + 4, min(im.height - r - 4, cy))
+            dr.ellipse([cx - r - 7, cy - r - 7, cx + r + 7, cy + r + 7], fill=RING_DARK)
+            dr.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3], fill=RING_WHITE)
+            dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=MAGENTA + (255,))
+            fnt = ImageFont.truetype(FONT, int(r * 1.15)) if FONT else ImageFont.load_default()
+            bb = dr.textbbox((0, 0), str(n), font=fnt)
+            dr.text((cx - (bb[2] - bb[0]) / 2, cy - (bb[3] - bb[1]) / 2 - bb[1]),
+                    str(n), fill="white", font=fnt)
+            continue
+        if mode == "edge":
+            # no connector; badge at the element's right edge, vertically centred
+            cx = int(px(x + w) - 10 * DSF)
+            cy = int(px(y + h * 0.5))
+            cx = max(r + 4, min(im.width - r - 4, cx))
+            cy = max(r + 4, min(im.height - r - 4, cy))
+            dr.ellipse([cx - r - 7, cy - r - 7, cx + r + 7, cy + r + 7], fill=RING_DARK)
+            dr.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3], fill=RING_WHITE)
+            dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=MAGENTA + (255,))
+            fnt = ImageFont.truetype(FONT, int(r * 1.15)) if FONT else ImageFont.load_default()
+            bb = dr.textbbox((0, 0), str(n), font=fnt)
+            dr.text((cx - (bb[2] - bb[0]) / 2, cy - (bb[3] - bb[1]) / 2 - bb[1]),
+                    str(n), fill="white", font=fnt)
+            continue
+        if mode == "below":
+            tx = px(x + w * 0.5)
+            cx = max(r + 4, min(im.width - r - 4, tx))
+            cy = px(y + h) + 36 * DSF
+            cy = max(r + 4, min(im.height - r - 4, cy))
+            ty = px(y + h)
+            dr.line([(cx, cy), (tx, ty)], fill=MAGENTA + (255,), width=max(2, r // 5))
             dr.ellipse([cx - r - 7, cy - r - 7, cx + r + 7, cy + r + 7], fill=RING_DARK)
             dr.ellipse([cx - r - 3, cy - r - 3, cx + r + 3, cy + r + 3], fill=RING_WHITE)
             dr.ellipse([cx - r, cy - r, cx + r, cy + r], fill=MAGENTA + (255,))
@@ -448,23 +517,27 @@ def main():
                   3: (labels[3], boxes[2], "left")})
         shots_log.append(("report-oral", "Rapport oral"))
 
-        # ---- 15. annoter dual pane (from 660)
-        pg.goto(BASE + "/#history/660", wait_until="networkidle")
+        # ---- 15. annoter dual pane (482 = Camille Blanc, SYNTHETIC fixture
+        #         copy + 2 pre-seeded annotations — docs must NOT ship a real
+        #         student's handwritten photo; 660 was a real copy)
+        n_ann = seed_annotate_demo(ctx, 492)
+        print(f"seeded/checked demo annotations on sub 492: {n_ann}")
+        pg.goto(BASE + "/#history/482", wait_until="networkidle")
         pg.wait_for_timeout(1600)
         pg.evaluate("(() => { const b = document.querySelector('[data-annot-open]'); if (b) b.click(); })()")
         pg.wait_for_timeout(1500)
         path, w, h = shoot(pg, "annotate", 1280, 900)
         boxes = get_boxes(pg, [
             "(() => { const e = document.querySelector('#an-written .ph-box, #an-written img, #an-written'); const r = e ? e.getBoundingClientRect() : null; return r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null; })()",
-            "(() => { const e = document.querySelector('.an-panel, #an-panel'); const r = e ? e.getBoundingClientRect() : null; return r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null; })()",
+            "(() => { const e = document.getElementById('an-note'); const r = e ? e.getBoundingClientRect() : null; return r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null; })()",
             "(() => { const e = document.getElementById('an-save'); const r = e ? e.getBoundingClientRect() : null; return r ? [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)] : null; })()",
         ])
         labels = {1: "Photo de la copie (lignes OCR cliquables)", 2: "Panneau d'annotation (niveau + note)",
                   3: "Enregistrer le repère"}
         annotate("annotate", [(path, w, h)],
                  {1: (labels[1], boxes[0], "left"),
-                  2: (labels[2], boxes[1], "right"),
-                  3: (labels[3], boxes[2], "on")})
+                  2: (labels[2], boxes[1], "left"),
+                  3: (labels[3], boxes[2], "edge")})
         shots_log.append(("annotate", "Annoter (double panneau)"))
 
         # ---- 16. mobile criterion picker (390 portrait, 672 context)
