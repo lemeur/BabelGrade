@@ -56,6 +56,7 @@ async def _stage_submission_payloads(
 
     image_data_urls: list = []
     image_paths: list = []
+    copy_pdf_name = None  # 2026-11-26: must exist on BOTH branches (oral never sets it, but is read below)
     if kind == "oral":
         if not audio or not audio.filename:
             raise HTTPException(422, f"oral {analyze_kind} requires an audio upload")
