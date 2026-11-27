@@ -1,9 +1,9 @@
 # Guide utilisateur — BabelGrade
 
 > Corrigez plus rapidement les productions en langues étrangères
-> de vos élèves et partagez leur des conseils adaptés.
+> de vos élèves et partagez-leur des conseils adaptés.
 > 
-> L'interface de BabelGrade et son assistant d'IA vous aide à évaluer
+> L'interface de BabelGrade et son assistant d'IA vous aident à évaluer
 > les productions écrites et orales selon le CECRL(https://eduscol.education.gouv.fr/6762/cadre-europeen-commun-de-reference-pour-les-langues-cecrl)
 > et comprend les grilles LVA/LVB /120, Bac, BTS Françaises (paramétrable).
 > 
