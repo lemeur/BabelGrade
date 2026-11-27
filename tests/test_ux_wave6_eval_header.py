@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
-"""V6 verify: eval-mode header actions + portrait gap arrows (2026-11-27 tibo).
+"""V6 verify: eval-mode round-2 UX (2026-11-27 tibo).
 
-Two changes:
-1. The bottom-bar "AI report" + "Save" buttons moved UP into the title bar
-   (#eval .ev-hdr .ev-hdr-btns) so the landscape mobile layout frees a bottom
-   line. The bottom .ev-btns is gone; the footer now holds only the criterion
-   chips. Verified in all three viewports (portrait / landscape / desktop).
-2. In the NATIVE PORTRAIT layout, the ENTERED level's grid cell (.ev-lvl-btn.on)
-   now carries a gap block (.ev-port-gap): a green up row (→ next level + the
-   up-gap word = what to ADD to reach the level above) and a red down row (←
-   prev level + the down-gap word = what to DROP to fall back a level). Absent
-   at the ends of the scale (A1 has no down row, C2 has no up row).
+Three changes on top of the round-1 (buttons in header):
+1. PORTRAIT: the entered level's descriptor card is kept COMPACT (capped
+   height, scrollable inside, .ev-port-desc) and a SECOND card below it
+   (.ev-port-gain) shows the gain/loss arrows: green → up-row (what this level
+   GAINS to reach the level above) + red ← down-row (what it DROPS to fall back
+   a level). The gap is NO LONGER inside the grid cell.
+2. LANDSCAPE/desktop: the level pill was removed from the header and replaced
+   by an inline swipe/keyboard hint (#ev-hint-inline); the two bottom hint lines
+   (#ev-hint-swipe / #ev-hint-kbd) are gone entirely.
+3. ALL modes: the AI-report button (#ev-btn-ai) is greyed + disabled when the
+   analysis has no prior AI run (EVAL.hasAi false), with a "no AI analysis yet"
+   tooltip. Simulated live by toggling EVAL.hasAi + evRender().
 
 Checks (Playwright, live server on :8090, login tibo/<tests/.credentials>):
-PORT 390x844:  header carries .ev-hdr-btns (ai+save), footer has NO .ev-btns,
-               entered cell has .ev-port-gap with the right up/down rows.
-LAND 844x390:  header carries .ev-hdr-btns on ONE row, footer has NO .ev-btns.
-DESK 1280:     header carries .ev-hdr-btns, footer has NO .ev-btns.
+PORT 390x844, LAND 844x390, DESK 1280 — layout + AI-button grey.
 """
 import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
@@ -57,76 +56,80 @@ def open_eval(pg, tgt):
     pg.click("#att-eval")
     pg.wait_for_timeout(500)
 
-# Header/footer button placement — identical assertions across all viewports.
-def layout_probe(pg):
-    return pg.evaluate("""()=>{
-        const hdr=document.querySelector('#eval .ev-hdr .ev-hdr-btns');
-        const ai=hdr?hdr.querySelector('#ev-btn-ai'):null;
-        const save=hdr?hdr.querySelector('#ev-btn-save'):null;
-        const oldBtns=document.querySelectorAll('#eval .ev-ftr .ev-btns').length;
-        const oldIds=[...document.querySelectorAll('#ev-btn-ai,#ev-btn-save')]
-            .map(b=>b.closest('.ev-hdr-btns')? 'hdr':'OTHER');
-        const chips=document.querySelectorAll('#eval .ev-ftr .ev-chips .ev-chip').length;
-        return {
-            hdrBtns:!!hdr, ai:!!ai, save:!!save,
-            oldBtnsGone: oldBtns===0,
-            ids:oldIds, chips:chips,
-            evPort:document.querySelector('#eval').classList.contains('ev-port')};}""")
-
 UA = ("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) "
       "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1")
 
+def layout_probe(pg):
+    return pg.evaluate("""()=>({
+        hdrBtns:!!document.querySelector('#eval .ev-hdr .ev-hdr-btns'),
+        ai:!!document.querySelector('#ev-btn-ai'),
+        save:!!document.querySelector('#ev-btn-save'),
+        oldFooterBtns:document.querySelectorAll('#eval .ev-ftr .ev-btns').length,
+        pill:!!document.querySelector('#ev-pill-lvl'),
+        hintInline:!!document.querySelector('#ev-hint-inline'),
+        hintInlineTxt:document.querySelector('#ev-hint-inline')?document.querySelector('#ev-hint-inline').textContent:'',
+        bottomHints:document.querySelectorAll('#eval .ev-hint').length,
+        evPort:document.querySelector('#eval').classList.contains('ev-port')})""")
+
+def ai_btn_state(pg):
+    return pg.evaluate("""()=>{const b=document.querySelector('#ev-btn-ai');
+        return b?{disabled:b.disabled, title:b.title, txt:b.textContent}:null;}""")
+
+def set_hasai_and_render(pg, val):
+    """Toggle EVAL.hasAi and re-render to exercise the greyed-button path live.
+    EVAL is a top-level `let` (resolvable as a global in page-eval scope)."""
+    return pg.evaluate("""(v)=>{if(!EVAL)return 'noEVAL';
+        EVAL.hasAi=v; evRender();
+        const b=document.querySelector('#ev-btn-ai');
+        return b?{disabled:b.disabled, title:b.title, txt:b.textContent}:null;}""", val)
+
 def main():
     with sync_playwright() as p:
-        # ---------- PORTRAIT 390x844 (native portrait layout) ----------
+        # ---------- PORTRAIT 390x844 ----------
         b = p.chromium.launch(args=["--no-sandbox"])
         ctx = b.new_context(viewport={"width":390,"height":844},has_touch=True,
                             is_mobile=True,device_scale_factor=3,user_agent=UA)
         pg = ctx.new_page(); errs=[]
         pg.on("pageerror", lambda e: errs.append(str(e)))
-        login(pg)
-        tgt = find_target(pg)
-        check("P0 target analysis found", tgt is not None)
+        login(pg); tgt=find_target(pg)
+        check("P0 target found", tgt is not None)
         open_eval(pg, tgt)
         s = layout_probe(pg)
-        check("P1 portrait: header carries AI+Save in .ev-hdr-btns",
-              s["evPort"] and s["hdrBtns"] and s["ai"] and s["save"], str(s))
-        check("P2 portrait: old footer .ev-btns gone, both ids in header",
-              s["oldBtnsGone"] and s["ids"]==["hdr","hdr"], str(s))
-        check("P3 portrait: footer still has criterion chips", s["chips"]>=1, str(s))
-        # gap block on the entered level
-        gap = pg.evaluate("""()=>{
+        check("P1 portrait: header AI+Save, no pill, inline hint, no bottom hints",
+              s["evPort"] and s["hdrBtns"] and s["ai"] and s["save"]
+              and not s["pill"] and s["hintInline"] and s["bottomHints"]==0, str(s))
+        check("P2 portrait: swipe hint text in header (touch)", "glissez" in s["hintInlineTxt"], str(s["hintInlineTxt"]))
+        # portrait compact desc + gain card
+        pc = pg.evaluate("""()=>{
             const on=document.querySelector('#ev-cols .ev-lvl-btn.on');
-            if(!on)return {on:null};
-            const lv=on.dataset.lv, order=['A1','A2','B1','B2','C1','C2'];
-            const i=order.indexOf(lv);
-            const block=on.querySelector('.ev-port-gap');
-            const up=on.querySelector('.pg-row.up');
-            const down=on.querySelector('.pg-row.down');
-            return {lv, hasGap:!!block,
+            const lv=on?on.dataset.lv:null, order=['A1','A2','B1','B2','C1','C2'];
+            const i=lv?order.indexOf(lv):-1;
+            const inCell=on?on.querySelector('.ev-port-gap'):null;   // round-1 location (must be GONE)
+            const gain=document.querySelector('#ev-cols .ev-port-gain');
+            const desc=document.querySelector('#ev-cols .ev-port-desc');
+            const up=gain?gain.querySelector('.pg-row.up'):null,
+                  down=gain?gain.querySelector('.pg-row.down'):null;
+            return {lv, inCellGone: inCell===null,
+                gainCard:!!gain, desc:!!desc,
                 upLv: up?up.querySelector('.pg-lv').textContent:null,
                 downLv: down?down.querySelector('.pg-lv').textContent:null,
                 upTxt: up?up.querySelector('.pg-txt').textContent:null,
                 downTxt: down?down.querySelector('.pg-txt').textContent:null,
-                expUp: i<5?order[i+1]:null, expDown: i>0?order[i-1]:null};}""")
-        # B2 is a typical entered level (mid-scale) → expect BOTH rows
-        check("P4 portrait: entered cell has a gap block", gap.get("hasGap"), str(gap))
-        check("P5 portrait: up row → correct next level",
-              gap.get("upLv")==gap.get("expUp"), str(gap))
-        check("P6 portrait: down row → correct prev level",
-              gap.get("downLv")==gap.get("expDown"), str(gap))
-        # arrows are present and labelled
-        arrows = pg.evaluate("""()=>{
-            const on=document.querySelector('#ev-cols .ev-lvl-btn.on');
-            const up=on.querySelector('.pg-row.up .pg-arr'),
-                  down=on.querySelector('.pg-row.down .pg-arr');
-            return {up:up?up.textContent:null, down:down?down.textContent:null};}""")
-        check("P7 portrait: up arrow green row '→' + down row '←'",
-              arrows.get("up")=="→" and arrows.get("down")=="←", str(arrows))
+                expUp: i>=0&&i<5?order[i+1]:null, expDown: i>0?order[i-1]:null};}""")
+        check("P3 portrait: gap no longer in grid cell (moved out)", pc["inCellGone"], str(pc))
+        check("P4 portrait: dedicated gain card below compact descriptor", pc["gainCard"] and pc["desc"], str(pc))
+        check("P5 portrait: up row = next level", pc["upLv"]==pc["expUp"], str(pc))
+        check("P6 portrait: down row = prev level", pc["downLv"]==pc["expDown"], str(pc))
+        # rows are only expected where a neighbour exists (scale ends have none).
+        up_ok = (pc["expUp"] is None) or ("atteindre" in pc["upTxt"])
+        down_ok = (pc["expDown"] is None) or ("redescendre" in pc["downTxt"])
+        present = pc["upLv"] is not None or pc["downLv"] is not None
+        check("P7 portrait: gain rows carry the right FR label (gainUp/gainDown)",
+              up_ok and down_ok and present, str(pc))
         check("P8 portrait: no JS errors", not errs, str(errs[:3]))
         b.close()
 
-        # ---------- LANDSCAPE 844x390 (3-col) ----------
+        # ---------- LANDSCAPE 844x390 ----------
         b = p.chromium.launch(args=["--no-sandbox"])
         ctx = b.new_context(viewport={"width":844,"height":390},has_touch=True,
                             is_mobile=True,device_scale_factor=2,user_agent=UA)
@@ -135,13 +138,15 @@ def main():
         login(pg); tgt=find_target(pg)
         open_eval(pg, tgt)
         s = layout_probe(pg)
-        check("L1 landscape: header carries AI+Save, no .ev-port",
-              (not s["evPort"]) and s["hdrBtns"] and s["ai"] and s["save"], str(s))
-        check("L2 landscape: footer .ev-btns gone", s["oldBtnsGone"] and s["chips"]>=1, str(s))
-        check("L3 landscape: no JS errors", not errs, str(errs[:3]))
+        check("L1 landscape: header AI+Save, no pill, inline hint, no bottom hints",
+              (not s["evPort"]) and s["hdrBtns"] and s["ai"] and s["save"]
+              and not s["pill"] and s["hintInline"] and s["bottomHints"]==0, str(s))
+        check("L2 landscape: swipe hint text in header (touch)", "glissez" in s["hintInlineTxt"], str(s["hintInlineTxt"]))
+        check("L3 landscape: footer .ev-btns gone", s["oldFooterBtns"]==0, str(s))
+        check("L4 landscape: no JS errors", not errs, str(errs[:3]))
         b.close()
 
-        # ---------- DESKTOP 1280 (6-wide scale) ----------
+        # ---------- DESKTOP 1280 (AI-button grey simulation) ----------
         b = p.chromium.launch(args=["--no-sandbox"])
         ctx = b.new_context(viewport={"width":1280,"height":800})
         pg = ctx.new_page(); errs=[]
@@ -149,10 +154,21 @@ def main():
         login(pg); tgt=find_target(pg)
         open_eval(pg, tgt)
         s = layout_probe(pg)
-        check("D1 desktop: header carries AI+Save, no .ev-port",
-              (not s["evPort"]) and s["hdrBtns"] and s["ai"] and s["save"], str(s))
-        check("D2 desktop: footer .ev-btns gone", s["oldBtnsGone"] and s["chips"]>=1, str(s))
-        check("D3 desktop: no JS errors", not errs, str(errs[:3]))
+        check("D1 desktop: header AI+Save, no pill, inline hint, no bottom hints",
+              (not s["evPort"]) and s["hdrBtns"] and s["ai"] and s["save"]
+              and not s["pill"] and s["hintInline"] and s["bottomHints"]==0, str(s))
+        check("D2 desktop: keyboard hint text in header (fine pointer)",
+              "1-4" in s["hintInlineTxt"] or "Échap" in s["hintInlineTxt"], str(s["hintInlineTxt"]))
+        st = ai_btn_state(pg)
+        # simulate "no prior AI analysis" → button greys
+        st0 = set_hasai_and_render(pg, False)
+        check("D3 desktop: no prior AI → button disabled + tooltip",
+              st0 and st0["disabled"] and "IA" in st0["title"] and "analyse" in st0["title"].lower(), str(st0))
+        # simulate "AI analysis exists" → button enabled again
+        st1 = set_hasai_and_render(pg, True)
+        check("D4 desktop: prior AI present → button enabled, no tooltip",
+              st1 and not st1["disabled"] and st1["title"]=="", str(st1))
+        check("D5 desktop: no JS errors", not errs, str(errs[:3]))
         b.close()
 
     print("="*40)
