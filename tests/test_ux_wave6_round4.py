@@ -14,7 +14,7 @@
    (--warn #d97706) + white text like the portrait .pd-ai (was pale cream
    #fef3c7 + amber text).
 """
-import sys, json
+import sys
 sys.path.insert(0, "/home/tibo/babelgrade")
 sys.path.insert(0, "/home/tibo/babelgrade/tests")
 import _testpw as TESTPW
@@ -105,7 +105,7 @@ def main():
         # FR labels still carry gainUp/gainDown wording.
         all_fr = [r["lab"] for r in r1["rows"]]+[r["lab"] for r in r2["rows"]]
         check("P4 portrait: FR labels = 'atteindre'/'redescendre'",
-              any("atteindre" in l for l in all_fr) and any("redescendre" in l for l in all_fr),
+              any("atteindre" in lab for lab in all_fr) and any("redescendre" in lab for lab in all_fr),
               str(all_fr))
         check("P5 portrait: no JS errors", not errs, str(errs[:3]))
         b.close()
@@ -117,6 +117,18 @@ def main():
         pg = ctx.new_page(); errs=[]
         pg.on("pageerror", lambda e: errs.append(str(e)))
         login(pg, "en"); open_eval(pg, find_target(pg))
+        # Deterministic setup: enter B1, force the AI opinion to B2 (a side
+        # column) so the .badge-ai is ALWAYS present on a side card regardless
+        # of the live analysis (if the AI level equals the entered level the
+        # badge is the green .ai-match on the centre card, or absent entirely
+        # if it's not a visible neighbour).
+        pg.evaluate("""()=>{
+            const name=EVAL.rows[EVAL.cur].name;
+            EVAL.chosen[EVAL.cur]='B1';
+            EVAL.ai[name]={ai:'B2',justification:'forced',evidence:[]};
+            EVAL.hasAi=true;
+            evRender();}""")
+        pg.wait_for_timeout(200)
         land = pg.evaluate("""()=>{
             const cols=[...document.querySelectorAll('#ev-cols .ev-col.side')].map(c=>({
                 pos:c.dataset.pos, lv:c.dataset.lv,
