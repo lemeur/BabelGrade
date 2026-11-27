@@ -1,35 +1,36 @@
 # Guide utilisateur — BabelGrade
 
-> Guide de l'enseignant : évaluer les productions écrites et orales de vos
-> élèves selon le CEFR (grilles LVA/LVB /120, Bac, BTS), avec l'aide de l'IA.
+> Corrigez plus rapidement les productions en langues étrangères
+> de vos élèves et partagez leur des conseils adaptés.
+> 
+> L'interface de BabelGrade et son assistant d'IA vous aide à évaluer
+> les productions écrites et orales selon le CECRL(https://eduscol.education.gouv.fr/6762/cadre-europeen-commun-de-reference-pour-les-langues-cecrl)
+> et comprend les grilles LVA/LVB /120, Bac, BTS Françaises (paramétrable).
+> 
 > L'interface est en **français, anglais, espagnol et allemand**
 > (sélecteur en haut à droite, drapeau 🇫🇷).
->
-> Les **pastilles numérotées (en rose)** pointent les éléments de
-> l'interface ; la légende se lit juste sous chaque image.
 
 ---
 
 ## 1. L'accueil : ce que vous pouvez faire
 
-BabelGrade tourne en local sur votre machine. Vous vous connectez avec vos
+BabelGrade tourne en local sur un serveur (ou votre machine locale si elle est suffisamment puissante). Vous vous connectez avec vos
 identifiants, puis tout se passe dans l'application web (navigateur).
 
-À l'ouverture, vous arrivez sur l'**accueil** : un menu rond qui vous demande
-« Que souhaitez-vous faire ? ».
+À l'ouverture, vous arrivez sur l'**accueil** : le menu radial vous permet d'accéder rapidement aux fonctions essentielles.
 
 ![Menu d'accueil — BabelGrade](assets/ug-home-radial-annot.png)
 
-**Légende** — 1. *Évaluer* (l'action la plus utilisée) · 2. *Préparer*
-(sujets, grilles, élèves) · 3. *Mode avancé* (tous les onglets classiques) ·
-4. Langue et compte.
+**Légende** — 1. *Évaluer* (lancer ou retouvez les anciennes évaluations) · 2. *Préparer*
+(définir des sujets, importer des élèves, ...) · 3. Analyser (statistiques et insights sur les élèves, classes et devoirs)
+4. Langue de l'interface (utilisée aussi pour les analyse d'IA)
 
 Trois **actions principales** s'offrent à vous (au clic, ou avec les flèches du
 clavier + Entrée) :
 
-- **Évaluer** (✍️) : noter la production d'un élève — le cœur de BabelGrade.
+- **Évaluer** (✍️) : noter la production d'un élève, accéder aux évaluations réalisées.
 - **Préparer** (📚) : préparer vos sujets, vos grilles et votre liste d'élèves.
-- **Analyser** (📊) : relancer l'IA sur une production déjà notée.
+- **Analyser** (📊) : obtenir des informations sur l'évolution d'un élève, sur les résultats du groupe classe sur un devoir.
 
 Le **Mode avancé** (3) repasse à la navigation classique par onglets
 (Sujets / Évaluations / Grilles / Élèves / Tâches). Tout ce que vous verrez
