@@ -112,10 +112,11 @@ res = pg.evaluate("""()=>{
     if(lv===L)return;
     // 2026-11-27 round 4: side card = ONE directional labelled line. The card to
     // the RIGHT of the entered level is labelled "→ What it takes to reach {Lv}"
-    // (add); the LEFT card "← What you drop to fall back to {Lv}" (lack). Always
-    // rendered (empty diff falls back to "same requirements as L"). Check: the
-    // labelled .ds-line starts with the directional arrow, compact, and the
-    // <details> full descriptor is the TRANSLATED segment.
+    // (add); the LEFT card "← At {Lv} you settle for" + that level's full
+    // descriptor (settleFor, round 5 — anchored on the lower level itself).
+    // Always rendered. Check: the labelled .ds-line starts with the directional
+    // arrow, compact, and the <details> full descriptor is the TRANSLATED
+    // segment.
     const d=col.querySelector('.desc');
     const lines=[...d.querySelectorAll('.ds-line')];
     const exp=en(lv);

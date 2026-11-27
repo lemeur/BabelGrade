@@ -5,7 +5,7 @@
    like — centre AND side translated. No canonical-French clause may appear in an
    EN card (the reported bug: '+' lines EN, '-' lines FR).
 2. PORTRAIT (390x844, EN): the gain/loss card rows carry the FULL translated
-   diff phrases (not the short gap words); labels remain gainUp/gainDown.
+   diff phrases (not the short gap words); labels remain gainUp/settleFor.
 """
 import _testpw as TESTPW
 from playwright.sync_api import sync_playwright
@@ -106,8 +106,8 @@ def main():
               all(len(r["txt"].split())>=5 for r in pr["rows"]), str(pr["rows"]))
         check("P3 EN portrait: no canonical-French clause in gain rows",
               not bad, f"bad={bad} rows={pr['rows']}")
-        check("P4 EN portrait: labels = gainUp/gainDown (EN)",
-              all(("reach" in r["txt"] or "fall" in r["txt"]) for r in pr["rows"]), str(pr["rows"]))
+        check("P4 EN portrait: labels = gainUp ('reach') / settleFor ('settle for')",
+              all(("reach" in r["txt"] or "settle" in r["txt"]) for r in pr["rows"]), str(pr["rows"]))
         check("P5 EN portrait: no JS errors", not errs, str(errs[:3]))
         b.close()
 

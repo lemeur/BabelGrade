@@ -5,8 +5,9 @@ Three changes on top of the round-1 (buttons in header):
 1. PORTRAIT: the entered level's descriptor card is kept COMPACT (capped
    height, scrollable inside, .ev-port-desc) and a SECOND card below it
    (.ev-port-gain) shows the gain/loss arrows: green → up-row (what this level
-   GAINS to reach the level above) + red ← down-row (what it DROPS to fall back
-   a level). The gap is NO LONGER inside the grid cell.
+   GAINS to reach the level above) + red ← down-row (round 5: "at the level
+   below, you settle for" + that level's own descriptor). The gap is
+   NO LONGER inside the grid cell.
 2. LANDSCAPE/desktop: the level pill was removed from the header and replaced
    by an inline swipe/keyboard hint (#ev-hint-inline); the two bottom hint lines
    (#ev-hint-swipe / #ev-hint-kbd) are gone entirely.
@@ -121,10 +122,11 @@ def main():
         check("P5 portrait: up row = next level", pc["upLv"]==pc["expUp"], str(pc))
         check("P6 portrait: down row = prev level", pc["downLv"]==pc["expDown"], str(pc))
         # rows are only expected where a neighbour exists (scale ends have none).
+        # round 5: the down row label is settleFor ('se contente de'), not gainDown.
         up_ok = (pc["expUp"] is None) or ("atteindre" in pc["upTxt"])
-        down_ok = (pc["expDown"] is None) or ("redescendre" in pc["downTxt"])
+        down_ok = (pc["expDown"] is None) or ("se contente" in pc["downTxt"])
         present = pc["upLv"] is not None or pc["downLv"] is not None
-        check("P7 portrait: gain rows carry the right FR label (gainUp/gainDown)",
+        check("P7 portrait: gain rows carry the right FR label (gainUp/settleFor)",
               up_ok and down_ok and present, str(pc))
         check("P8 portrait: no JS errors", not errs, str(errs[:3]))
         b.close()

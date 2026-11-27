@@ -8,8 +8,10 @@
    yields BOTH an up row (reach B2) AND a down row (drop to A2).
 2. LANDSCAPE: the side cards now carry ONE directional label each, mirroring the
    portrait: the card to the RIGHT of the entered level = "What it takes to
-   reach {Lv}" (gainUp), the card to the LEFT = "What you drop to fall back to
-   {Lv}" (gainDown).
+   reach {Lv}" (gainUp), the card to the LEFT = "At {Lv} you settle for" + that
+   level's full descriptor (settleFor — anchored on the LOWER level itself,
+   what you settle for producing there; replaces the old "What you drop to
+   fall back to" wording).
 3. AI BADGE COLOUR: the landscape .badge-ai is now the solid amber
    (--warn #d97706) + white text like the portrait .pd-ai (was pale cream
    #fef3c7 + amber text).
@@ -102,10 +104,10 @@ def main():
         check("P3 portrait: B2 shows BOTH rows (no missing transition)",
               any(r["lv"]=="C1" for r in up2) and any(r["lv"]=="B1" for r in down2),
               str(r2["rows"]))
-        # FR labels still carry gainUp/gainDown wording.
+        # FR labels: gainUp ('atteindre') + settleFor ('se contente de').
         all_fr = [r["lab"] for r in r1["rows"]]+[r["lab"] for r in r2["rows"]]
-        check("P4 portrait: FR labels = 'atteindre'/'redescendre'",
-              any("atteindre" in lab for lab in all_fr) and any("redescendre" in lab for lab in all_fr),
+        check("P4 portrait: FR labels = 'atteindre'/'se contente de'",
+              any("atteindre" in lab for lab in all_fr) and any("se contente" in lab for lab in all_fr),
               str(all_fr))
         check("P5 portrait: no JS errors", not errs, str(errs[:3]))
         b.close()
@@ -142,8 +144,8 @@ def main():
         left  = [c for c in land["cols"] if c["pos"]=="left"]
         check("L1 landscape: right side card label = gainUp ('reach')",
               right and all("reach" in c["lab"].lower() for c in right), str(right))
-        check("L2 landscape: left side card label = gainDown ('fall back')",
-              left and all("fall back" in c["lab"].lower() for c in left), str(left))
+        check("L2 landscape: left side card label = settleFor ('settle for')",
+              left and all("settle for" in c["lab"].lower() for c in left), str(left))
         check("L3 landscape: each side card has exactly one directional line",
               all(c["lines"]==1 for c in land["cols"]), str(land["cols"]))
         # AI badge: solid amber background (rgb(217,119,6) = #d97706) + white text.
