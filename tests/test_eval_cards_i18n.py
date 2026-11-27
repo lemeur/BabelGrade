@@ -110,23 +110,21 @@ res = pg.evaluate("""()=>{
   document.querySelectorAll('#ev-cols .ev-col[data-lv]').forEach(col=>{
     const lv=col.dataset.lv;
     if(lv===L)return;
-    // 2026-11-26: side card = synthesis of the differing phrases, NOT the full
-    // word-diffed descriptor. Check: at least one labelled .ds-line, the
-    // synthesis text is compact, and the <details> full descriptor is the
-    // TRANSLATED segment.
+    // 2026-11-27 round 4: side card = ONE directional labelled line. The card to
+    // the RIGHT of the entered level is labelled "→ What it takes to reach {Lv}"
+    // (add); the LEFT card "← What you drop to fall back to {Lv}" (lack). Always
+    // rendered (empty diff falls back to "same requirements as L"). Check: the
+    // labelled .ds-line starts with the directional arrow, compact, and the
+    // <details> full descriptor is the TRANSLATED segment.
     const d=col.querySelector('.desc');
     const lines=[...d.querySelectorAll('.ds-line')];
     const exp=en(lv);
     const det=d?d.querySelector('.ds-full p'):null;
     const detTxt=det?det.textContent.trim():'';
-    // 2026-11-26: the synthesis is HUMAN-READABLE = 1 or 2 labelled short
-    // phrases (a "+ adds" and/or a "- lacks" line), NOT the full word-diffed
-    // paragraph. Structure is the check: lines present, labelled, and the
-    // full official descriptor stays available translated in <details>.
-    const labelled=lines.filter(l=>/^[+\u2212]/.test(l.textContent.trim())).length;
-    if(lines.length>=1&&lines.length<=2&&labelled===lines.length){
+    const arrows=lines.filter(l=>/^[\u2192\u2190]/.test(l.textContent.trim())).length;
+    if(lines.length===1&&arrows===1){
       out.sideOk++;
-    } else out.sideBad.push(lv+' bad structure: '+lines.length+' lines, '+labelled+' labelled');
+    } else out.sideBad.push(lv+' bad structure: '+lines.length+' lines, '+arrows+' labelled');
     out.dsLines+=lines.length;
     if(detTxt===exp)out.fullOk++;
     else out.fullBad.push(lv+' full !~ '+detTxt.slice(0,60)+' !~ '+exp.slice(0,60));
