@@ -159,7 +159,6 @@ def main():
               and not s["pill"] and s["hintInline"] and s["bottomHints"]==0, str(s))
         check("D2 desktop: keyboard hint text in header (fine pointer)",
               "1-4" in s["hintInlineTxt"] or "Échap" in s["hintInlineTxt"], str(s["hintInlineTxt"]))
-        st = ai_btn_state(pg)
         # simulate "no prior AI analysis" → button greys
         st0 = set_hasai_and_render(pg, False)
         check("D3 desktop: no prior AI → button disabled + tooltip",
