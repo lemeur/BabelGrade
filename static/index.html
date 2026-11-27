@@ -7691,12 +7691,16 @@ function evRender(){
   $('#ev-score-hdr').innerHTML=t('eval.total')+' <b>'+evTotal()+'</b>/120';
   const crit=EVAL.crits[name]||{};
   const gaps=crit.gaps||{};
+  /* 2026-11-27: the entered level's TRANSLATED descriptor, shared by the
+     3-col/wide side-card diff (mk) and the portrait gain/loss card — the diff
+     must compare translated text with translated text (like-with-like), which
+     also keeps the "adds"/"lacks" lines in the UI language on both signs. */
+  const centerDesc=evLevelDesc(crit,L);
   const mk=(Lv,pos)=>{
     if(!Lv||PTS[Lv]==null)
       return '<div class="ev-col empty" data-pos="'+pos+'"><div class="fin">'+esc(t('eval.fin'))+'</div></div>';
     const pts=PTS[Lv];
     const ai=(EVAL.ai[name]||{}).ai;
-    const centerDesc=(crit.levels||{})[L]||'';
     /* point 6: descriptor diff vs the entered (centre) level. The side column
        shows what it ADDS (green) and what it LACKS vs the centre (red struck),
        so the B1/B2 boundary is legible at a glance. */
@@ -7799,17 +7803,29 @@ function evRender(){
         +'<div class="pd-empty">'+esc(t('eval.pdEmpty'))+'</div>';
     }
     /* the gain/loss card: only meaningful once a level is entered. Absent at
-       the ends of the scale (A1 has no down-gap, C2 no up-gap). */
+       the ends of the scale (A1 has no down-gap, C2 no up-gap).
+       2026-11-27 (round 3): the row text is the SAME full synthesized phrases
+       as the landscape side cards (evDiffPhrases on the TRANSLATED
+       descriptors, like-with-like) — the up row = what L ADDS above the level
+       below it, the down row = what L LACKS vs the level above it. The old
+       short gap words (gGap) were dropped here: tibo wants the complete
+       landscape wording in the portrait too. */
     let gain='';
-    if(L&&PTS[L]!=null){
+    if(L&&PTS[L]!=null&&centerDesc){
       const idx=CEFR_ORDER.indexOf(L);
       const upLv=idx<5?CEFR_ORDER[idx+1]:null;
       const downLv=idx>0?CEFR_ORDER[idx-1]:null;
-      const upWord=gGap((gaps[L]||{}).up||'');
-      const downWord=gGap((gaps[L]||{}).down||'');
       let rows='';
-      if(upLv&&upWord)rows+='<div class="pg-row up"><span class="pg-arr">→</span><span class="pg-lv">'+upLv+'</span><span class="pg-txt"><b>'+esc(t('eval.gainUp'))+' '+upLv+'</b> · '+esc(upWord)+'</span></div>';
-      if(downLv&&downWord)rows+='<div class="pg-row down"><span class="pg-arr">←</span><span class="pg-lv">'+downLv+'</span><span class="pg-txt"><b>'+esc(t('eval.gainDown'))+' '+downLv+'</b> · '+esc(downWord)+'</span></div>';
+      if(upLv&&(crit.levels||{})[upLv]){
+        /* L vs the level above: the clauses L adds that upLv does not require */
+        const up=evDiffPhrases(evLevelDesc(crit,upLv),centerDesc);
+        if(up.adds.length)rows+='<div class="pg-row up"><span class="pg-arr">→</span><span class="pg-lv">'+upLv+'</span><span class="pg-txt"><b>'+esc(t('eval.gainUp'))+' '+upLv+'</b><br>'+esc(up.adds.join(' · '))+'</span></div>';
+      }
+      if(downLv&&(crit.levels||{})[downLv]){
+        /* L vs the level below: the clauses the lower level has that L lacks */
+        const down=evDiffPhrases(evLevelDesc(crit,downLv),centerDesc);
+        if(down.lacks.length)rows+='<div class="pg-row down"><span class="pg-arr">←</span><span class="pg-lv">'+downLv+'</span><span class="pg-txt"><b>'+esc(t('eval.gainDown'))+' '+downLv+'</b><br>'+esc(down.lacks.join(' · '))+'</span></div>';
+      }
       if(rows)gain='<div class="ev-port-gain">'+rows+'</div>';
     }
     $('#ev-cols').innerHTML='<div class="ev-port-grid">'+grid+'</div>'
