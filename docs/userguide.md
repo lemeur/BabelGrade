@@ -5,7 +5,7 @@
 > 
 > L'interface de BabelGrade et son assistant d'IA vous aident à évaluer
 > les productions écrites et orales selon le [CECRL](https://eduscol.education.gouv.fr/6762/cadre-europeen-commun-de-reference-pour-les-langues-cecrl)
-> et comprend les grilles LVA/LVB /120, Bac, BTS Françaises (paramétrable).
+> et intègrent les grilles LVA/LVB /120, Bac, BTS Françaises (paramétrable).
 > 
 > L'interface est en **français, anglais, espagnol et allemand**
 > (sélecteur en haut à droite, drapeau 🇫🇷).
@@ -54,7 +54,7 @@ l'analyse : l'IA propose un niveau par critère, avec des exemples cités dans l
 copie, et vous corrigez ce que vous voulez. **C'est le cas d'usage usuel** :
 vous avez un point de départ sérieux, il reste à le valider.
 
-> **Une autre façon est possible : ✍️ Vous évaluez d'abord.** Vous notez
+> **Une autre façon est possible : « ✍️ Évaluer d'abord ».** Vous notez
 > vous-même chaque critère, et l'IA donne ensuite un avis (en option) pour
 > confirmer votre note ou vous alerter. C'est utile pour trancher a posteriori
 > une hésitation.
@@ -79,7 +79,7 @@ pour cet élève, préciser les aménagements) · 5. *Élève*.
 ![Évaluateur — blocs 3 et 4 + boutons](assets/ug-evaluator-work-annot.png)
 
 **Légende** — 1. *Travail de l'élève* : photo(s) de la copie manuscrite, du PDF 
-rendu par l'élève ou encore du texte collé · 2. *Grille d'évaluation* (LVA/LVB,Bac, BTS…) · 
+rendu par l'élève ou encore du texte collé · 2. *Grille d'évaluation* (LVA/LVB, Bac, BTS…) · 
 3. **✦ Analyser avec l'IA** · 4. **✍️ Évaluer d'abord**.
 
 Ce qu'il faut retenir :
