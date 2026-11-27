@@ -45,19 +45,19 @@ L'action **Évaluer** (✍️) commence par un petit choix :
 ![Sous-menu Évaluer — BabelGrade](assets/ug-home-radial-eval-annot.png)
 
 **Légende** — 1. *Évaluer* (action sélectionnée) · 2. *Sur un sujet* (évaluer
-une production liée à un sujet enregistré) · 3. *Évaluation directe*
-(sans sujet, à la volée).
+une production liée à un sujet existant) · 3. *Évaluation directe*
+(nécessite de définir le sujet).
 
-Les deux mènent au même formulaire, **l'Évaluateur** (§3). Vous y déposez le
+Les deux mènent au formulaire **Évaluateur** (§3). Vous y déposez le
 travail de l'élève, et le bouton principal — **✦ Analyser avec l'IA** — lance
 l'analyse : l'IA propose un niveau par critère, avec des exemples cités dans la
-copie, et vous corrigez ce que vous voulez. **C'est le cas d'usage normal** :
+copie, et vous corrigez ce que vous voulez. **C'est le cas d'usage usuel** :
 vous avez un point de départ sérieux, il reste à le valider.
 
-> **Une autre façon est possible : « ✍️ Évaluer d'abord ».** Vous remplissez
+> **Une autre façon est possible : « ✍️ Vous évaluez d'abord ».** Vous notez
 > vous-même chaque critère, et l'IA donne ensuite un avis (en option) pour
 > confirmer votre note ou vous alerter. C'est utile pour trancher a posteriori
-> une hésitation, mais ce n'est pas le chemin par défaut.
+> une hésitation.
 
 Dans tous les cas, **l'IA est un conseil, jamais une décision** : votre note
 fait toujours foi, et relancer l'IA n'écrase jamais les niveaux que vous avez
@@ -72,20 +72,20 @@ L'Évaluateur est un formulaire en **4 blocs**, du haut vers le bas.
 ![Évaluateur — blocs 1 et 2](assets/ug-evaluator-top-annot.png)
 
 **Légende** — 1. L'indicateur des étapes déjà remplies · 2. *Sujet* (choisissez
-le sujet enregistré, ou évaluez à la volée sans sujet) · 3. *Niveau cible*
-hérité du sujet · 4. *Niveau spécifique et aménagements* (changer le niveau
+le sujet enregistré, ou sur un nouveau sujet) · 3. *Niveau cible*
+du devoir · 4. *Niveau spécifique et aménagements* (changer le niveau
 pour cet élève, préciser les aménagements) · 5. *Élève*.
 
 ![Évaluateur — blocs 3 et 4 + boutons](assets/ug-evaluator-work-annot.png)
 
-**Légende** — 1. *Travail de l'élève* : photo(s) de la copie, **PDF du
-travail** (bouton 📄), ou texte collé · 2. *Grille d'évaluation* (LVA/LVB,
-Bac, BTS…) · 3. **✦ Analyser avec l'IA** · 4. **✍️ Évaluer d'abord**.
+**Légende** — 1. *Travail de l'élève* : photo(s) de la copie manuscrit, ou PDF 
+rendu par l'éleve ou encore, ou texte collé · 2. *Grille d'évaluation* (LVA/LVB,Bac, BTS…) · 
+3. **✦ Analyser avec l'IA** · 4. **✍️ Évaluer d'abord**.
 
 Ce qu'il faut retenir :
 
-- **Photo(s)** : plusieurs pages dans l'ordre de lecture ; l'IA les lit
-  directement, pas de saisie manuelle.
+- **Photo(s) de la,copie** : plusieurs pages possibles à ordonner dans l'ordre de lecture ; l'IA les lit
+  directement, pas de saisie manuelle. Vous devez les retourner dans BabelGrade pour une lecture directe de haut en bas.
 - **PDF du travail** : si le PDF contient du texte, il complète le texte saisi ;
   s'il est scanné, ses pages sont lues par l'IA.
 - **Le contexte du sujet** (consigne, document source, consignes d'évaluation)
@@ -96,13 +96,13 @@ Ce qu'il faut retenir :
 - **L'élève** : créez-le sur place s'il n'existe pas encore. Changer d'élève
   vide automatiquement son travail (photos, texte, audio).
 - Sur **mobile**, « Évaluer d'abord » passe en mode **un critère à l'écran**,
-  avec les 6 niveaux en gros boutons.
+  avec les 6 niveaux en gros boutons explicités pour une saisie rapide.
 
 ---
 
 ## 4. Pendant l'analyse
 
-Une analyse écrite prend **1 à 2 minutes**, une orale **~3 minutes**
+Une analyse écrite prend **2 à 4 minutes**, une orale **~5 minutes**
 (transcription comprise). L'interface ne se bloque jamais :
 
 - Une pastille **« Analyse IA en cours »** apparaît en haut de l'écran, avec le
@@ -230,8 +230,8 @@ cible.
 - **Le type d'exercice choisit la grille** : quand vous sélectionnez le sujet
   dans l'Évaluateur, le canal (écrit/oral) et la grille LVA/LVB correspondante
   sont proposés d'office.
-- Un sujet se crée aussi **directement depuis l'Évaluateur** (bouton 💾) —
-  pratique quand vous évaluez d'abord et formalisez le sujet ensuite.
+- Un sujet se crée aussi **directement depuis l'Évaluateur** (bouton 💾) pour
+  une réexploitation ultérieure.
 - Le **📊** ouvre les résultats du sujet (§11.2).
 
 ---
