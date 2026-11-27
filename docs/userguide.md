@@ -21,9 +21,9 @@ identifiants, puis tout se passe dans l'application web (navigateur).
 
 ![Menu d'accueil — BabelGrade](assets/ug-home-radial-annot.png)
 
-**Légende** — 1. *Évaluer* (lancer ou retouvez les anciennes évaluations) · 2. *Préparer*
+**Légende** — 1. *Évaluer* (lancer ou retrouvez les anciennes évaluations) · 2. *Préparer*
 (définir des sujets, importer des élèves, ...) · 3. Analyser (statistiques et insights sur les élèves, classes et devoirs)
-4. Langue de l'interface (utilisée aussi pour les analyse d'IA)
+4. Langue de l'interface (utilisée aussi pour les analyses d'IA)
 
 Trois **actions principales** s'offrent à vous (au clic, ou avec les flèches du
 clavier + Entrée) :
@@ -84,8 +84,10 @@ rendu par l'éleve ou encore, ou texte collé · 2. *Grille d'évaluation* (LVA/
 
 Ce qu'il faut retenir :
 
-- **Photo(s) de la,copie** : plusieurs pages possibles à ordonner dans l'ordre de lecture ; l'IA les lit
-  directement, pas de saisie manuelle. Vous devez les retourner dans BabelGrade pour une lecture directe de haut en bas.
+- **Photo(s) de la copie** : plusieurs pages possibles à ordonner dans l'ordre de lecture ; l'IA les lit
+  directement, pas de saisie manuelle. Nous vous conseillons fortement de les retourner en utilisant les
+  boutons adhoc dans l'interface de BabelGrade pour une lecture directe de haut en bas. L'IA de BabelGrade
+  peut essayer de le faire, mais le résultat n'est pas garanti à 100% en fonction de la qualité de la photo.
 - **PDF du travail** : si le PDF contient du texte, il complète le texte saisi ;
   s'il est scanné, ses pages sont lues par l'IA.
 - **Le contexte du sujet** (consigne, document source, consignes d'évaluation)
