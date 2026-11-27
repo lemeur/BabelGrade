@@ -4,7 +4,7 @@
 > de vos élèves et partagez-leur des conseils adaptés.
 > 
 > L'interface de BabelGrade et son assistant d'IA vous aident à évaluer
-> les productions écrites et orales selon le CECRL(https://eduscol.education.gouv.fr/6762/cadre-europeen-commun-de-reference-pour-les-langues-cecrl)
+> les productions écrites et orales selon le [CECRL](https://eduscol.education.gouv.fr/6762/cadre-europeen-commun-de-reference-pour-les-langues-cecrl)
 > et comprend les grilles LVA/LVB /120, Bac, BTS Françaises (paramétrable).
 > 
 > L'interface est en **français, anglais, espagnol et allemand**
@@ -21,7 +21,7 @@ identifiants, puis tout se passe dans l'application web (navigateur).
 
 ![Menu d'accueil — BabelGrade](assets/ug-home-radial-annot.png)
 
-**Légende** — 1. *Évaluer* (lancer ou retrouvez les anciennes évaluations) · 2. *Préparer*
+**Légende** — 1. *Évaluer* (lancer ou retrouver les anciennes évaluations) · 2. *Préparer*
 (définir des sujets, importer des élèves, ...) · 3. Analyser (statistiques et insights sur les élèves, classes et devoirs)
 4. Langue de l'interface (utilisée aussi pour les analyses d'IA)
 
@@ -54,7 +54,7 @@ l'analyse : l'IA propose un niveau par critère, avec des exemples cités dans l
 copie, et vous corrigez ce que vous voulez. **C'est le cas d'usage usuel** :
 vous avez un point de départ sérieux, il reste à le valider.
 
-> **Une autre façon est possible : « ✍️ Vous évaluez d'abord ».** Vous notez
+> **Une autre façon est possible : ✍️ Vous évaluez d'abord.** Vous notez
 > vous-même chaque critère, et l'IA donne ensuite un avis (en option) pour
 > confirmer votre note ou vous alerter. C'est utile pour trancher a posteriori
 > une hésitation.
@@ -78,16 +78,16 @@ pour cet élève, préciser les aménagements) · 5. *Élève*.
 
 ![Évaluateur — blocs 3 et 4 + boutons](assets/ug-evaluator-work-annot.png)
 
-**Légende** — 1. *Travail de l'élève* : photo(s) de la copie manuscrit, ou PDF 
-rendu par l'éleve ou encore, ou texte collé · 2. *Grille d'évaluation* (LVA/LVB,Bac, BTS…) · 
+**Légende** — 1. *Travail de l'élève* : photo(s) de la copie manuscrite, du PDF 
+rendu par l'élève ou encore du texte collé · 2. *Grille d'évaluation* (LVA/LVB,Bac, BTS…) · 
 3. **✦ Analyser avec l'IA** · 4. **✍️ Évaluer d'abord**.
 
 Ce qu'il faut retenir :
 
 - **Photo(s) de la copie** : plusieurs pages possibles à ordonner dans l'ordre de lecture ; l'IA les lit
-  directement, pas de saisie manuelle. Nous vous conseillons fortement de les retourner en utilisant les
-  boutons adhoc dans l'interface de BabelGrade pour une lecture directe de haut en bas. L'IA de BabelGrade
-  peut essayer de le faire, mais le résultat n'est pas garanti à 100% en fonction de la qualité de la photo.
+  directement, pas de saisie manuelle. Nous vous conseillons fortement de les retourner en utilisant le
+  bouton ↻ dans l'interface de BabelGrade pour une lecture directe de haut en bas. L'IA de BabelGrade
+  peut essayer de le faire, mais le résultat n'est pas garanti et dépend de la qualité de la photo.
 - **PDF du travail** : si le PDF contient du texte, il complète le texte saisi ;
   s'il est scanné, ses pages sont lues par l'IA.
 - **Le contexte du sujet** (consigne, document source, consignes d'évaluation)
