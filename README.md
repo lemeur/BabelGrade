@@ -19,7 +19,7 @@
 > environment.**
 
 <p align="center">
-  <img src="docs/readme/mobile-level-picker.png" alt="Criterion-by-criterion grading — per-level AI opinion, entered level, and live /120" width="800">
+  <img src="docs/readme/mobile-level-picker.jpg" alt="Criterion-by-criterion grading on mobile landscape — per-level AI opinion, entered level, and live /120" width="800">
 </p>
 <p align="center">
   Screenshot of the mobile Criterion-by-criterion interface:
