@@ -25,6 +25,15 @@ def check(cond, label):
         FAILED.append(label)
 
 
+def force_cta_visible(pg):
+    """M2 (2026-11-28 r3) hides the #run/#run-eval band until all 4 accordion
+    steps are filled; this test only fills text + rubric, so force the band
+    visible to click the buttons. Inline display:flex beats .cta-waiting and
+    survives the rAF-debounced wizSync(). The run guard chain is otherwise
+    unchanged (these POSTs fired before M2)."""
+    pg.evaluate("() => { const c=document.querySelector('.card.an-actions'); c.classList.remove('cta-waiting'); c.style.display='flex'; }")
+
+
 def main():
     # parse a multipart/form-data body into {field_name: value}.
     # A plain text field looks like: ...name="X"\r\n\r\nvalue\r\n
@@ -140,11 +149,20 @@ def main():
         #    hidden on the simplified home screen (2026-10-28), so it can't be
         #    the entry point here.
         pg.evaluate("goEvaluate()")
+        # 2026-11-25 Direct-mode: #run/#run-eval run ensureDirectSubject() FIRST
+        # — with no subject selected and no ad-hoc title the run is BLOCKED
+        # (toast "Titre du sujet", no POST). Select a subject so the run carries
+        # an assignment_id and the guards proceed to the real AI request.
+        # The #assignment select is hidden in Direct mode (its row is .hide), so
+        # set the value + dispatch change by JS (select_option needs visible).
+        pg.evaluate("""() => { const s=document.getElementById('assignment'); s.value='48'; s.dispatchEvent(new Event('change',{bubbles:true})); }""")
+        pg.wait_for_timeout(400)
         # the copy field defaults to photo mode (2026-11-23); #written-text
         # lives in its text panel — switch to text mode so fill can reach it
         pg.evaluate("setMMode('copy','text')")
         pg.fill("#written-text", "It was a nice day and we went to the park.")
         pg.select_option("#rubric", "att-exp-ecrite")
+        force_cta_visible(pg)
         pg.click("#run")
         pg.wait_for_timeout(2000)
         check(len(stream_bodies) >= 1, "POST /api/analyze/stream fired")
@@ -156,6 +174,7 @@ def main():
                   "student-language field unchanged (language=en)")
 
         # 2) teacher-first #run-eval
+        force_cta_visible(pg)
         pg.click("#run-eval")
         pg.wait_for_timeout(2000)
         check(eval_bodies and mpart_fields(eval_bodies[-1]).get("ui_language") == "fr",

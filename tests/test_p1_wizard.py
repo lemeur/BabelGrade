@@ -41,6 +41,13 @@ def goto_eval(pg):
 def toast_text(pg):
     return pg.evaluate("() => { const el=document.querySelector('#toast'); return el?{text:el.textContent, show:el.classList.contains('show')}:null; }")
 
+def force_cta_visible(pg):
+    """M2 (2026-11-28 r3) hides the #run/#run-eval band until all 4 accordion
+    steps are filled; these guard tests start from an empty form so force the
+    band visible to reach the #run handler. Inline display:flex beats
+    .cta-waiting{display:none} AND survives the rAF-debounced wizSync()."""
+    pg.evaluate("() => { const c=document.querySelector('.card.an-actions'); c.classList.remove('cta-waiting'); c.style.display='flex'; }")
+
 with sync_playwright() as pw:
     b = pw.chromium.launch(args=["--no-sandbox"])
 
@@ -105,6 +112,7 @@ with sync_playwright() as pw:
     check("P0.5 regression: '*' on Rubric label", m["rubricStar"] is True, m)
     check("P0.5 regression: '*' on work card title", m["workStar"] is True, m)
     pg.evaluate("() => { document.querySelector('#rubric').value=''; }")
+    force_cta_visible(pg)
     pg.click('#run')
     pg.wait_for_timeout(700)
     st2 = pg.evaluate("() => ({flash:document.querySelector('#settings-panel').classList.contains('req-flash'),"
@@ -134,6 +142,7 @@ with sync_playwright() as pw:
     check("FR: advanced options labels translated", "Niveau spécifique et aménagements" in st["adv"][0]
           and "Consignes" in st["adv"][1], st["adv"])
     pg.evaluate("() => { document.querySelector('#rubric').value=''; }")
+    force_cta_visible(pg)
     pg.click('#run')
     pg.wait_for_timeout(700)
     tt = toast_text(pg)

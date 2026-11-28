@@ -142,9 +142,13 @@ main{padding:26px 0 60px}
   align-items:center;justify-content:center;font-size:13px;font-weight:800;
   background:#fff;border:2px solid var(--line);color:var(--muted);transition:.15s}
 .acc-item.cur .wz-num{background:var(--acc);border-color:var(--acc);color:#fff}
-.acc-item.done .wz-num{background:#fff;border-color:var(--ok);color:var(--ok)}
-.acc-item.done .wz-num::before{content:'\2713';font-size:14px}
-.acc-item.done .wz-num span{display:none}
+/* .done = filled: the NUMBER STAYS (2026-11-28 round 2: the old check
+   replaced the digit and hid which step it was) — green ring + a small
+   ✓ badge in the bottom-right corner instead. */
+.acc-item.done .wz-num{position:relative;background:#fff;border-color:var(--ok);color:var(--ok)}
+.acc-item.done .wz-num::after{content:'\2713';position:absolute;right:-3px;bottom:-3px;
+  width:12px;height:12px;border-radius:50%;background:var(--ok);color:#fff;font-size:8px;
+  font-weight:800;display:flex;align-items:center;justify-content:center;line-height:1}
 .wz-lab{flex:1;min-width:0}
 .wz-hint{font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .acc-item.cur .wz-hint{color:var(--acc)}
@@ -167,6 +171,16 @@ main{padding:26px 0 60px}
   color:var(--acc);border-radius:10px;padding:9px 14px;font:inherit;font-size:13.5px;
   font-weight:700;cursor:pointer}
 .wz-next:hover{background:var(--acc-soft)}
+/* 2026-11-28 round 2: nav rows (M1) — Previous appears on steps 2-4, Next on
+   1-3. .wz-nav lays prev/next out on ONE row; .wz-next loses its fixed
+   max-width inside a nav row. Previous is a ghost button (back is always
+   allowed — no validation gate on the way down). */
+.wz-nav{display:flex;gap:10px;margin-top:14px}
+.wz-nav .wz-next{margin-top:0;max-width:none;flex:1}
+.wz-prev{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;
+  flex:1;background:none;border:1.5px solid var(--line);color:var(--muted);border-radius:10px;
+  padding:9px 14px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+.wz-prev:hover{background:var(--acc-soft);color:var(--acc);border-color:var(--acc)}
 @media (prefers-reduced-motion:reduce){.acc-body,.wz-chev,.acc-hd .wz-num{transition:none}}
 h2{margin:0 0 14px;font-size:18px}
 h3{margin:18px 0 8px;font-size:15px}
@@ -344,14 +358,26 @@ button.btn.ai:disabled{opacity:.55;cursor:default}
 /* sticky action bar on mobile: the two main CTAs stay one thumb away at any
    scroll position (the form is ~5 screens tall before analysis).
    `.card.an-actions` = 2 class selectors so it beats the later
-   `.card{position:relative}` (equal-specificity-last-wins). */
+   `.card{position:relative}` (equal-specificity-last-wins).
+   2026-11-28 round 2: while the 4 accordion steps are not all filled, the
+   band is a COMPACT static line (no sticky, no shadow) so it stops eating
+   vertical space mid-form; wizSync() adds .cta-waiting / removes it. */
 .an-actions{margin-bottom:0}
+/* 2026-11-28 round 3: the band's own layout lives in CSS (not the inline
+   style) so .cta-waiting{display:none} actually wins — an inline
+   display:flex used to keep the band visible at all times (M2 broken). */
+.card.an-actions{display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.card.an-actions.cta-waiting{display:none}
 @media (max-width:760px){
   .card.an-actions{position:sticky;bottom:calc(56px + env(safe-area-inset-bottom));z-index:40;background:var(--panel);
     border:1px solid var(--line);border-radius:0 0 var(--radius) var(--radius);
     box-shadow:0 -6px 18px rgba(15,23,42,.12);padding:10px 14px calc(10px + env(safe-area-inset-bottom));
     margin-bottom:0}
 }
+/* CTA icons (2026-11-28 round 2): the i18n textContent stays clean — the
+   icons live in ::before so text-based checks (wave3 D1, P1) keep passing. */
+#run::before{content:'\1F3AF';margin-right:6px;font-size:14px;vertical-align:-1px}
+#run-eval::before{content:'\270D\FE0F';margin-right:6px;font-size:14px;vertical-align:-1px}
 @media (max-width:760px){
   .ai-cell .ai-pill{display:block;margin:2px 0}
   .ai-recap .meta{margin-left:0;width:100%}
@@ -1630,7 +1656,7 @@ g.g-exit{pointer-events:none}
           <div style="flex:1"><div class="mfield" id="mfield-doc"></div></div>
         </div>
       </div>
-    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="2"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+      <div class="wz-nav"><button type="button" class="wz-next" data-wz-next="2"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
           </div>
         </div>
       </div>
@@ -1693,7 +1719,7 @@ g.g-exit{pointer-events:none}
         <label for="accommodations" data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
         <textarea id="accommodations" rows="2" data-i18n-ph="ph.accom" placeholder="e.g. The student is dyslexic &mdash; do not count spelling mistakes as harshly."></textarea>
       </details>
-    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="3"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+      <div class="wz-nav"><button type="button" class="wz-prev" data-wz-prev="1"><span aria-hidden="true">←</span><span data-i18n="wz.prev">Previous step</span></button><button type="button" class="wz-next" data-wz-next="3"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
           </div>
         </div>
       </div>
@@ -1750,7 +1776,7 @@ g.g-exit{pointer-events:none}
         </div>
         <div class="muted" style="margin-top:8px" data-i18n="an.audioNote">Audio is transcribed locally (offline Whisper) with timestamps before analysis.</div>
       </div>
-    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="4"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+      <div class="wz-nav"><button type="button" class="wz-prev" data-wz-prev="2"><span aria-hidden="true">←</span><span data-i18n="wz.prev">Previous step</span></button><button type="button" class="wz-next" data-wz-next="4"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
           </div>
         </div>
       </div>
@@ -1770,7 +1796,7 @@ g.g-exit{pointer-events:none}
            defines the whole output. It now leads the card (UX audit 2026-10-03
            pt.1) instead of sitting beside a text area. -->
       <label for="rubric" data-i18n="an.rubric" data-i18n-suffix="1" style="font-size:13px">Rubric<span class="req" aria-hidden="true">*</span></label>
-      <select id="rubric" aria-required="true" aria-describedby="req-note" style="max-width:560px"></select>
+      <select id="rubric" aria-required="true" style="max-width:560px"></select>
       <div id="rubric-hint" class="muted hide" style="margin-top:4px;font-size:12.5px"></div>
       <div class="muted" style="margin-top:4px" data-i18n="an.rubricNote">The rubric defines the criteria the AI will grade (and the report you'll review).</div>
       <!-- P1.1 options avancées: evaluation notes (long tail) behind a <details> -->
@@ -1779,13 +1805,13 @@ g.g-exit{pointer-events:none}
         <div class="mfield" id="mfield-eval" style="margin-top:12px"></div>
         <div class="muted" style="margin-top:4px" data-i18n="an.evalNotesHelp">Tell the model what to check in this specific work &mdash; each point is verified one by one with cited evidence.</div>
       </details>
+      <div class="wz-nav"><button type="button" class="wz-prev" data-wz-prev="3"><span aria-hidden="true">←</span><span data-i18n="wz.prev">Previous step</span></button></div>
               </div>
         </div>
       </div>
     </div>
 
-<div class="card an-actions" style="text-align:right;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
-      <div class="muted" id="req-note" style="flex:1 1 100%;order:5;font-size:12.5px;text-align:left;margin-top:2px" data-i18n="an.reqNote"></div>
+<div class="card an-actions cta-waiting" style="text-align:right">
       <button class="btn" style="order:1" id="run" data-i18n="an.run" data-i18n-title="an.runTip">Analyze submission</button>
       <button class="btn ghost" style="order:2" id="run-eval" data-i18n="an.runEval" data-i18n-title="an.runEvalTip">Evaluate first</button>
     </div>
@@ -2502,13 +2528,13 @@ const I18N={
   'an.rubric':'Rubric','an.evalNotes':'Evaluation instructions',
   'an.evalNotesPh':'e.g. The student must have understood the ironic tone of the text. The closing must be polite.',
   'an.evalPdf':'…or upload the evaluation instructions as PDF','an.evalNotesHelp':'Tell the model what to check in this specific work — each point is verified one by one with cited evidence.',
-  'an.saveFailed':'Could not save the assignment','an.run':'Analyze with AI','an.runEval':'Evaluate first','an.runTip':'AI analysis of this submission (level per criterion + attestation + draft feedback).','an.runEvalTip':'Evaluate first, yourself: the AI pre-fills a level per criterion from the evidence — you decide each one.','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.reqNote':'Required: a rubric and the student’s work below (text or photo for written, audio for oral).','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
+  'an.saveFailed':'Could not save the assignment','an.run':'Analyze with AI','an.runEval':'Evaluate first','an.runTip':'AI analysis of this submission (level per criterion + attestation + draft feedback).','an.runEvalTip':'Evaluate first, yourself: the AI pre-fills a level per criterion from the evidence — you decide each one.','an.working':'Working…','an.keepWorking':'Keep working — the analysis continues in the background.','an.runChip':'AI analysis running','an.runChipDone':'AI analysis done in {n}s','an.runChipErr':'AI analysis failed','an.runChipTitle':'Go back to the analysis','an.missingWorkWritten':'Add the written work: paste the text or attach the page photo(s).','an.missingAudio':'Attach the student’s audio recording.',
   'ai.col':'AI','ai.banner':'AI analysis (optional)','ai.bannerAfter':'You evaluated first. Run the AI now: it will confirm your levels or propose its own, and add its feedback.','ai.bannerAiFirst':'The AI already ran. You can re-run it anytime — the new opinion replaces the previous one.',
   'lvl.clear':'Clear',
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
   'ai.run':'Run AI analysis','ai.rerun':'Re-run AI (replaces this opinion)','ai.rerunHint':'New analysis: the opinion below will be replaced by the next one (only the last one is kept).',
   'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.',
-  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.s1':'Assignment','wz.next':'Next step','wz.of':'Step {a} of {b}','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.specificOpts':'Specific level & accommodations','wiz.evalNotes':'Evaluation instructions (optional)',
+  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.s1':'Assignment','wz.next':'Next step','wz.prev':'Previous step','wz.of':'Step {a} of {b}','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.specificOpts':'Specific level & accommodations','wiz.evalNotes':'Evaluation instructions (optional)',
 'tip.att':'Attests a CEFR level (A1\u2013C2) from the official /120 grid (B.O. LVA/LVB). It is a recommendation \u2014 the teacher makes the final call.','tip.modalite':'Modality = whether the assessment covers comprehension or expression. The official point thresholds differ between the two.','tip.note20':'Hand-entered /20 mark. Reference only \u2014 the attested level is never computed from the /20.','tip.vsTarget':'Compares the attested level with the target level of the assignment.','tip.aiCol':'AI opinion per criterion: \u2713 if it matches your level, \u2260 if it differs.','tip.just':'AI justification + verbatim quotes from the production (evidence).','tip.points':'Points out of 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Overall level computed from the /120 grid (official thresholds).','tip.critGrid':'The six official sub-scores (comprehension or expression) make up the /120 total; the level is read from the official B.O. grid.',
   'an.assignmentTarget':'Assignment target','an.overrideDiff':'differs from the assignment',
   'an.savedMedia':'stored assignment materials were sent to the model',
@@ -2587,13 +2613,13 @@ const I18N={
   'an.rubric':'Grille','an.evalNotes':'Consignes d’évaluation',
   'an.evalNotesPh':'ex. L’élève a dû comprendre le ton ironique du texte. La conclusion doit être polie.',
   'an.evalPdf':'…ou déposer les consignes d’évaluation en PDF','an.evalNotesHelp':'Indiquez au modèle ce qu’il doit vérifier dans ce travail précis — chaque point est vérifié un par un avec preuve citée.',
-  'an.saveFailed':'Impossible d’enregistrer le sujet','an.run':'Analyser avec l’IA','an.runEval':'Évaluer d’abord','an.runTip':'Analyse IA de cette production (niveau par critère + attestation + brouillon de feedback).','an.runEvalTip':'Évaluez d’abord vous-même : l’IA pré-remplit un niveau par critère à partir des preuves — chaque niveau est à trancher.','an.working':'En cours…','an.keepWorking':'Continuez à travailler — l’analyse se poursuit en arrière-plan.','an.runChip':'Analyse IA en cours','an.runChipDone':'Analyse IA terminée en {n} s','an.runChipErr':'Échec de l’analyse IA','an.runChipTitle':'Revenir à l’analyse','an.reqNote':'Obligatoire : une grille et le travail de l’élève ci-dessous (texte ou photo pour l’écrit, audio pour l’oral).','an.missingWorkWritten':'Ajoutez le travail écrit : collez le texte ou joignez les photos des pages.','an.missingAudio':'Joignez l’enregistrement audio de l’élève.',
+  'an.saveFailed':'Impossible d’enregistrer le sujet','an.run':'Analyser avec l’IA','an.runEval':'Évaluer d’abord','an.runTip':'Analyse IA de cette production (niveau par critère + attestation + brouillon de feedback).','an.runEvalTip':'Évaluez d’abord vous-même : l’IA pré-remplit un niveau par critère à partir des preuves — chaque niveau est à trancher.','an.working':'En cours…','an.keepWorking':'Continuez à travailler — l’analyse se poursuit en arrière-plan.','an.runChip':'Analyse IA en cours','an.runChipDone':'Analyse IA terminée en {n} s','an.runChipErr':'Échec de l’analyse IA','an.runChipTitle':'Revenir à l’analyse','an.missingWorkWritten':'Ajoutez le travail écrit : collez le texte ou joignez les photos des pages.','an.missingAudio':'Joignez l’enregistrement audio de l’élève.',
   'ai.col':'IA','ai.banner':'Analyse IA (optionnelle)','ai.bannerAfter':'Vous avez évalué d’abord. Lancez maintenant l’IA : elle confirmera vos niveaux ou proposera les siens, et ajoutera son feedback.','ai.bannerAiFirst':'L’IA a déjà tourné. Vous pouvez la relancer à tout moment — le nouvel avis remplace le précédent.',
   'lvl.clear':'Effacer',
   'ai.blind':'IA en aveugle','ai.aware':'IA avec vos niveaux','ai.blindHint':'L’IA évalue indépendamment, sans voir vos niveaux.','ai.awareHint':'L’IA voit vos niveaux et doit les confirmer ou les infirmer, critère par critère, avec des preuves.',
   'ai.run':'Lancer l’analyse IA','ai.rerun':'↻ Relancer l’IA (remplace cet avis)','ai.rerunHint':'Nouvelle analyse : l’avis ci-dessous sera remplacé par le prochain (le seul conservé).',
   'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.',
-  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.s1':'Sujet','wz.next':'Étape suivante','wz.of':'Étape {a} sur {b}','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.specificOpts':'Niveau spécifique et aménagements','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
+  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.s1':'Sujet','wz.next':'Étape suivante','wz.prev':'Étape précédente','wz.of':'Étape {a} sur {b}','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.specificOpts':'Niveau spécifique et aménagements','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
 'tip.att':'Atteste un niveau CECRL (A1\u2013C2) à partir de la grille officielle /120 (B.O. LVA/LVB). C’est une recommandation \u2014 l’enseignant tranche en dernier.','tip.modalite':'Modalité = la compétence évaluée : réception (compréhension) ou production (expression). Les seuils de points officiels diffèrent selon la modalité.','tip.note20':'Note /20 saisie à la main. À titre de référence uniquement \u2014 le niveau attesté ne se calcule jamais à partir du /20.','tip.vsTarget':'Compare le niveau attesté avec le niveau cible du sujet.','tip.aiCol':'Avis IA par critère : \u2713 s’il coïncide avec votre niveau, \u2260 s’il diffère.','tip.just':'Justification de l’IA + citations littérales de la production (preuves).','tip.points':'Points sur 120 : A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Niveau global calculé sur la grille /120 (seuils officiels).','tip.critGrid':'Les six sous-critères officiels (réception ou production) composent le /120 ; le niveau se lit sur la grille B.O. officielle.',
   'an.assignmentTarget':'Niveau du sujet','an.overrideDiff':'diffère du sujet',
   'an.savedMedia':'les ressources stockées du sujet ont été envoyées au modèle',
@@ -2672,13 +2698,13 @@ const I18N={
   'an.rubric':'Rúbrica','an.evalNotes':'Consignas de evaluación',
   'an.evalNotesPh':'p. ej. El estudiante debe haber captado el tono irónico del texto. El cierre debe ser cortés.',
   'an.evalPdf':'…o sube las consignas de evaluación en PDF','an.evalNotesHelp':'Indica al modelo qué comprobar en este trabajo concreto — cada punto se verifica uno a uno con evidencia citada.',
-  'an.saveFailed':'No se pudo guardar la tarea','an.run':'Analizar con la IA','an.runEval':'Evaluar primero','an.runTip':'Análisis IA de esta producción (nivel por criterio + certificación + borrador de feedback).','an.runEvalTip':'Evaluas primero tú: la IA pre-rellena un nivel por criterio a partir de la evidencia — cada nivel lo decides tú.','an.working':'Trabajando…','an.keepWorking':'Siga trabajando — el análisis continúa en segundo plano.','an.runChip':'Análisis IA en curso','an.runChipDone':'Análisis IA completado en {n} s','an.runChipErr':'Fallo del análisis IA','an.runChipTitle':'Volver al análisis','an.reqNote':'Obligatorio: una rúbrica y el trabajo del estudiante más abajo (texto o foto para escrito, audio para oral).','an.missingWorkWritten':'Añade el trabajo escrito: pega el texto o adjunta las fotos de las páginas.','an.missingAudio':'Adjunta la grabación de audio del estudiante.',
+  'an.saveFailed':'No se pudo guardar la tarea','an.run':'Analizar con la IA','an.runEval':'Evaluar primero','an.runTip':'Análisis IA de esta producción (nivel por criterio + certificación + borrador de feedback).','an.runEvalTip':'Evaluas primero tú: la IA pre-rellena un nivel por criterio a partir de la evidencia — cada nivel lo decides tú.','an.working':'Trabajando…','an.keepWorking':'Siga trabajando — el análisis continúa en segundo plano.','an.runChip':'Análisis IA en curso','an.runChipDone':'Análisis IA completado en {n} s','an.runChipErr':'Fallo del análisis IA','an.runChipTitle':'Volver al análisis','an.missingWorkWritten':'Añade el trabajo escrito: pega el texto o adjunta las fotos de las páginas.','an.missingAudio':'Adjunta la grabación de audio del estudiante.',
   'ai.col':'IA','ai.banner':'Análisis IA (opcional)','ai.bannerAfter':'Has evaluado primero. Ejecuta ahora la IA: confirmará tus niveles o propondrá los suyos, y añadirá su comentario.','ai.bannerAiFirst':'La IA ya se ejecutó. Puedes relanzarla en cualquier momento — la nueva opinión reemplaza a la anterior.',
   'lvl.clear':'Borrar',
   'ai.blind':'IA a ciegas','ai.aware':'IA con tus niveles','ai.blindHint':'La IA evalúa de forma independiente, sin ver tus niveles.','ai.awareHint':'La IA ve tus niveles y debe confirmarlos o refutarlos, criterio a criterio, con evidencia.',
   'ai.run':'Ejecutar análisis IA','ai.rerun':'↻ Relanzar IA (reemplaza esta opinión)','ai.rerunHint':'Nuevo análisis: la opinión de abajo será reemplazada por la siguiente (solo se conserva la última).',
   'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.',
-  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.s1':'Tarea','wz.next':'Paso siguiente','wz.of':'Paso {a} de {b}','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.specificOpts':'Nivel específico y adaptaciones','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
+  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.s1':'Tarea','wz.next':'Paso siguiente','wz.prev':'Paso anterior','wz.of':'Paso {a} de {b}','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.specificOpts':'Nivel específico y adaptaciones','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
 'tip.att':'Certifica un nivel MCER (A1–C2) a partir de la cuadrícula oficial /120 (B.O. LVA/LVB). Es una recomendación: el docente toma la decisión final.','tip.modalite':'Modalidad = si la evaluación cubre comprensión o expresión. Los umbrales de puntos oficiales difieren entre ambas.','tip.note20':'Nota /20 introducida a mano. Solo como referencia: el nivel certificado nunca se calcula a partir del /20.','tip.vsTarget':'Compara el nivel certificado con el nivel objetivo de la tarea.','tip.aiCol':'Opinión IA por criterio: ✓ si coincide con su nivel, ≠ si difiere.','tip.just':'Justificación de la IA + citas literales de la producción (pruebas).','tip.points':'Puntos sobre 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Nivel global calculado sobre la cuadrícula /120 (umbrales oficiales).','tip.critGrid':'Los seis subcriterios oficiales (comprensión o expresión) componen el /120; el nivel se lee en la rejilla oficial B.O.',
   'an.assignmentTarget':'Nivel de la tarea','an.overrideDiff':'difiere de la tarea',
   'an.savedMedia':'los materiales guardados de la tarea se enviaron al modelo',
@@ -2757,13 +2783,13 @@ const I18N={
   'an.rubric':'Rubrik','an.evalNotes':'Bewertungsanweisungen',
   'an.evalNotesPh':'z. B. Die Schüler:in muss den ironischen Ton des Textes verstanden haben. Der Schluss muss höflich sein.',
   'an.evalPdf':'…oder Bewertungsanweisungen als PDF hochladen','an.evalNotesHelp':'Sag dem Modell, was in dieser konkreten Arbeit zu prüfen ist — jeder Punkt wird einzeln mit zitierter Evidenz geprüft.',
-  'an.saveFailed':'Aufgabe konnte nicht gespeichert werden','an.run':'Mit der KI analysieren','an.runEval':'Erst bewerten','an.runTip':'KI-Analyse dieser Einreichung (Niveau pro Kriterium + Attest + Feedback-Entwurf).','an.runEvalTip':'Erst selbst bewerten: die KI schlägt ein Niveau pro Kriterium auf Basis der Beweise vor — jedes Niveau entscheidest du.','an.working':'Arbeitet…','an.keepWorking':'Weiterarbeiten — die Analyse läuft im Hintergrund fort.','an.runChip':'KI-Analyse läuft','an.runChipDone':'KI-Analyse in {n} s beendet','an.runChipErr':'KI-Analyse fehlgeschlagen','an.runChipTitle':'Zur Analyse zurückkehren','an.reqNote':'Pflicht: eine Rubrik und die Schüler:innen-Arbeit unten (Text oder Foto für schriftlich, Audio für mündlich).','an.missingWorkWritten':'Füge die schriftliche Arbeit hinzu: Text einfügen oder Seitenfotos anhängen.','an.missingAudio':'Hänge die Audio-Aufnahme der Schüler:in an.',
+  'an.saveFailed':'Aufgabe konnte nicht gespeichert werden','an.run':'Mit der KI analysieren','an.runEval':'Erst bewerten','an.runTip':'KI-Analyse dieser Einreichung (Niveau pro Kriterium + Attest + Feedback-Entwurf).','an.runEvalTip':'Erst selbst bewerten: die KI schlägt ein Niveau pro Kriterium auf Basis der Beweise vor — jedes Niveau entscheidest du.','an.working':'Arbeitet…','an.keepWorking':'Weiterarbeiten — die Analyse läuft im Hintergrund fort.','an.runChip':'KI-Analyse läuft','an.runChipDone':'KI-Analyse in {n} s beendet','an.runChipErr':'KI-Analyse fehlgeschlagen','an.runChipTitle':'Zur Analyse zurückkehren','an.missingWorkWritten':'Füge die schriftliche Arbeit hinzu: Text einfügen oder Seitenfotos anhängen.','an.missingAudio':'Hänge die Audio-Aufnahme der Schüler:in an.',
   'ai.col':'KI','ai.banner':'KI-Analyse (optional)','ai.bannerAfter':'Sie haben zuerst bewertet. Führen Sie jetzt die KI aus: Sie bestätigt Ihre Stufen oder schlägt eigene vor und ergänzt ihr Feedback.','ai.bannerAiFirst':'Die KI lief bereits. Sie können sie jederzeit erneut ausführen — die neue Meinung ersetzt die vorherige.',
   'lvl.clear':'Leeren',
   'ai.blind':'KI blind','ai.aware':'KI mit Ihren Stufen','ai.blindHint':'Die KI bewertet unabhängig, ohne Ihre Stufen zu sehen.','ai.awareHint':'Die KI sieht Ihre Stufen und muss jede bestätigen oder widerlegen, mit Belegen.',
   'ai.run':'KI-Analyse starten','ai.rerun':'↻ KI erneut ausführen (ersetzt diese Meinung)','ai.rerunHint':'Neue Analyse: die Meinung unten wird durch die nächste ersetzt (nur die letzte wird behalten).',
   'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.',
-  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.s1':'Aufgabe','wz.next':'Nächster Schritt','wz.of':'Schritt {a} von {b}','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.specificOpts':'Spezifisches Niveau & Anpassungen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
+  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.s1':'Aufgabe','wz.next':'Nächster Schritt','wz.prev':'Vorheriger Schritt','wz.of':'Schritt {a} von {b}','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.specificOpts':'Spezifisches Niveau & Anpassungen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
 'tip.att':'Attestiert ein GER-Niveau (A1–C2) aus dem offiziellen /120-Raster (B.O. LVA/LVB). Es ist eine Empfehlung — die Lehrkraft entscheidet letztinstanzlich.','tip.modalite':'Modalität = ob die Bewertung Rezeption (Verstehen) oder Produktion (Ausdrücken) betrifft. Die offiziellen Punkteschwellen unterscheiden sich.','tip.note20':'Von Hand eingetragene Note von 20. Nur als Referenz — das attestierte Niveau wird niemals aus der /20 berechnet.','tip.vsTarget':'Vergleicht das attestierte Niveau mit dem Zielniveau der Aufgabe.','tip.aiCol':'KI-Meinung pro Kriterium: ✓ bei Übereinstimmung mit Ihrer Stufe, ≠ bei Abweichung.','tip.just':'KI-Begründung + wörtliche Zitate aus der Produktion (Belege).','tip.points':'Punkte von 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Gesamtstufe, berechnet aus dem /120-Raster (offizielle Schwellen).','tip.critGrid':'Die sechs offiziellen Teilpunkte (Rezeption oder Produktion) ergeben die 120; die Stufe wird aus dem offiziellen B.O.-Raster abgelesen.',
   'an.assignmentTarget':'Ziel der Aufgabe','an.overrideDiff':'weicht von der Aufgabe ab',
   'an.savedMedia':'die gespeicherten Materialien der Aufgabe wurden an das Modell gesendet',
@@ -5571,62 +5597,77 @@ $('#asg-add').onclick=async()=>{
    States: .done = filled (✓) · .cur = active step · .open = expanded. */
 const WIZ_PANELS=['#what-panel','#who-panel','#work-panel','#settings-panel'];
 let _wzPrevFilled=null;
+/* 2026-11-28 round 2 (mobile feedback): the open step may now be 0 (every
+   panel closed — the chevron is a true toggle), step 1 counts as filled
+   when the ad-hoc subject title is entered (Direct mode), and the CTA band
+   below the accordion stays hidden (.cta-waiting) until all 4 steps are
+   filled. The persisted open step is the ONLY source of truth for which
+   panel is open — wizSync no longer force-reopens it (that was the chevron
+   bug: every scroll/resize tick re-opened the persisted step). */
 function wizStep(){const n=parseInt(localStorage.getItem('babelgrade-wiz-step'),10);
-  return(n>=1&&n<=4)?n:1;}
+  return(n>=0&&n<=4)?n:1;}
 function wizSaveStep(n){try{localStorage.setItem('babelgrade-wiz-step',String(n));}catch(_){}}
 function wizFilled(){
   /* Filled = an input that actually feeds the analysis:
-     1 subject · 2 student or target · 3 work (text/photo or audio) · 4 grid. */
+     1 subject (on-subject, OR the ad-hoc title in Direct mode) ·
+     2 student or target · 3 work (text/photo or audio) · 4 grid. */
+  const drow=$('#direct-title-row');
+  const directOn=drow&&!drow.classList.contains('hide');
   return[
-    $('#assignment').value!=='',
+    $('#assignment').value!==''||(directOn&&($('#direct-subject-title').value||'').trim()!==''),
     $('#student').value!==''||effectiveTarget()!=='',
     KIND==='oral'?!!currentAudio:($('#written-text').value.trim()!==''||currenasgnFiles.length>0||!!currentCopyPdf),
     !!$('#rubric').value,
   ];
 }
 function wizOpen(n,scroll){
-  if(n<1)n=1;if(n>4)n=4;
+  if(n<0)n=0;if(n>4)n=4;   /* n=0 = every panel closed */
   wizSaveStep(n);
-  $$('.acc-item').forEach(it=>{
-    const on=+it.dataset.step===n;
-    it.classList.toggle('open',on);
-    it.classList.toggle('cur',on);
-    const hd=it.querySelector('.acc-hd');if(hd)hd.setAttribute('aria-expanded',on?'true':'false');
-  });
-  const p=$(WIZ_PANELS[n-1]);
+  const p=n?$(WIZ_PANELS[n-1]):null;
   /* scroll-margin-top (CSS) clears the sticky header + sticky .wz-steps, so
      block:'start' lands the panel just under the plan. */
   if(p&&scroll)p.scrollIntoView({behavior:'smooth',block:'start'});
+  wizSync();
 }
 function wizSync(){
   if(!$('#view-analyze')||$('#view-analyze').classList.contains('hide'))return;
-  /* display-only: badges + hints. The step itself is only ever changed by
-     user actions (header click / Next) or auto-advance. */
+  /* display-only: open/cur + badges + hints + the CTA band. */
   const n=wizStep();
   const filled=wizFilled();
   $$('.acc-item').forEach((it,i)=>{
-    it.classList.toggle('open',i===n-1);
-    it.classList.toggle('cur',i===n-1);
+    const on=(i+1)===n;
+    it.classList.toggle('open',on);
+    it.classList.toggle('cur',on);
     it.classList.toggle('done',filled[i]);
-    const hd=it.querySelector('.acc-hd');if(hd)hd.setAttribute('aria-expanded',i===n-1?'true':'false');
+    const hd=it.querySelector('.acc-hd');if(hd)hd.setAttribute('aria-expanded',on?'true':'false');
     const hint=it.querySelector('[data-wz-hint]');
-    if(hint)hint.textContent=(i===n-1)?t('wz.of').replace('{a}',String(i+1)).replace('{b}','4'):'';
+    if(hint)hint.textContent=on?t('wz.of').replace('{a}',String(i+1)).replace('{b}','4'):'';
   });
+  /* the CTA band is only useful once the 4 steps are filled — hidden while
+     not (.cta-waiting). The run guards stay authoritative either way. */
+  const bar=$('#view-analyze .card.an-actions');
+  if(bar)bar.classList.toggle('cta-waiting',!filled.every(Boolean));
 }
 function wizInit(){
-  /* accordion headers: click opens that step (delegated — the headers are
-     static, so one listener survives mode-field re-renders). After the
-     transition, focus the first control of the opened panel. */
+  /* accordion headers: click is a TOGGLE (2026-11-28 round 2) — clicking the
+     open step closes it (n=0); clicking a closed step opens it. The header
+     listeners are delegated, so they survive mode-field re-renders. */
   $('#view-analyze').addEventListener('click',e=>{
     const hd=e.target.closest('.acc-hd');
     if(!hd||!hd.dataset.wzHd)return;
-    wizOpen(+hd.dataset.wzHd,false);
-    const f=hd.closest('.acc-item').querySelector('input,select,textarea');
-    if(f)setTimeout(()=>f.focus({preventScroll:true}),180);
+    const want=+hd.dataset.wzHd;
+    const target=(wizStep()===want)?0:want;   /* toggle */
+    wizOpen(target,false);
+    if(target){
+      const f=hd.closest('.acc-item').querySelector('input,select,textarea');
+      if(f)setTimeout(()=>f.focus({preventScroll:true}),180);
+    }
   });
   /* "Next step" buttons: step 2 requires a student before advancing;
      step 3 requires the work to be present. The P0.5 run guards stay
-     authoritative — these checks are just earlier feedback. */
+     authoritative — these checks are just earlier feedback.
+     "Previous" buttons (M1) go back unconditionally — the way down is
+     always open. */
   $('#what-panel .wz-next').onclick=()=>wizOpen(2,true);
   $('#who-panel .wz-next').onclick=()=>{
     if($('#student').value===''){
@@ -5642,6 +5683,7 @@ function wizInit(){
     }
     wizOpen(4,true);
   };
+  $$('.wz-prev').forEach(b=>b.onclick=()=>wizOpen(+b.dataset.wzPrev,true));
   /* Forced 1→4: step N just became filled while the open step is N (N<4)
      → advance to N+1. Driven by the same rAF-debounced observers as the
      badge repaint; the filled-state flip makes it fire exactly once per

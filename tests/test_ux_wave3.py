@@ -134,10 +134,11 @@ with sync_playwright() as pw:
       return {done:c.classList.contains('done')};}""")
     check("D3: rubric picked -> step 4 regains .done (✓ badge)",
           step4b["done"] is True, str(step4b))
-    # the ✓ badge renders via .wz-num::before — verify the computed glyph
+    # the ✓ badge renders via .wz-num::after (2026-11-28 r2: corner badge,
+    # the digit stays visible) — verify the computed glyph on the ::after
     cssmark = pg.evaluate("""() => ({
-      c4: getComputedStyle(document.querySelector('.acc-item[data-step="4"] .wz-num'),'::before').content})""")
-    check("D3: CSS ::before badge renders (✓ glyph)",
+      c4: getComputedStyle(document.querySelector('.acc-item[data-step="4"] .wz-num'),'::after').content})""")
+    check("D3: CSS ::after badge renders (✓ glyph)",
           '✓' in cssmark["c4"] or '2713' in cssmark["c4"], str(cssmark))
 
     # ---- D2: row actions aria-labels ×4 + regular single row ----

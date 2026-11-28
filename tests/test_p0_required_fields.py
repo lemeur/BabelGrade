@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""P0.5 verify: required-field markers + flash UX on the evaluator form.
+"""P0.5 verify: required-field markers + flash UX + CTA band gating on the
+evaluator form.
 - '*' next to Rubric label and on the "student's work" card title (all langs)
-- reqNote line present under the action buttons
+- CTA band (#run/#run-eval) is HIDDEN while the 4 accordion steps are not all
+  filled (.cta-waiting) and becomes VISIBLE once they are (M2, 2026-11-28 r3)
 - clicking #run with empty rubric -> settings card flashes + i18n toast
-- clicking #run-eval with written + no text/photo -> work card flashes + i18n toast
-- no JS errors; i18n keys balanced (every key 4x)"""
+- clicking #run-eval with written + no text/photo -> work card flashes + i18n
+  toast (band forced visible to reach the guard, since it's hidden when a step
+  is unfilled)
+- no JS errors; i18n keys balanced (every key 4x in the I18N slice)"""
 import os, re
 from pathlib import Path
 import _testpw as TESTPW
@@ -29,6 +33,24 @@ def login(pg, lang="fr"):
 def toast_text(pg):
     return pg.evaluate("() => { const el=document.querySelector('.toast'); return el?{text:el.textContent, show:el.classList.contains('show')}:null; }")
 
+def cta_state(pg):
+    """Computed display + .cta-waiting of the CTA band (M2 gate)."""
+    return pg.evaluate("""() => {
+      const c=document.querySelector('.card.an-actions');
+      return {waiting:c.classList.contains('cta-waiting'),
+              disp:getComputedStyle(c).display,
+              filled:(typeof wizFilled==='function')?wizFilled():null};
+    }""")
+
+def force_cta_visible(pg):
+    """M2 hides the band while a step is unfilled; tests that reach the #run /
+    #run-eval guards force it visible so Playwright can click the buttons.
+    An INLINE display:flex beats .cta-waiting{display:none} AND survives the
+    rAF-debounced wizSync() that would otherwise re-add .cta-waiting after the
+    guard-test state changes. (The run guards stay authoritative either way —
+    this only un-hides the buttons.)"""
+    pg.evaluate("() => { const c=document.querySelector('.card.an-actions'); c.classList.remove('cta-waiting'); c.style.display='flex'; }")
+
 with sync_playwright() as pw:
     b = pw.chromium.launch(args=["--no-sandbox"])
 
@@ -47,20 +69,37 @@ with sync_playwright() as pw:
     m = pg.evaluate("""() => {
       const rubricLabel = document.querySelector('label[data-i18n="an.rubric"]');
       const workTitle = document.querySelector('#work-panel h2');
-      const note = document.querySelector('[data-i18n="an.reqNote"]');
       return {
         rubricStar: rubricLabel ? rubricLabel.querySelector('.req') !== null : null,
         workStar: workTitle ? workTitle.querySelector('.req') !== null : null,
-        noteText: note ? note.textContent.trim() : null,
       };
     }""")
     check("FR: '*' on Rubric label", m["rubricStar"] is True, m)
     check("FR: '*' on work card title", m["workStar"] is True, m)
-    check("FR: reqNote visible under action buttons", bool(m["noteText"]), m["noteText"])
+
+    # M2: CTA band is HIDDEN while the 4 accordion steps are not all filled
+    # (boot: subject / student / work are empty -> 3 of 4 unfilled).
+    c0 = cta_state(pg)
+    check("FR: CTA band hidden at boot (.cta-waiting, display:none)",
+          c0["waiting"] and c0["disp"] == "none", c0)
     pg.screenshot(path=os.path.join(OUT, "p05_evaluator_fr.png"))
 
-    # guard 1: empty rubric -> settings panel flash
-    pg.evaluate("() => { document.querySelector('#rubric').value=''; }")
+    # M2: filling ALL 4 steps makes the band visible.
+    pg.evaluate("""() => {
+      const s1=document.getElementById('assignment'); s1.value='48'; s1.dispatchEvent(new Event('change',{bubbles:true}));
+      const s2=document.getElementById('student'); if(s2.options.length>1)s2.selectedIndex=1; s2.dispatchEvent(new Event('change',{bubbles:true}));
+      const t=document.getElementById('written-text'); t.value='It was a nice day and we went to the park.'; t.dispatchEvent(new Event('input',{bubbles:true}));
+      const s4=document.getElementById('rubric'); if(s4.options.length>1)s4.selectedIndex=1; s4.dispatchEvent(new Event('change',{bubbles:true}));
+    }""")
+    pg.wait_for_timeout(500)
+    c1 = cta_state(pg)
+    check("FR: CTA band visible when all 4 steps filled",
+          (not c1["waiting"]) and c1["disp"] != "none", c1)
+
+    # guard 1: empty rubric -> settings panel flash. Clearing the rubric hides
+    # the band again (step 4 unfilled) -> force it visible to reach the guard.
+    pg.evaluate("() => { const r=document.querySelector('#rubric'); r.value=''; r.dispatchEvent(new Event('change',{bubbles:true})); }")
+    force_cta_visible(pg)
     pg.click('#run')
     pg.wait_for_timeout(700)
     st = pg.evaluate("""() => {
@@ -71,9 +110,11 @@ with sync_playwright() as pw:
     check("FR: empty rubric -> settings flash", st["flash"], st)
     check("FR: empty rubric -> i18n toast (choose rubric)", tt and "grille" in tt["text"].lower(), tt)
 
-    # guard 2: written + no text -> work panel flash
-    pg.evaluate("() => { const s=document.querySelector('#rubric'); if(s.options.length>1)s.selectedIndex=1; else s.value=s.options[0]?s.options[0].value:''; }")
-    pg.evaluate("() => { KIND='written'; document.querySelector('#written-text').value=''; currenasgnFiles=[]; }")
+    # guard 2: written + no text -> work panel flash. Re-pick a rubric, clear
+    # the work, force the band visible, then click #run-eval.
+    pg.evaluate("() => { const s=document.querySelector('#rubric'); if(s.options.length>1)s.selectedIndex=1; else s.value=s.options[0]?s.options[0].value:''; s.dispatchEvent(new Event('change',{bubbles:true})); }")
+    pg.evaluate("() => { KIND='written'; document.querySelector('#written-text').value=''; document.querySelector('#written-text').dispatchEvent(new Event('input',{bubbles:true})); currenasgnFiles=[]; }")
+    force_cta_visible(pg)
     pg.click('#run-eval')
     pg.wait_for_timeout(700)
     st = pg.evaluate("() => ({flash:document.querySelector('#work-panel').classList.contains('req-flash')})")
@@ -109,11 +150,15 @@ with sync_playwright() as pw:
 
     b.close()
 
-# ---------- i18n balance: new keys appear 4x each ----------
+# ---------- i18n balance: keys appear 4x each IN THE I18N SLICE ----------
+# Count only definitions inside the I18N object (I18N={ ... let LANG), the way
+# test_p0_state_i18n_js.py does — a whole-file count over-counts CONSUMER
+# usages (e.g. the wizard ternary 'an.missingAudio').
 html = open(Path(__file__).resolve().parent.parent / 'static' / 'index.html').read()
-for key in ["an.reqNote", "an.missingWorkWritten", "an.missingAudio"]:
-    n = len(re.findall(re.escape(key) + "':'", html))
-    check(f"i18n key '{key}' defined 4x", n == 4, n)
+i18n_slice = html[html.index('I18N={'): html.index('let LANG')]
+for key in ["an.missingWorkWritten", "an.missingAudio", "wz.prev"]:
+    n = len(re.findall(re.escape(key) + "':'", i18n_slice))
+    check(f"i18n key '{key}' defined 4x (in I18N slice)", n == 4, n)
 
 print(f"\n=== {len(PASS)} PASS / {len(FAIL)} FAIL ===")
 if FAIL: print("FAILED:", FAIL)
