@@ -7,10 +7,9 @@ Proves the 5 desktop items shipped in Wave 3 (docs/ux-audit-2026-11-23.md §4):
   D2  the 5 icon-only row actions in the Sujets table expose aria-labels ×4
       i18n and sit in a regular single row (no 2×2+1 ragged cluster — one row
       of ≥4 buttons).
-  D3  the 4-step stepper is now an honest SUMMARY (option b): chip marks are
-      ○ empty / ✓ filled / ● current; the scroll-spy .on stays position-only;
-      filling the rubric select flips chip 4 from ○ to ✓ (via the new
-      change-driven completion sync).
+  D3  the 4-step plan is an honest SUMMARY: the accordion step badges flip
+      .done (✓) with the completion state — clearing the rubric select makes
+      step 4 lose its badge, re-selecting regains it (change-driven sync).
   D4  tooltips ×4 on « ◂ Simplifié » (home.advBackTip) + « ⚙ Données »
       (nav.dataTip); the Whisper pill is muted for the WRITTEN channel and
       un-muted when the channel switches to oral.
@@ -105,44 +104,41 @@ with sync_playwright() as pw:
     check("D4: back to written re-mutes the pill",
           pg.evaluate("document.getElementById('badge-stt').classList.contains('muted')") is True)
 
-    # ---- D3: stepper = honest summary (○/✓/●) ----
+    # ---- D3: accordion step badges = honest summary (.done ✓ when filled) ----
     # The live app pre-selects a rubric, so drive the MECHANIC: clear the
-    # rubric -> chip 4 flips to ○ (empty); re-select -> flips to ✓/● (filled).
-    # The scroll-spy .on stays position-only and overrides the fill mark.
-    marks0 = pg.evaluate("""() => [...document.querySelectorAll('.wiz-chip[data-wiz-go]')]
-      .map(c => ({on:c.classList.contains('on'), done:c.classList.contains('done'),
-                  empty:c.classList.contains('empty'),
-                  text:c.textContent.trim()}))""")
-    check("D3: 4 chips present with state classes", len(marks0) == 4, str(marks0))
-    # clear the rubric -> chip 4 must be 'empty' (○) unless it's the .on one
+    # rubric -> step 4 loses its .done badge; re-select -> step 4 regains it
+    # (the same change-driven completion sync as before the accordion).
+    marks0 = pg.evaluate("""() => [...document.querySelectorAll('#wz-steps .acc-item')]
+      .map(it => ({step:it.dataset.step, done:it.classList.contains('done'),
+                   cur:it.classList.contains('cur'),
+                   open:it.classList.contains('open')}))""")
+    check("D3: 4 accordion steps with state classes", len(marks0) == 4, str(marks0))
+    # clear the rubric -> step 4 must lose its .done badge
     pg.evaluate("""() => {
       const s=document.getElementById('rubric');
       s.value=''; s.dispatchEvent(new Event('change',{bubbles:true}));}""")
     pg.wait_for_timeout(400)
-    chip4a = pg.evaluate("""() => {
-      const c=document.querySelector('.wiz-chip[data-wiz-go="4"]');
-      return {on:c.classList.contains('on'), done:c.classList.contains('done'),
-              empty:c.classList.contains('empty')};}""")
-    check("D3: rubric cleared -> chip 4 is 'empty' (○) or 'on' at top",
-          chip4a["empty"] is True or chip4a["on"] is True, str(chip4a))
-    # re-select the first attestation rubric -> chip 4 flips to filled
+    step4a = pg.evaluate("""() => {
+      const c=document.querySelector('.acc-item[data-step="4"]');
+      return {done:c.classList.contains('done')};}""")
+    check("D3: rubric cleared -> step 4 is no longer .done",
+          step4a["done"] is False, str(step4a))
+    # re-select the first attestation rubric -> step 4 regains .done
     pg.evaluate("""() => {
       const s=document.getElementById('rubric');
       if(s.options.length>1)s.selectedIndex=1; else s.selectedIndex=0;
       s.dispatchEvent(new Event('change',{bubbles:true}));}""")
     pg.wait_for_timeout(400)
-    chip4b = pg.evaluate("""() => {
-      const c=document.querySelector('.wiz-chip[data-wiz-go="4"]');
-      return {on:c.classList.contains('on'), done:c.classList.contains('done'),
-              empty:c.classList.contains('empty')};}""")
-    check("D3: rubric picked -> chip 4 no longer 'empty' (flips to ✓/●)",
-          chip4b["empty"] is False, str(chip4b))
-    # CSS marks render via ::before — verify the content values are glyphs
+    step4b = pg.evaluate("""() => {
+      const c=document.querySelector('.acc-item[data-step="4"]');
+      return {done:c.classList.contains('done')};}""")
+    check("D3: rubric picked -> step 4 regains .done (✓ badge)",
+          step4b["done"] is True, str(step4b))
+    # the ✓ badge renders via .wz-num::before — verify the computed glyph
     cssmark = pg.evaluate("""() => ({
-      c4: getComputedStyle(document.querySelector('.wiz-chip[data-wiz-go="4"]'),'::before').content,
-      c1: getComputedStyle(document.querySelector('.wiz-chip[data-wiz-go="1"]'),'::before').content})""")
-    check("D3: CSS ::before marks render (○/●/✓ glyphs)",
-          any(ch in cssmark["c4"] for ch in "●✓○"), str(cssmark))
+      c4: getComputedStyle(document.querySelector('.acc-item[data-step="4"] .wz-num'),'::before').content})""")
+    check("D3: CSS ::before badge renders (✓ glyph)",
+          '✓' in cssmark["c4"] or '2713' in cssmark["c4"], str(cssmark))
 
     # ---- D2: row actions aria-labels ×4 + regular single row ----
     pg.evaluate("navGo('assignments',null,{});")

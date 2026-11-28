@@ -5,6 +5,26 @@ optional items remain. Verification recipe at the bottom.
 
 ## Done
 
+- **Evaluator accordion (replaces the P1.1 4-chip stepper) — SHIPPED 2026-11-28
+  (branch `feat/evaluator-accordion`):** the 4 steps ARE the form, one open at a time; the global
+  plan stays visible (`.wz-steps` sticky under the header). States: `.done`
+  = filled (✓ badge via `.wz-num::before`) · `.cur` = active step ·
+  `.open` = expanded. Progression is FORCED 1→4: the active step is remembered
+  in `localStorage('babelgrade-wiz-step')`, the open panel reopens on re-entry,
+  and step N auto-advances to N+1 the moment it becomes filled while the
+  teacher is still on N. No panel is ever removed from the DOM — the P0.5 run
+  guards, the required-field flashes and the a11y label associations keep
+  working on every panel; `_reqFlash()` re-opens the panel it flashes.
+  `wizFilled()`: 1 subject · 2 student or target · 3 work (text/photo or
+  audio) · 4 grid. i18n: `wz.next`/`wz.of` + `wiz.s1–s4` keys 4×4. Tests:
+  `tests/test_p1_wizard.py` (**24/24 PASS** live EN+FR, rewritten for the
+  accordion — step 1 open on entry, header-click opens, `.done` badge
+  regains/loses with the rubric, P0.5 regression: empty rubric → step 4
+  re-opened + FR/EN toast) + `tests/test_ux_wave3.py` **25/25** (D3 re-pointed
+  to the `.done` badge). Screenshots: `tests/p11_evaluator_{en,fr}.png`.
+  Full regression re-confirmed: P8 62/62, a11y wave1 21/21 + wave2 13/13,
+  radial linear-cursor 27/27, wave4 17/17, grid-i18n, eval_cards_i18n,
+  P7 18/18, wave6 header 18/18, round3 8/8, round4 11/11, WAL 4/4, V5 10/10.
 - **P0 — repo hygiene & lint.** `ruff.toml` at the root (`app/` strict,
   `tests/`/`scripts/`/`mockups/`/`mock-hybrid/` relaxed), dead zones removed,
   `ruff check .` 100 % green.

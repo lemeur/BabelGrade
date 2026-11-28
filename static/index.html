@@ -118,9 +118,56 @@ nav button.on{color:var(--acc);border-bottom-color:var(--acc)}
 main{padding:26px 0 60px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
   padding:20px;margin-bottom:18px}
-.card .step-num{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
-  border-radius:50%;background:var(--acc);color:#fff;font-size:12.5px;font-weight:800;margin-right:8px;
-  vertical-align:2px}
+/* 2026-11-28 evaluator accordion — replaces the P1.1 sticky chip stepper:
+   the 4 steps ARE the form. One step is open at a time; the others show
+   their label only (the global plan is always visible). .wz-steps is sticky
+   under the header; the open step's content stays editable.
+   States: .done = filled (✓ badge) · .cur = active step (blue badge) ·
+   .open = expanded. .wz-hint = the "step N of 4" counter.
+   NOTE: collapsed panels must NOT carry .hide (display:none!important) —
+   the grid-rows trick keeps every panel in the layout so the P0.5 guards,
+   the a11y label associations and Playwright visibility checks keep
+   working on every panel. */
+.wz-steps{position:sticky;top:var(--hdr-h,64px);z-index:30;background:var(--panel);
+  border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);
+  overflow:hidden;margin-bottom:14px}
+.acc-item{border-bottom:1px solid var(--line)}
+.acc-item:last-child{border-bottom:0}
+.acc-item.open{background:var(--acc-soft)}
+.acc-hd{display:flex;align-items:center;gap:12px;width:100%;padding:13px 16px;
+  background:none;border:0;font:inherit;font-size:14.5px;font-weight:600;color:var(--ink);
+  cursor:pointer;text-align:left}
+.acc-hd:hover{background:var(--acc-soft)}
+.acc-hd .wz-num{flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:inline-flex;
+  align-items:center;justify-content:center;font-size:13px;font-weight:800;
+  background:#fff;border:2px solid var(--line);color:var(--muted);transition:.15s}
+.acc-item.cur .wz-num{background:var(--acc);border-color:var(--acc);color:#fff}
+.acc-item.done .wz-num{background:#fff;border-color:var(--ok);color:var(--ok)}
+.acc-item.done .wz-num::before{content:'\2713';font-size:14px}
+.acc-item.done .wz-num span{display:none}
+.wz-lab{flex:1;min-width:0}
+.wz-hint{font-size:11.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.acc-item.cur .wz-hint{color:var(--acc)}
+.wz-chev{color:var(--muted);transition:transform .18s;font-size:14px}
+.acc-item.open .wz-chev{transform:rotate(180deg);color:var(--acc)}
+/* collapse/expand without display:none. .acc-item.open .acc-body (0,3,0)
+   beats .acc-body (0,1,0). The .acc-inner scroll-margin keeps a jumped-to
+   step clear of the sticky header + sticky .wz-steps. */
+.acc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .18s ease;
+  scroll-margin-top:calc(var(--hdr-h,64px) + 150px)}
+.acc-item.open .acc-body{grid-template-rows:1fr}
+/* the panel IS a former .card (same id) — .card's later rule would re-add
+   its padding/margin/border; zero them out on every .acc-body. */
+.acc-body{padding:0;margin-bottom:0;border:0;box-shadow:none;background:transparent;
+  border-radius:0}
+.acc-body>.acc-inner{overflow:hidden;min-height:0;padding:0 16px}
+.acc-item.open .acc-body>.acc-inner{padding:14px 16px 18px}
+.wz-next{display:inline-flex;align-items:center;justify-content:space-between;gap:8px;
+  margin-top:18px;max-width:340px;width:100%;background:none;border:1.5px solid var(--acc);
+  color:var(--acc);border-radius:10px;padding:9px 14px;font:inherit;font-size:13.5px;
+  font-weight:700;cursor:pointer}
+.wz-next:hover{background:var(--acc-soft)}
+@media (prefers-reduced-motion:reduce){.acc-body,.wz-chev,.acc-hd .wz-num{transition:none}}
 h2{margin:0 0 14px;font-size:18px}
 h3{margin:18px 0 8px;font-size:15px}
 label{display:block;font-size:13px;font-weight:600;color:var(--muted);margin:12px 0 5px;text-transform:uppercase;letter-spacing:.4px}
@@ -287,34 +334,7 @@ button.btn.ai:disabled{opacity:.55;cursor:default}
 .ai-cell{font-size:12.5px;white-space:nowrap}
 .hist-badge-teacher{display:inline-block;font-size:11px;font-weight:700;border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:999px;padding:1px 8px;margin-left:6px}
 .hist-badge-ai{display:inline-block;font-size:11px;font-weight:700;border:1px solid #ddd6fe;background:#f5f3ff;color:#7c3aed;border-radius:999px;padding:1px 8px;margin-left:6px}
-/* P1.1 4-step wizard stepper */
-.wiz-card{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px;padding:10px 14px}
-.wiz-title{font-size:14px;font-weight:700}
-.wiz-chips{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
-.wiz-chip{font-size:12px;font-weight:600;color:var(--muted);background:#fff;border:1.5px solid var(--line);
-  border-radius:999px;padding:4px 11px;cursor:pointer}
-/* V3-D3 (2026-11-24): the stepper is now a HONEST SUMMARY — the form is one
-   continuous scroll (all 4 panels stay visible), so the chips report
-   COMPLETION state instead of a fake wizard:
-   ○ = empty · ✓ = filled · ● = current scroll position (.on overrides all).
-   CSS-only marks (::before content) so textContent stays clean for tests. */
-.wiz-chip.empty::before{content:"○ "}
-.wiz-chip.done::before{content:"✓ "}
-.wiz-chip.on::before{content:"● "}.wiz-chip.on.done,.wiz-chip.on.empty::before{content:"● "}
-.wiz-chip:hover{border-color:var(--acc);color:var(--acc)}
-.wiz-chip.done{border-color:#94a3b8;color:#334155}
-.wiz-chip.done::before{content:"✓ "}
-.wiz-chip.on{background:var(--acc);border-color:var(--acc);color:#fff}
-.wiz-nav{display:flex;gap:8px;flex-wrap:wrap}
 .opts-panel{border-left:4px solid #94a3b8}
-/* the stepper is a GUIDANCE layer: sticky under the header while the form
-   scrolls; the run guards (P0.5) stay authoritative, all 4 panels stay
-   visible (no panel is ever hidden, so #run / #run-eval / P0 tests keep
-   working). */
-#view-analyze .wiz-card{position:sticky;top:64px;z-index:30;box-shadow:0 2px 10px rgba(15,23,42,.06)}
-/* keep the jumped-to step clear of the sticky header + sticky stepper */
-#what-panel,#who-panel,#work-panel,#settings-panel{scroll-margin-top:138px}
-.wiz-chip[disabled]{opacity:.45;cursor:default}
 /* collapsible "other input formats" (UX audit 2026-10-03 pt.1): photo/PDF/audio
    drop zones stay out of the way until the teacher actually needs them */
 .alt-tgl{border:1.5px dashed var(--line);background:transparent;border-radius:9px;padding:9px 12px;
@@ -1551,18 +1571,27 @@ g.g-exit{pointer-events:none}
     <!-- P1.1 · 4-STEP WIZARD STEPPER: one chip per step; click jumps to that
          step, Next/Back validate. Steps are a GUIDANCE layer — the run guards
          (P0.5) stay authoritative, so direct #run / #run-eval always work. -->
-    <div class="card wiz-card">
-      <span class="wiz-title" data-i18n="wiz.title">New evaluation</span>
-      <div class="wiz-chips">
-        <button class="wiz-chip" data-wiz-go="1" data-i18n="wiz.s1">Assignment</button>
-        <button class="wiz-chip" data-wiz-go="2" data-i18n="wiz.s2">Student &amp; level</button>
-        <button class="wiz-chip" data-wiz-go="3" data-i18n="wiz.s3">Student's work</button>
-        <button class="wiz-chip" data-wiz-go="4" data-i18n="wiz.s4">Rubric</button>
-      </div>
-    </div>
-    <!-- 1 · WHAT -->
-    <div class="card" id="what-panel">
-      <h2><span class="step-num">1</span><span data-i18n="an.1">What are we assessing?</span></h2>
+        <!-- 2026-11-28 · EVALUATOR ACCORDION: replaces the P1.1 chip stepper.
+         The 4 steps ARE the form — one is open at a time (forced 1→4
+         progression, the active step is remembered in localStorage), the
+         others show their label only, so the global plan is always visible.
+         Collapsed panels stay in the DOM and the layout (grid-template-rows
+         0fr, no display:none) so the P0.5 run guards, the required flashes
+         and the a11y labels keep working on every panel; _reqFlash()
+         re-opens the panel it flashes. -->
+    <div class="wz-steps" id="wz-steps">
+      <div class="acc-item" data-step="1">
+        <button type="button" class="acc-hd" data-wz-hd="1" aria-expanded="true" aria-controls="what-panel">
+          <span class="wz-num"><span>1</span></span>
+          <span class="wz-lab" data-i18n="wiz.s1">Assignment</span>
+          <span class="wz-hint" data-wz-hint aria-hidden="true"></span>
+          <span class="wz-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="acc-body" role="region" id="what-panel" aria-label="Assignment">
+          <div class="acc-inner">
+
+
+      <h2><span data-i18n="an.1">What are we assessing?</span></h2>
       <!-- subject selector (Sur sujet mode): hidden in Direct mode, where the
            inline title + fields below define a NEW subject instead.
            Toggled by renderAssignmentInherited(). -->
@@ -1601,11 +1630,22 @@ g.g-exit{pointer-events:none}
           <div style="flex:1"><div class="mfield" id="mfield-doc"></div></div>
         </div>
       </div>
-    </div>
+    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="2"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+          </div>
+        </div>
+      </div>
+      <div class="acc-item" data-step="2">
+        <button type="button" class="acc-hd" data-wz-hd="2" aria-expanded="false" aria-controls="who-panel">
+          <span class="wz-num"><span>2</span></span>
+          <span class="wz-lab" data-i18n="wiz.s2">Student &amp; level</span>
+          <span class="wz-hint" data-wz-hint aria-hidden="true"></span>
+          <span class="wz-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="acc-body" role="region" id="who-panel" aria-label="Student &amp; level">
+          <div class="acc-inner">
 
-    <!-- 2 · WHO -->
-    <div class="card" id="who-panel">
-      <h2><span class="step-num">2</span><span data-i18n="an.2">Student & target level</span></h2>
+
+      <h2><span data-i18n="an.2">Student & target level</span></h2>
       <div class="row">
         <div style="max-width:340px"><label for="student" data-i18n="an.student">Student</label>
           <select id="student"><option value="">&mdash; none &mdash;</option></select></div>
@@ -1653,11 +1693,22 @@ g.g-exit{pointer-events:none}
         <label for="accommodations" data-i18n="an.accommodations" style="margin-top:8px">Accommodations for this student</label>
         <textarea id="accommodations" rows="2" data-i18n-ph="ph.accom" placeholder="e.g. The student is dyslexic &mdash; do not count spelling mistakes as harshly."></textarea>
       </details>
-    </div>
+    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="3"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+          </div>
+        </div>
+      </div>
+      <div class="acc-item" data-step="3">
+        <button type="button" class="acc-hd" data-wz-hd="3" aria-expanded="false" aria-controls="work-panel">
+          <span class="wz-num"><span>3</span></span>
+          <span class="wz-lab" data-i18n="wiz.s3">Student's work</span>
+          <span class="wz-hint" data-wz-hint aria-hidden="true"></span>
+          <span class="wz-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="acc-body" role="region" id="work-panel" aria-label="Student's work">
+          <div class="acc-inner">
 
-    <!-- 3 · WORK -->
-    <div class="card" id="work-panel">
-      <h2><span class="step-num">3</span><span data-i18n="an.3">The student's work</span><span class="req" aria-hidden="true">*</span></h2>
+
+      <h2><span data-i18n="an.3">The student's work</span><span class="req" aria-hidden="true">*</span></h2>
       <!-- 2026-11-25: the "Title (optional)" field was removed — it only fed
            a smart-default that the backend already generates (_default_title);
            the form now shows just the mode toggle on its own row. -->
@@ -1699,11 +1750,22 @@ g.g-exit{pointer-events:none}
         </div>
         <div class="muted" style="margin-top:8px" data-i18n="an.audioNote">Audio is transcribed locally (offline Whisper) with timestamps before analysis.</div>
       </div>
-    </div>
+    <div style="margin-top:14px"><button type="button" class="wz-next" data-wz-next="4"><span data-i18n="wz.next">Next step</span><span aria-hidden="true">→</span></button></div>
+          </div>
+        </div>
+      </div>
+      <div class="acc-item" data-step="4">
+        <button type="button" class="acc-hd" data-wz-hd="4" aria-expanded="false" aria-controls="settings-panel">
+          <span class="wz-num"><span>4</span></span>
+          <span class="wz-lab" data-i18n="wiz.s4">Rubric</span>
+          <span class="wz-hint" data-wz-hint aria-hidden="true"></span>
+          <span class="wz-chev" aria-hidden="true">▾</span>
+        </button>
+        <div class="acc-body" role="region" id="settings-panel" aria-label="Rubric">
+          <div class="acc-inner">
 
-    <!-- 4 · SETTINGS -->
-    <div class="card" id="settings-panel">
-      <h2><span class="step-num">4</span><span data-i18n="an.4">Evaluation settings</span></h2>
+
+      <h2><span data-i18n="an.4">Evaluation settings</span></h2>
       <!-- the rubric is the single most impactful choice for the report: it
            defines the whole output. It now leads the card (UX audit 2026-10-03
            pt.1) instead of sitting beside a text area. -->
@@ -1717,9 +1779,12 @@ g.g-exit{pointer-events:none}
         <div class="mfield" id="mfield-eval" style="margin-top:12px"></div>
         <div class="muted" style="margin-top:4px" data-i18n="an.evalNotesHelp">Tell the model what to check in this specific work &mdash; each point is verified one by one with cited evidence.</div>
       </details>
+              </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card an-actions" style="text-align:right;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
+<div class="card an-actions" style="text-align:right;display:flex;gap:10px;align-items:center;justify-content:flex-end;flex-wrap:wrap">
       <div class="muted" id="req-note" style="flex:1 1 100%;order:5;font-size:12.5px;text-align:left;margin-top:2px" data-i18n="an.reqNote"></div>
       <button class="btn" style="order:1" id="run" data-i18n="an.run" data-i18n-title="an.runTip">Analyze submission</button>
       <button class="btn ghost" style="order:2" id="run-eval" data-i18n="an.runEval" data-i18n-title="an.runEvalTip">Evaluate first</button>
@@ -1738,6 +1803,7 @@ g.g-exit{pointer-events:none}
 
     <div id="report"></div>
   </section>
+
 
   <!-- ================= HISTORY ================= -->
   <section id="view-history" class="hide">
@@ -2442,7 +2508,7 @@ const I18N={
   'ai.blind':'AI blind','ai.aware':'AI with your levels','ai.blindHint':'The AI grades independently, without seeing your levels.','ai.awareHint':'The AI sees your levels and must confirm or refute each one, with evidence.',
   'ai.run':'Run AI analysis','ai.rerun':'Re-run AI (replaces this opinion)','ai.rerunHint':'New analysis: the opinion below will be replaced by the next one (only the last one is kept).',
   'ai.received':'AI opinion','ai.last':'last opinion','ai.vsLevels':'AI opinion vs your levels:','ai.confirm':'confirmed','ai.diff':'differs','ai.runFailed':'AI analysis failed','ai.running':'AI analysis in progress…','ai.evalReady':'Evaluation ready — grade it criterion by criterion, then run the AI if you like.',
-  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.title':'New evaluation','wiz.s1':'Assignment','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.specificOpts':'Specific level & accommodations','wiz.evalNotes':'Evaluation instructions (optional)',
+  'hist.ai':'AI ran','hist.noAi':'Teacher evaluated first, no AI opinion yet','ai.unfilled':'unfilled','rep.levelLbl':'Result','ai.noOpHint':'No AI opinion yet','wiz.s1':'Assignment','wz.next':'Next step','wz.of':'Step {a} of {b}','wiz.s2':'Student & level','wiz.s3':"Student's work",'wiz.s4':'Rubric','wiz.specificOpts':'Specific level & accommodations','wiz.evalNotes':'Evaluation instructions (optional)',
 'tip.att':'Attests a CEFR level (A1\u2013C2) from the official /120 grid (B.O. LVA/LVB). It is a recommendation \u2014 the teacher makes the final call.','tip.modalite':'Modality = whether the assessment covers comprehension or expression. The official point thresholds differ between the two.','tip.note20':'Hand-entered /20 mark. Reference only \u2014 the attested level is never computed from the /20.','tip.vsTarget':'Compares the attested level with the target level of the assignment.','tip.aiCol':'AI opinion per criterion: \u2713 if it matches your level, \u2260 if it differs.','tip.just':'AI justification + verbatim quotes from the production (evidence).','tip.points':'Points out of 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Overall level computed from the /120 grid (official thresholds).','tip.critGrid':'The six official sub-scores (comprehension or expression) make up the /120 total; the level is read from the official B.O. grid.',
   'an.assignmentTarget':'Assignment target','an.overrideDiff':'differs from the assignment',
   'an.savedMedia':'stored assignment materials were sent to the model',
@@ -2527,7 +2593,7 @@ const I18N={
   'ai.blind':'IA en aveugle','ai.aware':'IA avec vos niveaux','ai.blindHint':'L’IA évalue indépendamment, sans voir vos niveaux.','ai.awareHint':'L’IA voit vos niveaux et doit les confirmer ou les infirmer, critère par critère, avec des preuves.',
   'ai.run':'Lancer l’analyse IA','ai.rerun':'↻ Relancer l’IA (remplace cet avis)','ai.rerunHint':'Nouvelle analyse : l’avis ci-dessous sera remplacé par le prochain (le seul conservé).',
   'ai.received':'Avis IA','ai.last':'dernier avis','ai.vsLevels':'L’avis IA par rapport à vos niveaux :','ai.confirm':'confirmés','ai.diff':'divergence','ai.runFailed':'Échec de l’analyse IA','ai.running':'Analyse IA en cours…','ai.evalReady':'Évaluation prête — corrigez-la critère par critère, puis lancez l’IA si vous voulez.',
-  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.title':'Nouvelle évaluation','wiz.s1':'Sujet','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.specificOpts':'Niveau spécifique et aménagements','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
+  'hist.ai':'IA lancée','hist.noAi':'Évalué d’abord par l’enseignant, pas encore d’avis IA','ai.unfilled':'non saisi(s)','rep.levelLbl':'Résultat','ai.noOpHint':'Pas encore d’avis IA','wiz.s1':'Sujet','wz.next':'Étape suivante','wz.of':'Étape {a} sur {b}','wiz.s2':'Élève & niveau','wiz.s3':'Travail de l’élève','wiz.s4':'Grille','wiz.specificOpts':'Niveau spécifique et aménagements','wiz.evalNotes':'Consignes d’évaluation (facultatif)',
 'tip.att':'Atteste un niveau CECRL (A1\u2013C2) à partir de la grille officielle /120 (B.O. LVA/LVB). C’est une recommandation \u2014 l’enseignant tranche en dernier.','tip.modalite':'Modalité = la compétence évaluée : réception (compréhension) ou production (expression). Les seuils de points officiels diffèrent selon la modalité.','tip.note20':'Note /20 saisie à la main. À titre de référence uniquement \u2014 le niveau attesté ne se calcule jamais à partir du /20.','tip.vsTarget':'Compare le niveau attesté avec le niveau cible du sujet.','tip.aiCol':'Avis IA par critère : \u2713 s’il coïncide avec votre niveau, \u2260 s’il diffère.','tip.just':'Justification de l’IA + citations littérales de la production (preuves).','tip.points':'Points sur 120 : A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Niveau global calculé sur la grille /120 (seuils officiels).','tip.critGrid':'Les six sous-critères officiels (réception ou production) composent le /120 ; le niveau se lit sur la grille B.O. officielle.',
   'an.assignmentTarget':'Niveau du sujet','an.overrideDiff':'diffère du sujet',
   'an.savedMedia':'les ressources stockées du sujet ont été envoyées au modèle',
@@ -2612,7 +2678,7 @@ const I18N={
   'ai.blind':'IA a ciegas','ai.aware':'IA con tus niveles','ai.blindHint':'La IA evalúa de forma independiente, sin ver tus niveles.','ai.awareHint':'La IA ve tus niveles y debe confirmarlos o refutarlos, criterio a criterio, con evidencia.',
   'ai.run':'Ejecutar análisis IA','ai.rerun':'↻ Relanzar IA (reemplaza esta opinión)','ai.rerunHint':'Nuevo análisis: la opinión de abajo será reemplazada por la siguiente (solo se conserva la última).',
   'ai.received':'Opinión IA','ai.last':'última opinión','ai.vsLevels':'Opinión IA frente a tus niveles:','ai.confirm':'confirmados','ai.diff':'diferencia','ai.runFailed':'Fallo en el análisis IA','ai.running':'Análisis IA en curso…','ai.evalReady':'Evaluación lista: corrígela criterio a criterio y ejecuta la IA si quieres.',
-  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.title':'Nueva evaluación','wiz.s1':'Tarea','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.specificOpts':'Nivel específico y adaptaciones','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
+  'hist.ai':'IA ejecutada','hist.noAi':'Evaluado primero por el docente, sin opinión IA todavía','ai.unfilled':'sin rellenar','rep.levelLbl':'Resultado','ai.noOpHint':'Todavía sin opinión IA','wiz.s1':'Tarea','wz.next':'Paso siguiente','wz.of':'Paso {a} de {b}','wiz.s2':'Estudiante y nivel','wiz.s3':'Trabajo del estudiante','wiz.s4':'Rejilla','wiz.specificOpts':'Nivel específico y adaptaciones','wiz.evalNotes':'Instrucciones de evaluación (opcional)',
 'tip.att':'Certifica un nivel MCER (A1–C2) a partir de la cuadrícula oficial /120 (B.O. LVA/LVB). Es una recomendación: el docente toma la decisión final.','tip.modalite':'Modalidad = si la evaluación cubre comprensión o expresión. Los umbrales de puntos oficiales difieren entre ambas.','tip.note20':'Nota /20 introducida a mano. Solo como referencia: el nivel certificado nunca se calcula a partir del /20.','tip.vsTarget':'Compara el nivel certificado con el nivel objetivo de la tarea.','tip.aiCol':'Opinión IA por criterio: ✓ si coincide con su nivel, ≠ si difiere.','tip.just':'Justificación de la IA + citas literales de la producción (pruebas).','tip.points':'Puntos sobre 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Nivel global calculado sobre la cuadrícula /120 (umbrales oficiales).','tip.critGrid':'Los seis subcriterios oficiales (comprensión o expresión) componen el /120; el nivel se lee en la rejilla oficial B.O.',
   'an.assignmentTarget':'Nivel de la tarea','an.overrideDiff':'difiere de la tarea',
   'an.savedMedia':'los materiales guardados de la tarea se enviaron al modelo',
@@ -2697,7 +2763,7 @@ const I18N={
   'ai.blind':'KI blind','ai.aware':'KI mit Ihren Stufen','ai.blindHint':'Die KI bewertet unabhängig, ohne Ihre Stufen zu sehen.','ai.awareHint':'Die KI sieht Ihre Stufen und muss jede bestätigen oder widerlegen, mit Belegen.',
   'ai.run':'KI-Analyse starten','ai.rerun':'↻ KI erneut ausführen (ersetzt diese Meinung)','ai.rerunHint':'Neue Analyse: die Meinung unten wird durch die nächste ersetzt (nur die letzte wird behalten).',
   'ai.received':'KI-Meinung','ai.last':'letzte Meinung','ai.vsLevels':'KI-Meinung im Vergleich zu Ihren Stufen:','ai.confirm':'bestätigt','ai.diff':'abweichend','ai.runFailed':'KI-Analyse fehlgeschlagen','ai.running':'KI-Analyse läuft…','ai.evalReady':'Bewertung bereit — korrigieren Sie sie Kriterium für Kriterium, dann die KI ausführen, wenn gewünscht.',
-  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.title':'Neue Bewertung','wiz.s1':'Aufgabe','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.specificOpts':'Spezifisches Niveau & Anpassungen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
+  'hist.ai':'KI ausgeführt','hist.noAi':'Erst vom Lehrer bewertet, noch keine KI-Meinung','ai.unfilled':'ungefüllt','rep.levelLbl':'Ergebnis','ai.noOpHint':'Noch keine KI-Meinung','wiz.s1':'Aufgabe','wz.next':'Nächster Schritt','wz.of':'Schritt {a} von {b}','wiz.s2':'Schüler:in & Stufe','wiz.s3':'Leistung','wiz.s4':'Skala','wiz.specificOpts':'Spezifisches Niveau & Anpassungen','wiz.evalNotes':'Bewertungsanweisungen (optional)',
 'tip.att':'Attestiert ein GER-Niveau (A1–C2) aus dem offiziellen /120-Raster (B.O. LVA/LVB). Es ist eine Empfehlung — die Lehrkraft entscheidet letztinstanzlich.','tip.modalite':'Modalität = ob die Bewertung Rezeption (Verstehen) oder Produktion (Ausdrücken) betrifft. Die offiziellen Punkteschwellen unterscheiden sich.','tip.note20':'Von Hand eingetragene Note von 20. Nur als Referenz — das attestierte Niveau wird niemals aus der /20 berechnet.','tip.vsTarget':'Vergleicht das attestierte Niveau mit dem Zielniveau der Aufgabe.','tip.aiCol':'KI-Meinung pro Kriterium: ✓ bei Übereinstimmung mit Ihrer Stufe, ≠ bei Abweichung.','tip.just':'KI-Begründung + wörtliche Zitate aus der Produktion (Belege).','tip.points':'Punkte von 120: A1=1, A2=3, B1=5, B2=10, C1=20, C2=30.','tip.result':'Gesamtstufe, berechnet aus dem /120-Raster (offizielle Schwellen).','tip.critGrid':'Die sechs offiziellen Teilpunkte (Rezeption oder Produktion) ergeben die 120; die Stufe wird aus dem offiziellen B.O.-Raster abgelesen.',
   'an.assignmentTarget':'Ziel der Aufgabe','an.overrideDiff':'weicht von der Aufgabe ab',
   'an.savedMedia':'die gespeicherten Materialien der Aufgabe wurden an das Modell gesendet',
@@ -5362,6 +5428,7 @@ async function ensureDirectSubject(){
   if(selectedAssignment())return String($('#assignment').value);
   const name=($('#direct-subject-title').value||'').trim();
   if(!name){
+    wizOpen(1,false);
     const card=$('#what-panel');
     card.classList.remove('req-flash');void card.offsetWidth;card.classList.add('req-flash');
     card.scrollIntoView({behavior:'smooth',block:'center'});
@@ -5492,55 +5559,111 @@ $('#asg-add').onclick=async()=>{
 };
 
 
-/* ---------------- P1.1 4-step wizard (guidance layer) ----------------
-   Sticky stepper over the evaluator form. All four step panels stay in the
-   DOM + visible (no panel is ever hidden) so the P0.5 run guards, the
-   required-field flashes and the P0.3 carousel checks keep working on any
-   panel. The chips jump to a step; a scroll-spy highlights the active one. */
+/* ---------------- 2026-11-28 evaluator accordion (replaces P1.1 stepper) ----------------
+   The 4 steps ARE the form: one step is open at a time, the others show
+   their label only (the global plan stays visible at all times). Progression
+   is FORCED 1→4: the active step is remembered in localStorage
+   ('babelgrade-wiz-step'), the open panel reopens on re-entry, and step N
+   auto-advances to N+1 the moment it becomes filled while the teacher is
+   still on N. No panel is ever removed from the DOM — the P0.5 run guards,
+   the required-field flashes and the a11y label associations keep working
+   on every panel; _reqFlash() re-opens the panel it flashes.
+   States: .done = filled (✓) · .cur = active step · .open = expanded. */
 const WIZ_PANELS=['#what-panel','#who-panel','#work-panel','#settings-panel'];
-function wizSync(){
-  if(!$('#view-analyze')||$('#view-analyze').classList.contains('hide'))return;
-  let active=0;
-  for(let i=0;i<WIZ_PANELS.length;i++){
-    const r=$(WIZ_PANELS[i]).getBoundingClientRect();
-    if(r.top<=140)active=i; else break;
-  }
-  /* V3-D3 (2026-11-24): the chips are a SUMMARY, not a wizard — .done now
-     means FILLED (○ empty / ✓ filled); position stays on the scroll-spy .on
-     (all panels remain visible & editable, the P0.5 run guards stay
-     authoritative). Filled = an input that actually feeds the analysis:
+let _wzPrevFilled=null;
+function wizStep(){const n=parseInt(localStorage.getItem('babelgrade-wiz-step'),10);
+  return(n>=1&&n<=4)?n:1;}
+function wizSaveStep(n){try{localStorage.setItem('babelgrade-wiz-step',String(n));}catch(_){}}
+function wizFilled(){
+  /* Filled = an input that actually feeds the analysis:
      1 subject · 2 student or target · 3 work (text/photo or audio) · 4 grid. */
-  const filled=[
+  return[
     $('#assignment').value!=='',
     $('#student').value!==''||effectiveTarget()!=='',
     KIND==='oral'?!!currentAudio:($('#written-text').value.trim()!==''||currenasgnFiles.length>0||!!currentCopyPdf),
     !!$('#rubric').value,
   ];
-  $$('.wiz-chip[data-wiz-go]').forEach((c,i)=>{
-    c.classList.toggle('on',i===active);
-    c.classList.toggle('done',filled[i]&&i!==active);
-    c.classList.toggle('empty',!filled[i]&&i!==active);
+}
+function wizOpen(n,scroll){
+  if(n<1)n=1;if(n>4)n=4;
+  wizSaveStep(n);
+  $$('.acc-item').forEach(it=>{
+    const on=+it.dataset.step===n;
+    it.classList.toggle('open',on);
+    it.classList.toggle('cur',on);
+    const hd=it.querySelector('.acc-hd');if(hd)hd.setAttribute('aria-expanded',on?'true':'false');
+  });
+  const p=$(WIZ_PANELS[n-1]);
+  /* scroll-margin-top (CSS) clears the sticky header + sticky .wz-steps, so
+     block:'start' lands the panel just under the plan. */
+  if(p&&scroll)p.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function wizSync(){
+  if(!$('#view-analyze')||$('#view-analyze').classList.contains('hide'))return;
+  /* display-only: badges + hints. The step itself is only ever changed by
+     user actions (header click / Next) or auto-advance. */
+  const n=wizStep();
+  const filled=wizFilled();
+  $$('.acc-item').forEach((it,i)=>{
+    it.classList.toggle('open',i===n-1);
+    it.classList.toggle('cur',i===n-1);
+    it.classList.toggle('done',filled[i]);
+    const hd=it.querySelector('.acc-hd');if(hd)hd.setAttribute('aria-expanded',i===n-1?'true':'false');
+    const hint=it.querySelector('[data-wz-hint]');
+    if(hint)hint.textContent=(i===n-1)?t('wz.of').replace('{a}',String(i+1)).replace('{b}','4'):'';
   });
 }
 function wizInit(){
-  $$('.wiz-chip[data-wiz-go]').forEach(c=>{
-    c.onclick=()=>{const p=$(WIZ_PANELS[+c.dataset.wizGo-1]);
-      p.scrollIntoView({behavior:'smooth',block:'start'});};
+  /* accordion headers: click opens that step (delegated — the headers are
+     static, so one listener survives mode-field re-renders). After the
+     transition, focus the first control of the opened panel. */
+  $('#view-analyze').addEventListener('click',e=>{
+    const hd=e.target.closest('.acc-hd');
+    if(!hd||!hd.dataset.wzHd)return;
+    wizOpen(+hd.dataset.wzHd,false);
+    const f=hd.closest('.acc-item').querySelector('input,select,textarea');
+    if(f)setTimeout(()=>f.focus({preventScroll:true}),180);
   });
-  /* V3-D3 (2026-11-24): the chips reflect COMPLETION (○/✓/●), so any change to
-     a field that feeds the analysis must repaint them. Bubbling 'change' +
-     'input' on the section cover every <select>/<input>/<textarea> (P1.1's
-     hidden selects included); the rAF-debounced observer catches the
-     mode-field engine's DOM (photo thumbs, audio fstat pill, level widgets).
-     wizSync() is cheap: a few .value/.length reads + rects. */
+  /* "Next step" buttons: step 2 requires a student before advancing;
+     step 3 requires the work to be present. The P0.5 run guards stay
+     authoritative — these checks are just earlier feedback. */
+  $('#what-panel .wz-next').onclick=()=>wizOpen(2,true);
+  $('#who-panel .wz-next').onclick=()=>{
+    if($('#student').value===''){
+      const c=$('#who-panel');c.classList.remove('req-flash');void c.offsetWidth;c.classList.add('req-flash');
+      toast(t('an.student'));return;
+    }
+    wizOpen(3,true);
+  };
+  $('#work-panel .wz-next').onclick=()=>{
+    if(!wizFilled()[2]){
+      const c=$('#work-panel');c.classList.remove('req-flash');void c.offsetWidth;c.classList.add('req-flash');
+      toast(t(KIND==='oral'?'an.missingAudio':'an.missingWorkWritten'));return;
+    }
+    wizOpen(4,true);
+  };
+  /* Forced 1→4: step N just became filled while the open step is N (N<4)
+     → advance to N+1. Driven by the same rAF-debounced observers as the
+     badge repaint; the filled-state flip makes it fire exactly once per
+     completion. _wzPrevFilled null = first paint, no auto-advance. */
+  let _wizRaf3=null;
+  const _wizAuto=()=>{if(_wizRaf3)return;_wizRaf3=requestAnimationFrame(()=>{
+    _wizRaf3=null;
+    if(!$('#view-analyze')||$('#view-analyze').classList.contains('hide'))return;
+    const openEl=$('.acc-item.open');const open=openEl?+openEl.dataset.step:wizStep();
+    if(open<4&&_wzPrevFilled&&!_wzPrevFilled[open-1]&&wizFilled()[open-1])wizOpen(open+1,true);
+  });};
   let _wizRaf2=null;
-  const _wizDeb=()=>{if(_wizRaf2)return;_wizRaf2=requestAnimationFrame(()=>{_wizRaf2=null;wizSync();});};
+  const _wizDeb=()=>{
+    if(_wizRaf2)return;_wizRaf2=requestAnimationFrame(()=>{_wizRaf2=null;wizSync();});
+    _wizAuto();
+  };
   $('#view-analyze').addEventListener('change',_wizDeb);
   $('#view-analyze').addEventListener('input',_wizDeb);
   new MutationObserver(_wizDeb).observe($('#view-analyze'),{subtree:true,childList:true,characterData:true});
   wizSync();
+  _wzPrevFilled=wizFilled();
 }
-
 /* ---------------- mode toggle & file drops ---------------- */
 $('#mode-seg').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;KIND=b.dataset.kind;
@@ -6010,6 +6133,9 @@ function naturalFiles(list){
    "selected" for the next one. The task-level context (assignment card 1 +
    target + rubric) is deliberately untouched. */
 $('#student').addEventListener('change',function(){
+  /* 2026-11-28 accordion: picking a student = step 2 is done → the work step
+     is the one to fill next (the forced 1→4 progression). */
+  wizOpen(3,true);
   currenasgnFiles.length=0;
   const tf=$('#img-file');if(tf)tf.value='';
   const wt=$('#written-text');if(wt)wt.value='';
@@ -6043,6 +6169,10 @@ function refreshMFields(){
    them exactly what to add (i18n, not the old hard-coded English toast). */
 function _reqFlash(cardSel, msgKey){
   const card=$(cardSel);
+  /* 2026-11-28 accordion: re-open the flashed panel first — the run guards
+     stay authoritative, and a guard on a collapsed panel must be visible. */
+  const _wzi=WIZ_PANELS.indexOf(cardSel);
+  if(_wzi>=0&&$('.acc-item.open')&&+$('.acc-item.open').dataset.step!==_wzi+1)wizOpen(_wzi+1,false);
   if(card){
     card.classList.remove('req-flash');
     void card.offsetWidth;   /* restart the CSS animation if re-flashed */
@@ -6082,7 +6212,7 @@ $('#run').onclick=async()=>{
   currentDocPhotos.forEach(f=>fd.append('doc_photos',f));
   if(KIND==='written')currenasgnFiles.forEach(f=>fd.append('images',f));
   if(KIND==='oral'){
-    if(!currentAudio)return _reqFlash('#work-panel','an.missingAudio');
+    if(!currentAudio){wizOpen(3,false);return _reqFlash('#work-panel','an.missingAudio');}
     fd.append('audio',currentAudio);
   }
   if(KIND==='written'&&!$('#written-text').value.trim()&&!currenasgnFiles.length&&!currentCopyPdf)
